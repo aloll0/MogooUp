@@ -1,0 +1,17 @@
+import { Router } from "express";
+import { taskController } from "./task.controller";
+import { authMiddleware } from "../../middlewares/auth";
+import { validateRequest } from "../../middlewares/validation";
+import { createTaskSchema, updateTaskSchema } from "./task.validation";
+
+const router = Router();
+
+// Secure all task operations with JWT Auth Middleware
+router.use(authMiddleware);
+
+router.post("/", validateRequest(createTaskSchema), taskController.create);
+router.get("/list/:listId", taskController.listByList);
+router.put("/:taskId", validateRequest(updateTaskSchema), taskController.update);
+router.delete("/:taskId", taskController.delete);
+
+export default router;
