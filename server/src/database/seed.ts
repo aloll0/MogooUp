@@ -35,7 +35,7 @@ const seedData = async () => {
       fullName: "Mogoo Admin",
       avatarUrl: "https://api.dicebear.com/7.x/bottts/svg?seed=Admin",
       isVerified: true,
-    });
+    });  
 
     // Create Developer User
     const devPasswordHash = await bcrypt.hash("password123", 12);
