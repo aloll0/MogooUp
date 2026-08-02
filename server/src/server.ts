@@ -22,7 +22,7 @@ const startServer = async () => {
     logger.info("MongoDB database connected successfully!");
 
     const server = app.listen(config.port, () => {
-      logger.info(`Mogoo Backend server running in [${config.env}] mode on port ${config.port}`);
+      logger.info(`Taskflow Backend server running in [${config.env}] mode on port ${config.port}`);
     });
 
     // Catch unhandled promise rejections

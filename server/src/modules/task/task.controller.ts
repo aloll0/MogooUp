@@ -65,6 +65,38 @@ export class TaskController {
       next(error);
     }
   };
+
+  listByWorkspace = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+    try {
+      const { workspaceId } = req.params;
+      const userId = req.user!.userId;
+      
+      const tasks = await taskService.getTasksByWorkspace(workspaceId, userId);
+      
+      res.status(200).json({
+        success: true,
+        data: { tasks },
+      });
+    } catch (error) {
+      next(error);
+    }
+  };
+
+  getById = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+    try {
+      const { taskId } = req.params;
+      const userId = req.user!.userId;
+      
+      const task = await taskService.getTaskById(taskId, userId);
+      
+      res.status(200).json({
+        success: true,
+        data: { task },
+      });
+    } catch (error) {
+      next(error);
+    }
+  };
 }
 
 export const taskController = new TaskController();

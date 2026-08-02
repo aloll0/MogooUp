@@ -1,0 +1,136 @@
+{
+  "sidebar": {
+    "currentWorkspace": "Current Workspace",
+    "createWorkspace": "Create Workspace",
+    "spaces": "Spaces",
+    "noActiveSpaces": "No active spaces yet.",
+    "logOut": "Log Out",
+    "board": "Kanban Board",
+    "team": "Workspace Team"
+  },
+  "welcome": {
+    "title": "Welcome to Taskflow!",
+    "subtitle": "Every project space requires a workspace to start. Setup your workspace to launch lists and Kanban cards.",
+    "btnCreateWs": "Create Your First Workspace"
+  },
+  "noSpaces": {
+    "title": "No Spaces Registered",
+    "subtitle": "Spaces let you categorize sprints, teams, or folders. Setup your first space in {{workspaceName}}.",
+    "btnCreateSpace": "Create Space"
+  },
+  "header": {
+    "kanbanBoard": "Kanban Board",
+    "toggleTheme": "Toggle Light/Dark Theme",
+    "toggleLang": "Toggle Language"
+  },
+  "kanban": {
+    "noTasks": "No tasks in list",
+    "confirmDeleteTask": "Are you sure you want to delete this task?",
+    "moveTo": "Move to {{targetName}}",
+    "addTask": "Add Task",
+    "createColumn": "Create Column"
+  },
+  "taskModal": {
+    "title": "Task Details",
+    "taskTitleLabel": "Task Title",
+    "statusLabel": "Status / Column",
+    "priorityLabel": "Priority",
+    "descriptionLabel": "Description",
+    "edit": "Edit",
+    "cancel": "Cancel",
+    "saveDescription": "Save Description",
+    "noDescription": "No description set for this task.",
+    "attachmentsLabel": "Attachments",
+    "uploadCover": "Upload Cover Image",
+    "noAttachments": "No attachments uploaded yet.",
+    "assigneesLabel": "Assignees",
+    "commentsLabel": "Comments & Activity",
+    "noComments": "No comments posted yet.",
+    "writeCommentPlaceholder": "Write a comment...",
+    "uploadCoverFailed": "Failed to upload image cover."
+  },
+  "createWorkspaceModal": {
+    "title": "Create a Workspace",
+    "label": "Workspace Name",
+    "placeholder": "e.g. engineering, design team",
+    "btnSubmit": "Create Workspace"
+  },
+  "createSpaceModal": {
+    "title": "Create a Project Space",
+    "labelName": "Space Name",
+    "placeholderName": "e.g. Sprints, Roadmaps",
+    "labelDesc": "Description",
+    "placeholderDesc": "What is this space for?",
+    "labelColor": "Color Theme",
+    "btnSubmit": "Create Space"
+  },
+  "createListModal": {
+    "title": "Add Kanban Column",
+    "label": "Column Title",
+    "placeholder": "e.g. Backlog, Ready for Review",
+    "btnSubmit": "Create Column"
+  },
+  "createTaskModal": {
+    "title": "Add Task Card",
+    "labelTitle": "Task Title",
+    "placeholderTitle": "Task title",
+    "labelDesc": "Description",
+    "placeholderDesc": "Write a description...",
+    "labelPriority": "Priority",
+    "btnSubmit": "Add Task"
+  },
+  "inviteModal": {
+    "title": "Invite to Workspace",
+    "labelEmail": "Email Address",
+    "placeholderEmail": "collaborator@example.com",
+    "labelRole": "Workspace Role",
+    "btnSubmit": "Invite User",
+    "success": "Member invited successfully!",
+    "failed": "Invitation failed."
+  },
+  "workspaceMembersModal": {
+    "title": "Workspace Members & Access",
+    "inviteTab": "Invite Collaborator",
+    "membersTab": "Current Members",
+    "roleChangeSuccess": "Member role updated successfully!",
+    "roleChangeFailed": "Failed to update member role.",
+    "cannotEditSelf": "You cannot change your own role.",
+    "cannotEditOwner": "You cannot change the role of the workspace owner.",
+    "roleLabel": "Workspace Role",
+    "confirmRoleChange": "Are you sure you want to change this member's role?"
+  },
+  "warnings": {
+    "notAdminSpace": "You must be a Workspace Admin or Owner to create project spaces.",
+    "notAdminOrManagerColumn": "You must be an Admin, Owner, or Manager to create columns.",
+    "notAuthorizedTask": "You do not have permission to add tasks in this workspace. Guests cannot create tasks.",
+    "notAuthorizedDeleteTask": "Only Admin, Owner, or Managers can delete tasks.",
+    "notAdminInvite": "You must be a Workspace Admin or Owner to manage members."
+  },
+  "priorities": {
+    "low": "Low",
+    "medium": "Medium",
+    "high": "High",
+    "urgent": "Urgent"
+  },
+  "roles": {
+    "owner": "Owner",
+    "admin": "Admin",
+    "manager": "Manager",
+    "member": "Member",
+    "guest": "Guest"
+  },
+  "notifications": {
+    "title": "Notifications",
+    "markAllRead": "Mark all as read",
+    "empty": "No notifications yet"
+  },
+  "tasksCount": "Tasks",
+  "stats": {
+    "totalTasks": "Total Tasks",
+    "completed": "Completed",
+    "assignedTasksList": "Assigned Tasks",
+    "noAssignedTasks": "No tasks assigned to this member yet.",
+    "selectMemberTitle": "Select a Team Collaborator",
+    "selectMemberDesc": "Click on any team member from the left panel to analyze their workload and assigned tasks."
+  }
+}

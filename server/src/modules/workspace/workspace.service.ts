@@ -76,7 +76,7 @@ export class WorkspaceService {
     // 2. Find target user by email
     const targetUser = await userRepository.findByEmail(email);
     if (!targetUser) {
-      throw new NotFoundError(`User with email ${email} is not registered on Mogoo yet.`);
+      throw new NotFoundError(`User with email ${email} is not registered on Taskflow yet.`);
     }
 
     // 3. Check if target user is already a member
@@ -87,6 +87,35 @@ export class WorkspaceService {
 
     // 4. Create membership invitation
     return workspaceRepository.createMembership(workspaceId, targetUser._id.toString(), role, "active"); // auto-active for simplicity in this sprint
+  }
+
+  async updateMemberRole(
+    workspaceId: string,
+    targetUserId: string,
+    role: WorkspaceRole,
+    requestorId: string
+  ): Promise<IMembership> {
+    // 1. Validate requestor is Owner or Admin
+    const requestorMembership = await workspaceRepository.findMembership(workspaceId, requestorId);
+    if (!requestorMembership || !["owner", "admin"].includes(requestorMembership.role)) {
+      throw new ForbiddenError("Only workspace owners or admins can modify member roles");
+    }
+
+    // 2. Prevent modifying the owner's role
+    const targetMembership = await workspaceRepository.findMembership(workspaceId, targetUserId);
+    if (!targetMembership) {
+      throw new NotFoundError("Member not found in workspace");
+    }
+    if (targetMembership.role === "owner") {
+      throw new ForbiddenError("Cannot modify the owner's role");
+    }
+
+    // 3. Update membership role
+    const updated = await workspaceRepository.updateMembership(workspaceId, targetUserId, { role });
+    if (!updated) {
+      throw new NotFoundError("Membership record not found");
+    }
+    return updated;
   }
 }
 

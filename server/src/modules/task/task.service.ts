@@ -3,6 +3,7 @@ import { listRepository } from "../list/list.repository";
 import { workspaceRepository } from "../workspace/workspace.repository";
 import { ITask } from "./task.model";
 import { ForbiddenError, NotFoundError } from "../../utils/errors";
+import { notificationService } from "../notification/notification.service";
 import mongoose from "mongoose";
 
 export class TaskService {
@@ -33,7 +34,26 @@ export class TaskService {
       assignees: taskData.assignees?.map((id) => new mongoose.Types.ObjectId(id.toString())) || [],
     };
 
-    return taskRepository.createTask(completeTaskData);
+    const newTask = await taskRepository.createTask(completeTaskData);
+
+    // Trigger Notifications for assignees
+    if (newTask.assignees && newTask.assignees.length > 0) {
+      for (const assigneeId of newTask.assignees) {
+        if (assigneeId.toString() !== userId) {
+          await notificationService.createNotification(
+            assigneeId.toString(),
+            "New Task Assigned",
+            `You have been assigned to task: "${newTask.title}"`,
+            "task_assigned",
+            userId,
+            newTask._id.toString(),
+            "task"
+          );
+        }
+      }
+    }
+
+    return newTask;
   }
 
   async getTasksByList(listId: string, userId: string): Promise<ITask[]> {
@@ -69,6 +89,10 @@ export class TaskService {
     }
 
     // Map assignees if provided
+    const oldAssignees = task.assignees.map((id) => id.toString());
+    const oldStatus = task.status;
+    const oldListId = task.listId.toString();
+
     if (updateData.assignees) {
       updateData.assignees = updateData.assignees.map((id: any) => new mongoose.Types.ObjectId(id.toString()));
     }
@@ -76,6 +100,45 @@ export class TaskService {
     const updatedTask = await taskRepository.updateTask(taskId, updateData);
     if (!updatedTask) {
       throw new NotFoundError("Task could not be updated");
+    }
+
+    // Trigger notification if newly assigned
+    if (updateData.assignees) {
+      const newAssigneeStrings = updateData.assignees.map((id: any) => id.toString());
+      for (const newAssignee of newAssigneeStrings) {
+        if (!oldAssignees.includes(newAssignee) && newAssignee !== userId) {
+          await notificationService.createNotification(
+            newAssignee,
+            "New Task Assigned",
+            `You have been assigned to task: "${updatedTask.title}"`,
+            "task_assigned",
+            userId,
+            updatedTask._id.toString(),
+            "task"
+          );
+        }
+      }
+    }
+
+    // Trigger notification if status/list changed
+    const statusChanged = updateData.status && updateData.status !== oldStatus;
+    const listChanged = updateData.listId && updateData.listId.toString() !== oldListId;
+
+    if (statusChanged || listChanged) {
+      const assigneesToNotify = updatedTask.assignees.map((id) => id.toString());
+      for (const assigneeId of assigneesToNotify) {
+        if (assigneeId !== userId) {
+          await notificationService.createNotification(
+            assigneeId,
+            "Task Updated",
+            `Task "${updatedTask.title}" status has changed to "${updatedTask.status}"`,
+            "task_updated",
+            userId,
+            updatedTask._id.toString(),
+            "task"
+          );
+        }
+      }
     }
 
     return updatedTask;
@@ -93,6 +156,29 @@ export class TaskService {
     }
 
     await taskRepository.deleteTask(taskId);
+  }
+
+  async getTasksByWorkspace(workspaceId: string, userId: string): Promise<ITask[]> {
+    const membership = await workspaceRepository.findMembership(workspaceId, userId);
+    if (!membership || membership.status !== "active") {
+      throw new ForbiddenError("You do not have access to this workspace");
+    }
+
+    return taskRepository.findTasks({ workspaceId: new mongoose.Types.ObjectId(workspaceId) });
+  }
+
+  async getTaskById(taskId: string, userId: string): Promise<ITask> {
+    const task = await taskRepository.findById(taskId);
+    if (!task) {
+      throw new NotFoundError("Task not found");
+    }
+
+    const membership = await workspaceRepository.findMembership(task.workspaceId.toString(), userId);
+    if (!membership || membership.status !== "active") {
+      throw new ForbiddenError("You do not have access to this task");
+    }
+
+    return task;
   }
 }
 

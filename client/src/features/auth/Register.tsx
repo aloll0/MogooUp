@@ -64,7 +64,7 @@ export const Register: React.FC = () => {
               Check your email
             </h2>
             <p className="text-sm text-zinc-500 dark:text-zinc-400 leading-relaxed">
-              We've sent a verification link to your email address. Please click the link to verify your account and activate Mogoo.
+              We've sent a verification link to your email address. Please click the link to verify your account and activate Taskflow.
             </p>
           </div>
           <button
@@ -89,9 +89,9 @@ export const Register: React.FC = () => {
         {/* Logo */}
         <div className="flex items-center gap-2">
           <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-white text-purple-700 shadow-md">
-            <span className="text-xl font-bold">M</span>
+            <span className="text-xl font-bold">T</span>
           </div>
-          <span className="text-2xl font-bold tracking-tight">Mogoo</span>
+          <span className="text-2xl font-bold tracking-tight">Taskflow</span>
         </div>
 
         {/* Hero message */}
@@ -106,7 +106,7 @@ export const Register: React.FC = () => {
 
         {/* Copy footnote */}
         <div className="text-sm text-purple-300/60">
-          © 2026 Mogoo Systems, Inc. All rights reserved.
+          © 2026 Taskflow Systems, Inc. All rights reserved.
         </div>
       </div>
 

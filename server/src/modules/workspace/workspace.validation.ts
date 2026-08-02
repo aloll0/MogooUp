@@ -38,3 +38,14 @@ export const inviteMemberSchema = z.object({
       }),
   }),
 });
+
+export const updateMemberRoleSchema = z.object({
+  body: z.object({
+    userId: z
+      .string({ required_error: "User ID is required" }),
+    role: z
+      .enum(["admin", "manager", "member", "guest"], {
+        errorMap: () => ({ message: "Invalid workspace role" }),
+      }),
+  }),
+});

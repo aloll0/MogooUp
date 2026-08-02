@@ -13,6 +13,7 @@ import folderRoutes from "./modules/folder/folder.routes";
 import listRoutes from "./modules/list/list.routes";
 import taskRoutes from "./modules/task/task.routes";
 import commentRoutes from "./modules/comment/comment.routes";
+import notificationRoutes from "./modules/notification/notification.routes";
 
 const app = express();
 
@@ -57,7 +58,7 @@ app.use(compression());
 app.get("/health", (_req: Request, res: Response) => {
   res.status(200).json({
     success: true,
-    message: "Mogoo API is online 🚀",
+    message: "Taskflow API is online 🚀",
     timestamp: new Date().toISOString(),
     env: config.env,
   });
@@ -67,7 +68,7 @@ app.get("/health", (_req: Request, res: Response) => {
 app.get("/", (_req: Request, res: Response) => {
   res.status(200).json({
     success: true,
-    message: "Welcome to Mogoo REST API",
+    message: "Welcome to Taskflow REST API",
     version: "1.0.0",
   });
 });
@@ -80,6 +81,7 @@ app.use("/api/v1/folders", folderRoutes);
 app.use("/api/v1/lists", listRoutes);
 app.use("/api/v1/tasks", taskRoutes);
 app.use("/api/v1/comments", commentRoutes);
+app.use("/api/v1/notifications", notificationRoutes);
 
 // Catch 404 and forward to error handler
 app.use((_req: Request, _res: Response, next: NextFunction) => {

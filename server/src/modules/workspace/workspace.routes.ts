@@ -2,7 +2,7 @@ import { Router } from "express";
 import { workspaceController } from "./workspace.controller";
 import { authMiddleware } from "../../middlewares/auth";
 import { validateRequest } from "../../middlewares/validation";
-import { createWorkspaceSchema, inviteMemberSchema } from "./workspace.validation";
+import { createWorkspaceSchema, inviteMemberSchema, updateMemberRoleSchema } from "./workspace.validation";
 
 const router = Router();
 
@@ -14,5 +14,6 @@ router.get("/", workspaceController.list);
 router.get("/slug/:slug", workspaceController.getBySlug);
 router.get("/:workspaceId/members", workspaceController.getMembers);
 router.post("/:workspaceId/invite", validateRequest(inviteMemberSchema), workspaceController.invite);
+router.put("/:workspaceId/members", validateRequest(updateMemberRoleSchema), workspaceController.updateMemberRole);
 
 export default router;

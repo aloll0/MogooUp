@@ -1,0 +1,136 @@
+{
+  "sidebar": {
+    "currentWorkspace": "مساحة العمل الحالية",
+    "createWorkspace": "إنشاء مساحة عمل",
+    "spaces": "المساحات",
+    "noActiveSpaces": "لا توجد مساحات نشطة بعد.",
+    "logOut": "تسجيل الخروج",
+    "board": "لوحة كانبان",
+    "team": "فريق العمل"
+  },
+  "welcome": {
+    "title": "مرحباً بك في تيسك فلو!",
+    "subtitle": "تتطلب كل مساحة مشروع مساحة عمل للبدء. قم بإعداد مساحة العمل الخاصة بك لإطلاق القوائم وبطاقات كانبان.",
+    "btnCreateWs": "إنشاء مساحة العمل الأولى الخاصة بك"
+  },
+  "noSpaces": {
+    "title": "لا توجد مساحات مسجلة",
+    "subtitle": "تتيح لك المساحات تصنيف دورات العمل أو الفرق أو المجلدات. قم بإعداد مساحتك الأولى في {{workspaceName}}.",
+    "btnCreateSpace": "إنشاء مساحة"
+  },
+  "header": {
+    "kanbanBoard": "لوحة كانبان",
+    "toggleTheme": "تغيير المظهر الداكن/المضيء",
+    "toggleLang": "تغيير اللغة"
+  },
+  "kanban": {
+    "noTasks": "لا توجد مهام في القائمة",
+    "confirmDeleteTask": "هل أنت متأكد أنك تريد حذف هذه المهمة؟",
+    "moveTo": "نقل إلى {{targetName}}",
+    "addTask": "إضافة مهمة",
+    "createColumn": "إنشاء عمود"
+  },
+  "taskModal": {
+    "title": "تفاصيل المهمة",
+    "taskTitleLabel": "عنوان المهمة",
+    "statusLabel": "الحالة / العمود",
+    "priorityLabel": "الأهمية",
+    "descriptionLabel": "الوصف",
+    "edit": "تعديل",
+    "cancel": "إلغاء",
+    "saveDescription": "حفظ الوصف",
+    "noDescription": "لم يتم تحديد وصف لهذه المهمة.",
+    "attachmentsLabel": "المرفقات",
+    "uploadCover": "تحميل صورة غلاف",
+    "noAttachments": "لم يتم تحميل أي مرفقات بعد.",
+    "assigneesLabel": "المسؤولون",
+    "commentsLabel": "التعليقات والنشاط",
+    "noComments": "لا توجد تعليقات منشورة بعد.",
+    "writeCommentPlaceholder": "اكتب تعليقاً...",
+    "uploadCoverFailed": "فشل تحميل صورة الغلاف."
+  },
+  "createWorkspaceModal": {
+    "title": "إنشاء مساحة عمل",
+    "label": "اسم مساحة العمل",
+    "placeholder": "مثال: الهندسة، فريق التصميم",
+    "btnSubmit": "إنشاء مساحة العمل"
+  },
+  "createSpaceModal": {
+    "title": "إنشاء مساحة مشروع",
+    "labelName": "اسم المساحة",
+    "placeholderName": "مثال: الدورات، خطط العمل",
+    "labelDesc": "الوصف",
+    "placeholderDesc": "ما هو الغرض من هذه المساحة؟",
+    "labelColor": "مظهر اللون",
+    "btnSubmit": "إنشاء المساحة"
+  },
+  "createListModal": {
+    "title": "إضافة عمود كانبان",
+    "label": "عنوان العمود",
+    "placeholder": "مثال: قائمة الانتظار، جاهز للمراجعة",
+    "btnSubmit": "إنشاء عمود"
+  },
+  "createTaskModal": {
+    "title": "إضافة بطاقة مهمة",
+    "labelTitle": "عنوان المهمة",
+    "placeholderTitle": "عنوان المهمة",
+    "labelDesc": "الوصف",
+    "placeholderDesc": "اكتب وصفاً...",
+    "labelPriority": "الأهمية",
+    "btnSubmit": "إضافة مهمة"
+  },
+  "inviteModal": {
+    "title": "دعوة إلى مساحة العمل",
+    "labelEmail": "البريد الإلكتروني",
+    "placeholderEmail": "collaborator@example.com",
+    "labelRole": "الدور في مساحة العمل",
+    "btnSubmit": "دعوة المستخدم",
+    "success": "تمت دعوة العضو بنجاح!",
+    "failed": "فشلت الدعوة."
+  },
+  "workspaceMembersModal": {
+    "title": "أعضاء مساحة العمل والصلاحيات",
+    "inviteTab": "دعوة عضو جديد",
+    "membersTab": "الأعضاء الحاليون",
+    "roleChangeSuccess": "تم تحديث دور العضو بنجاح!",
+    "roleChangeFailed": "فشل تحديث دور العضو.",
+    "cannotEditSelf": "لا يمكنك تغيير دورك الخاص.",
+    "cannotEditOwner": "لا يمكنك تغيير دور مالك مساحة العمل.",
+    "roleLabel": "صلاحية العضو",
+    "confirmRoleChange": "هل أنت متأكد أنك تريد تغيير صلاحيات هذا العضو؟"
+  },
+  "warnings": {
+    "notAdminSpace": "يجب أن تكون مديراً أو مالكاً لمساحة العمل لإنشاء مساحات المشاريع.",
+    "notAdminOrManagerColumn": "يجب أن تكون مديراً أو مالكاً أو مشرفاً لإنشاء الأعمدة.",
+    "notAuthorizedTask": "ليس لديك صلاحية لإضافة مهام في مساحة العمل هذه. لا يمكن للزوار إنشاء مهام.",
+    "notAuthorizedDeleteTask": "يمكن فقط للمدير أو المالك أو المشرفين حذف المهام.",
+    "notAdminInvite": "يجب أن تكون مديراً أو مالكاً لمساحة العمل لإدارة الأعضاء."
+  },
+  "priorities": {
+    "low": "منخفض",
+    "medium": "متوسط",
+    "high": "مرتفع",
+    "urgent": "عاجل"
+  },
+  "roles": {
+    "owner": "المالك",
+    "admin": "مدير",
+    "manager": "مشرف",
+    "member": "عضو",
+    "guest": "زائر"
+  },
+  "notifications": {
+    "title": "الإشعارات",
+    "markAllRead": "تحديد الكل كمقروء",
+    "empty": "لا توجد إشعارات بعد"
+  },
+  "tasksCount": "مهام",
+  "stats": {
+    "totalTasks": "إجمالي المهام",
+    "completed": "المكتملة",
+    "assignedTasksList": "المهام المسندة",
+    "noAssignedTasks": "لا توجد مهام مسندة لهذا العضو بعد.",
+    "selectMemberTitle": "اختر عضواً من الفريق",
+    "selectMemberDesc": "انقر على أي عضو في الفريق من اللوحة الجانبية لتحليل حجم العمل والمهام المسندة إليه."
+  }
+}
