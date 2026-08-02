@@ -55,9 +55,9 @@ export const Login: React.FC = () => {
         {/* Logo */}
         <div className="flex items-center gap-2">
           <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-white text-purple-700 shadow-md">
-            <span className="text-xl font-bold">M</span>
+            <span className="text-xl font-bold">T</span>
           </div>
-          <span className="text-2xl font-bold tracking-tight">Mogoo</span>
+          <span className="text-2xl font-bold tracking-tight">Taskflow</span>
         </div>
 
         {/* Hero message */}
@@ -72,7 +72,7 @@ export const Login: React.FC = () => {
 
         {/* Copy footnote */}
         <div className="text-sm text-purple-300/60">
-          © 2026 Mogoo Systems, Inc. All rights reserved.
+          © 2026 Taskflow Systems, Inc. All rights reserved.
         </div>
       </div>
 
@@ -82,10 +82,10 @@ export const Login: React.FC = () => {
           {/* Header */}
           <div className="space-y-2">
             <h2 className="text-3xl font-bold tracking-tight text-zinc-900 dark:text-zinc-50">
-              Sign in to Mogoo
+              Sign in to Taskflow
             </h2>
-            <p className="text-sm text-zinc-500 dark:text-zinc-400">
-              New to Mogoo?{" "}
+            <p className="text-sm text-zinc-550 dark:text-zinc-400">
+              New to Taskflow?{" "}
               <Link
                 to="/register"
                 className="font-medium text-purple-600 hover:text-purple-500 dark:text-purple-400 dark:hover:text-purple-300"

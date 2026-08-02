@@ -82,6 +82,24 @@ export class WorkspaceController {
       next(error);
     }
   };
+
+  updateMemberRole = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+    try {
+      const { workspaceId } = req.params;
+      const { userId: targetUserId, role } = req.body;
+      const requestorId = req.user!.userId;
+      
+      const membership = await workspaceService.updateMemberRole(workspaceId, targetUserId, role, requestorId);
+      
+      res.status(200).json({
+        success: true,
+        message: "Member role updated successfully",
+        data: { membership },
+      });
+    } catch (error) {
+      next(error);
+    }
+  };
 }
 
 export const workspaceController = new WorkspaceController();

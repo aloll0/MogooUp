@@ -11,6 +11,8 @@ router.use(authMiddleware);
 
 router.post("/", validateRequest(createTaskSchema), taskController.create);
 router.get("/list/:listId", taskController.listByList);
+router.get("/workspace/:workspaceId", taskController.listByWorkspace);
+router.get("/:taskId", taskController.getById);
 router.put("/:taskId", validateRequest(updateTaskSchema), taskController.update);
 router.delete("/:taskId", taskController.delete);
 

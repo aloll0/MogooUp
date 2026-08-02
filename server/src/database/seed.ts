@@ -30,9 +30,9 @@ const seedData = async () => {
     // Create Admin User
     const adminPasswordHash = await bcrypt.hash("password123", 12);
     const adminUser = await UserModel.create({
-      email: "admin@mogoo.com",
+      email: "admin@taskflow.com",
       passwordHash: adminPasswordHash,
-      fullName: "Mogoo Admin",
+      fullName: "Taskflow Admin",
       avatarUrl: "https://api.dicebear.com/7.x/bottts/svg?seed=Admin",
       isVerified: true,
     });  
@@ -40,9 +40,9 @@ const seedData = async () => {
     // Create Developer User
     const devPasswordHash = await bcrypt.hash("password123", 12);
     const devUser = await UserModel.create({
-      email: "dev@mogoo.com",
+      email: "dev@taskflow.com",
       passwordHash: devPasswordHash,
-      fullName: "Mogoo Developer",
+      fullName: "Taskflow Developer",
       avatarUrl: "https://api.dicebear.com/7.x/bottts/svg?seed=Dev",
       isVerified: true,
     });

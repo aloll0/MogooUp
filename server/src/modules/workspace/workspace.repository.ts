@@ -65,6 +65,21 @@ export class WorkspaceRepository {
       .populate("userId", "fullName email avatarUrl")
       .exec();
   }
+
+  async updateMembership(
+    workspaceId: string,
+    userId: string,
+    updateData: Partial<IMembership>
+  ): Promise<IMembership | null> {
+    return MembershipModel.findOneAndUpdate(
+      {
+        workspaceId: new mongoose.Types.ObjectId(workspaceId),
+        userId: new mongoose.Types.ObjectId(userId),
+      },
+      updateData,
+      { new: true }
+    ).exec();
+  }
 }
 
 export const workspaceRepository = new WorkspaceRepository();

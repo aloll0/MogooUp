@@ -30,7 +30,7 @@ const spaceSchema = new Schema<ISpace>(
     },
     color: {
       type: String,
-      default: "#aa3bff", // default Mogoo purple color accent
+      default: "#aa3bff", // default Taskflow purple color accent
     },
     isPrivate: {
       type: Boolean,

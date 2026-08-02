@@ -89,7 +89,7 @@ export interface Comment {
   createdAt: string;
 }
 
-export const mogooService = {
+export const taskflowService = {
   // Workspaces
   getWorkspaces: async (): Promise<Workspace[]> => {
     const response = await api.get("/workspaces");
@@ -113,6 +113,11 @@ export const mogooService = {
 
   inviteWorkspaceMember: async (workspaceId: string, email: string, role: string): Promise<any> => {
     const response = await api.post(`/workspaces/${workspaceId}/invite`, { email, role });
+    return response.data.data;
+  },
+
+  updateWorkspaceMemberRole: async (workspaceId: string, userId: string, role: string): Promise<any> => {
+    const response = await api.put(`/workspaces/${workspaceId}/members`, { userId, role });
     return response.data.data;
   },
 
@@ -160,6 +165,16 @@ export const mogooService = {
     return response.data.data.tasks;
   },
 
+  getTasksByWorkspace: async (workspaceId: string): Promise<Task[]> => {
+    const response = await api.get(`/tasks/workspace/${workspaceId}`);
+    return response.data.data.tasks;
+  },
+
+  getTaskById: async (taskId: string): Promise<Task> => {
+    const response = await api.get(`/tasks/${taskId}`);
+    return response.data.data.task;
+  },
+
   createTask: async (taskData: {
     listId: string;
     title: string;
@@ -189,5 +204,21 @@ export const mogooService = {
   createComment: async (taskId: string, content: string, mentions: string[] = []): Promise<Comment> => {
     const response = await api.post("/comments", { taskId, content, mentions });
     return response.data.data.comment;
+  },
+
+  // Notifications
+  getNotifications: async (): Promise<any[]> => {
+    const response = await api.get("/notifications");
+    return response.data.data.notifications;
+  },
+
+  markNotificationAsRead: async (notificationId: string): Promise<any> => {
+    const response = await api.patch(`/notifications/${notificationId}/read`);
+    return response.data.data.notification;
+  },
+
+  markAllNotificationsAsRead: async (): Promise<any> => {
+    const response = await api.post("/notifications/mark-all-read");
+    return response.data.data;
   },
 };

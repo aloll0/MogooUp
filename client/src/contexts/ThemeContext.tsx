@@ -12,7 +12,7 @@ const ThemeContext = createContext<ThemeContextType | undefined>(undefined);
 export const ThemeProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   // Check localStorage or preferred system theme
   const [theme, setTheme] = useState<Theme>(() => {
-    const savedTheme = localStorage.getItem("mogoo_theme") as Theme;
+    const savedTheme = localStorage.getItem("taskflow_theme") as Theme;
     if (savedTheme) return savedTheme;
     
     const systemPrefersDark = window.matchMedia("(prefers-color-scheme: dark)").matches;
@@ -28,7 +28,7 @@ export const ThemeProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       root.classList.remove("dark");
       document.body.classList.remove("dark");
     }
-    localStorage.setItem("mogoo_theme", theme);
+    localStorage.setItem("taskflow_theme", theme);
   }, [theme]);
 
   const toggleTheme = () => {

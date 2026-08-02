@@ -7,10 +7,10 @@ dotenv.config({ path: path.join(__dirname, "../../.env") });
 export const config = {
   env: process.env.NODE_ENV || "development",
   port: parseInt(process.env.PORT || "5000", 10),
-  mongodbUri: process.env.MONGODB_URI || "mongodb://localhost:27017/mogoo",
+  mongodbUri: process.env.MONGODB_URI || "mongodb://localhost:27017/taskflow",
   jwt: {
-    accessSecret: process.env.JWT_ACCESS_SECRET || "mogoo_access_secret_key_change_me_in_prod",
-    refreshSecret: process.env.JWT_REFRESH_SECRET || "mogoo_refresh_secret_key_change_me_in_prod",
+    accessSecret: process.env.JWT_ACCESS_SECRET || "taskflow_access_secret_key_change_me_in_prod",
+    refreshSecret: process.env.JWT_REFRESH_SECRET || "taskflow_refresh_secret_key_change_me_in_prod",
     accessExpiration: process.env.JWT_ACCESS_EXPIRATION || "15m",
     refreshExpiration: process.env.JWT_REFRESH_EXPIRATION || "7d",
   },
