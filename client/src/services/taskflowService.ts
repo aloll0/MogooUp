@@ -50,6 +50,14 @@ export interface Attachment {
   size: number;
 }
 
+export interface LoggedTimeEntry {
+  _id?: string;
+  userId: string;
+  hours: number;
+  comment?: string;
+  date?: string;
+}
+
 // Task interfaces
 export interface Task {
   _id: string;
@@ -73,6 +81,8 @@ export interface Task {
   tags: string[];
   attachments: Attachment[];
   position: number;
+  timeEstimate?: number;
+  loggedTime?: LoggedTimeEntry[];
 }
 
 export interface Comment {
