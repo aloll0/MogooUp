@@ -26,6 +26,17 @@ export const createTaskSchema = z.object({
         })
       )
       .optional(),
+    timeEstimate: z.number().min(0).optional(),
+    loggedTime: z
+      .array(
+        z.object({
+          userId: z.string().regex(objectIdRegex, "Invalid User ID in loggedTime"),
+          hours: z.number().min(0),
+          comment: z.string().optional(),
+          date: z.string().optional(),
+        })
+      )
+      .optional(),
   }),
 });
 
@@ -51,6 +62,17 @@ export const updateTaskSchema = z.object({
           url: z.string(),
           publicId: z.string(),
           size: z.number(),
+        })
+      )
+      .optional(),
+    timeEstimate: z.number().min(0).optional(),
+    loggedTime: z
+      .array(
+        z.object({
+          userId: z.string().regex(objectIdRegex, "Invalid User ID in loggedTime"),
+          hours: z.number().min(0),
+          comment: z.string().optional(),
+          date: z.string().optional(),
         })
       )
       .optional(),

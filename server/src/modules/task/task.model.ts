@@ -9,6 +9,13 @@ export interface IAttachment {
   size: number;
 }
 
+export interface ILoggedTime {
+  userId: Types.ObjectId;
+  hours: number;
+  comment?: string;
+  date?: Date;
+}
+
 export interface ITask extends Document {
   workspaceId: Types.ObjectId;
   spaceId: Types.ObjectId;
@@ -25,6 +32,8 @@ export interface ITask extends Document {
   tags: string[];
   attachments: IAttachment[];
   position: number;
+  timeEstimate?: number;
+  loggedTime?: ILoggedTime[];
   createdAt: Date;
   updatedAt: Date;
 }
@@ -111,6 +120,21 @@ const taskSchema = new Schema<ITask>(
     position: {
       type: Number,
       default: 0,
+    },
+    timeEstimate: {
+      type: Number,
+      default: 0,
+    },
+    loggedTime: {
+      type: [
+        {
+          userId: { type: Schema.Types.ObjectId, ref: "User", required: true },
+          hours: { type: Number, required: true },
+          comment: { type: String, default: "" },
+          date: { type: Date, default: Date.now },
+        },
+      ],
+      default: [],
     },
   },
   {

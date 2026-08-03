@@ -6,6 +6,8 @@ import { useTranslation } from "react-i18next";
 import { motion } from "framer-motion";
 import { taskflowService } from "../services/taskflowService";
 import type { Workspace, Space, List, Task, Comment, Attachment } from "../services/taskflowService";
+import { DashboardTab } from "../components/DashboardTab";
+import { ReportsTab } from "../components/ReportsTab";
 import {
   Plus,
   LogOut,
@@ -26,6 +28,8 @@ import {
   Edit3,
   Users,
   Bell,
+  LayoutDashboard,
+  BarChart2,
 } from "lucide-react";
 
 // Static reference to prevent empty array literals from re-allocating memory and triggering render loops
@@ -235,6 +239,7 @@ const TaskDetailsModal: React.FC<TaskDetailsModalProps> = ({
   allLists,
 }) => {
   const { t } = useTranslation();
+  const { user } = useAuth();
   const queryClient = useQueryClient();
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -245,6 +250,12 @@ const TaskDetailsModal: React.FC<TaskDetailsModalProps> = ({
   const [priority, setPriority] = useState(task.priority);
   const [listId, setListId] = useState(task.listId);
   const [isUploading, setIsUploading] = useState(false);
+
+  // Time tracking states
+  const [timeEstimate, setTimeEstimate] = useState(task.timeEstimate || 0);
+  const [logHours, setLogHours] = useState("");
+  const [logComment, setLogComment] = useState("");
+  const [logDate, setLogDate] = useState(new Date().toISOString().substring(0, 10));
 
   // Comment state
   const [commentText, setCommentText] = useState("");
@@ -261,6 +272,7 @@ const TaskDetailsModal: React.FC<TaskDetailsModalProps> = ({
     setDescription(task.description);
     setPriority(task.priority);
     setListId(task.listId);
+    setTimeEstimate(task.timeEstimate || 0);
   }, [task]);
 
   // Mutations
@@ -352,6 +364,38 @@ const TaskDetailsModal: React.FC<TaskDetailsModalProps> = ({
     e.preventDefault();
     if (!commentText.trim()) return;
     createCommentMutation.mutate(commentText);
+  };
+
+  const handleTimeEstimateBlur = () => {
+    const val = Number(timeEstimate);
+    if (!isNaN(val) && val >= 0 && val !== task.timeEstimate) {
+      updateTaskMutation.mutate({ timeEstimate: val });
+    }
+  };
+
+  const handleLogTimeSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    const hours = Number(logHours);
+    if (isNaN(hours) || hours <= 0) {
+      alert("Please enter a valid number of hours.");
+      return;
+    }
+
+    const newLog = {
+      userId: user!.id,
+      hours,
+      comment: logComment,
+      date: new Date(logDate).toISOString(),
+    };
+
+    const existingLogs = task.loggedTime || [];
+    updateTaskMutation.mutate({
+      loggedTime: [...existingLogs, newLog],
+    });
+
+    setLogHours("");
+    setLogComment("");
+    setLogDate(new Date().toISOString().substring(0, 10));
   };
 
   // Find first attached image for the modal header banner
@@ -521,6 +565,113 @@ const TaskDetailsModal: React.FC<TaskDetailsModalProps> = ({
                 <p className="text-xs text-zinc-400 dark:text-zinc-500 italic">{t('taskModal.noAttachments')}</p>
               )}
             </div>
+
+            {/* Time Tracking Section */}
+            <div className="space-y-4 border-t dark:border-zinc-800 pt-6">
+              <h3 className="text-xs font-bold uppercase text-zinc-450 dark:text-zinc-500 tracking-wider">
+                {t('stats.logTimeTitle', { defaultValue: "Time Tracking & Logs" })}
+              </h3>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 bg-zinc-50 dark:bg-zinc-950/20 p-4 rounded-xl border dark:border-zinc-800/80">
+                {/* Time Estimate Input */}
+                <div className="space-y-1">
+                  <label className="text-[10px] font-bold uppercase text-zinc-450 dark:text-zinc-500 block">
+                    {t('stats.timeEstimateLabel', { defaultValue: "Time Estimate (Hours)" })}
+                  </label>
+                  <input
+                    type="number"
+                    min="0"
+                    step="0.5"
+                    value={timeEstimate === 0 ? "" : timeEstimate}
+                    onChange={(e) => setTimeEstimate(e.target.value === "" ? 0 : Number(e.target.value))}
+                    onBlur={handleTimeEstimateBlur}
+                    placeholder={t('stats.timeEstimatePlaceholder', { defaultValue: "e.g. 5" })}
+                    className="w-full rounded-xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 py-1.5 px-2.5 text-xs focus:outline-hidden focus:ring-1 focus:ring-purple-500"
+                  />
+                </div>
+
+                {/* Quick Log Form */}
+                <form onSubmit={handleLogTimeSubmit} className="space-y-1">
+                  <label className="text-[10px] font-bold uppercase text-zinc-450 dark:text-zinc-500 block">
+                    {t('stats.logTimeTitle', { defaultValue: "Log Work Time" })}
+                  </label>
+                  <div className="flex gap-2">
+                    <input
+                      type="number"
+                      min="0.1"
+                      step="0.1"
+                      placeholder="Hours"
+                      required
+                      value={logHours}
+                      onChange={(e) => setLogHours(e.target.value)}
+                      className="w-16 rounded-xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 py-1.5 px-2 text-xs focus:outline-hidden focus:ring-1 focus:ring-purple-500"
+                    />
+                    <input
+                      type="text"
+                      placeholder={t('stats.commentLabel', { defaultValue: "Notes..." })}
+                      value={logComment}
+                      onChange={(e) => setLogComment(e.target.value)}
+                      className="flex-1 rounded-xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 py-1.5 px-2 text-xs focus:outline-hidden focus:ring-1 focus:ring-purple-500"
+                    />
+                    <button
+                      type="submit"
+                      className="bg-purple-600 hover:bg-purple-700 text-white font-bold text-[10px] px-3 py-1.5 rounded-xl transition-all cursor-pointer shrink-0"
+                    >
+                      {t('stats.logHoursBtn', { defaultValue: "Log" })}
+                    </button>
+                  </div>
+                  <input
+                    type="date"
+                    value={logDate}
+                    onChange={(e) => setLogDate(e.target.value)}
+                    className="w-full text-[10px] bg-transparent border-none text-zinc-455 dark:text-zinc-500 focus:outline-hidden mt-1"
+                  />
+                </form>
+              </div>
+
+              {/* List of Time Logs */}
+              <div className="space-y-2">
+                <label className="text-[10px] font-bold uppercase text-zinc-455 dark:text-zinc-500 block">
+                  {t('stats.loggedTimeLabel', { defaultValue: "Logged Time Entries" })}
+                </label>
+                {task.loggedTime && task.loggedTime.length > 0 ? (
+                  <div className="space-y-2 max-h-36 overflow-y-auto pr-1 custom-scrollbar text-start">
+                    {task.loggedTime.map((log: any, idx: number) => {
+                      const member = workspaceMembers.find(
+                        (m) => m.userId?._id === log.userId || m.userId === log.userId
+                      );
+                      const memberName = member?.userId?.fullName || "Deleted User";
+                      const memberAvatar = member?.userId?.avatarUrl;
+
+                      return (
+                        <div key={idx} className="flex justify-between items-center text-xs p-2 bg-zinc-50/50 dark:bg-zinc-850/10 border dark:border-zinc-800/80 rounded-xl">
+                          <div className="flex items-center gap-2 min-w-0">
+                            <img
+                              src={memberAvatar || "https://api.dicebear.com/7.x/bottts/svg"}
+                              alt="Avatar"
+                              className="h-5 w-5 rounded-full border bg-zinc-800 shrink-0"
+                            />
+                            <div className="min-w-0">
+                              <span className="font-bold text-zinc-800 dark:text-zinc-200 truncate block">{memberName}</span>
+                              {log.comment && <span className="text-[10px] text-zinc-500 dark:text-zinc-450 truncate block italic">{log.comment}</span>}
+                            </div>
+                          </div>
+                          <div className="flex items-center gap-2 font-semibold shrink-0">
+                            <span className="text-purple-650 dark:text-purple-400">{log.hours}h</span>
+                            <span className="text-[9px] text-zinc-400">
+                              {log.date ? new Date(log.date).toLocaleDateString() : ""}
+                            </span>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                ) : (
+                  <p className="text-xs text-zinc-455 italic">{t('stats.noTimeLogged', { defaultValue: "No time logged yet." })}</p>
+                )}
+              </div>
+            </div>
+
           </div>
         </div>
 
@@ -631,7 +782,7 @@ export const Dashboard: React.FC = () => {
   // Active selections
   const [activeWorkspace, setActiveWorkspace] = useState<Workspace | null>(null);
   const [activeSpace, setActiveSpace] = useState<Space | null>(null);
-  const [activeTab, setActiveTab] = useState<"kanban" | "team">("kanban");
+  const [activeTab, setActiveTab] = useState<"kanban" | "team" | "dashboard" | "reports">("kanban");
   const [selectedTeamMember, setSelectedTeamMember] = useState<any>(null);
 
   // Selected task detail view modal state
@@ -705,7 +856,7 @@ export const Dashboard: React.FC = () => {
   const { data: workspaceTasksData } = useQuery({
     queryKey: ["workspaceTasks", activeWorkspace?._id],
     queryFn: () => taskflowService.getTasksByWorkspace(activeWorkspace!._id),
-    enabled: !!activeWorkspace?._id && activeTab === "team",
+    enabled: !!activeWorkspace?._id && ["team", "dashboard", "reports"].includes(activeTab),
   });
   const workspaceTasks = workspaceTasksData || EMPTY_ARRAY;
 
@@ -951,8 +1102,36 @@ export const Dashboard: React.FC = () => {
             </button>
           </div>
 
-          {/* Tab Navigation (Board vs Team) */}
+          {/* Tab Navigation (Board vs Team vs Dashboard vs Reports) */}
           <div className="px-4 py-2 border-b border-zinc-800 space-y-1">
+            <button
+              onClick={() => {
+                setActiveTab("dashboard");
+              }}
+              className={`w-full flex items-center gap-2.5 py-2 px-3 rounded-lg text-sm transition-all text-start cursor-pointer ${
+                activeTab === "dashboard"
+                  ? "bg-zinc-850 text-zinc-100 font-semibold"
+                  : "text-zinc-400 hover:bg-zinc-800/50 hover:text-zinc-200"
+              }`}
+            >
+              <LayoutDashboard className="h-4 w-4" />
+              <span>{t('sidebar.dashboard', { defaultValue: "Widgets Dashboard" })}</span>
+            </button>
+
+            <button
+              onClick={() => {
+                setActiveTab("reports");
+              }}
+              className={`w-full flex items-center gap-2.5 py-2 px-3 rounded-lg text-sm transition-all text-start cursor-pointer ${
+                activeTab === "reports"
+                  ? "bg-zinc-850 text-zinc-100 font-semibold"
+                  : "text-zinc-400 hover:bg-zinc-800/50 hover:text-zinc-200"
+              }`}
+            >
+              <BarChart2 className="h-4 w-4" />
+              <span>{t('sidebar.reports', { defaultValue: "Reports & Analytics" })}</span>
+            </button>
+
             <button
               onClick={() => {
                 setActiveTab("kanban");
@@ -1093,6 +1272,22 @@ export const Dashboard: React.FC = () => {
                 <div className="flex items-center gap-3">
                   <Users className="h-5 w-5 text-purple-500" />
                   <h1 className="text-xl font-bold tracking-tight">{t('sidebar.team', { defaultValue: "Workspace Team" })}</h1>
+                  <span className="text-xs font-semibold px-2 py-0.5 bg-zinc-100 dark:bg-zinc-800/80 rounded-md text-zinc-500 dark:text-zinc-400 select-none">
+                    {activeWorkspace?.name}
+                  </span>
+                </div>
+              ) : activeTab === "dashboard" ? (
+                <div className="flex items-center gap-3">
+                  <LayoutDashboard className="h-5 w-5 text-purple-500" />
+                  <h1 className="text-xl font-bold tracking-tight">{t('sidebar.dashboard', { defaultValue: "Widgets Dashboard" })}</h1>
+                  <span className="text-xs font-semibold px-2 py-0.5 bg-zinc-100 dark:bg-zinc-800/80 rounded-md text-zinc-500 dark:text-zinc-400 select-none">
+                    {activeWorkspace?.name}
+                  </span>
+                </div>
+              ) : activeTab === "reports" ? (
+                <div className="flex items-center gap-3">
+                  <BarChart2 className="h-5 w-5 text-purple-500" />
+                  <h1 className="text-xl font-bold tracking-tight">{t('sidebar.reports', { defaultValue: "Reports & Analytics" })}</h1>
                   <span className="text-xs font-semibold px-2 py-0.5 bg-zinc-100 dark:bg-zinc-800/80 rounded-md text-zinc-500 dark:text-zinc-400 select-none">
                     {activeWorkspace?.name}
                   </span>
@@ -1265,7 +1460,7 @@ export const Dashboard: React.FC = () => {
               </div>
             </header>
 
-            {/* Main view body: Board Columns or Team Dashboard */}
+            {/* Main view body: Board Columns, Team, Dashboard or Reports */}
             {activeTab === "team" ? (
               <div className="flex-1 flex flex-col md:flex-row overflow-hidden bg-zinc-50/50 dark:bg-zinc-950/20 transition-theme">
                 
@@ -1454,6 +1649,18 @@ export const Dashboard: React.FC = () => {
                 </div>
 
               </div>
+            ) : activeTab === "dashboard" ? (
+              <DashboardTab
+                workspaceName={activeWorkspace?.name}
+                tasks={workspaceTasks}
+                members={members}
+              />
+            ) : activeTab === "reports" ? (
+              <ReportsTab
+                workspaceName={activeWorkspace?.name}
+                tasks={workspaceTasks}
+                members={members}
+              />
             ) : (
               <div className="flex-1 overflow-x-auto overflow-y-hidden p-6 bg-zinc-50/50 dark:bg-zinc-950/20 transition-theme kanban-scrollbar">
                 <div className="flex gap-4 h-full items-start">
