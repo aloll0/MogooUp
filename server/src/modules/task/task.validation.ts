@@ -14,8 +14,8 @@ export const createTaskSchema = z.object({
     description: z.string().default(""),
     priority: z.enum(["low", "medium", "high", "urgent"]).optional(),
     assignees: z.array(z.string().regex(objectIdRegex, "Invalid User ID in assignees")).optional(),
-    startDate: z.string().datetime().optional(),
-    dueDate: z.string().datetime().optional(),
+    startDate: z.string().datetime().nullable().optional(),
+    dueDate: z.string().datetime().nullable().optional(),
     attachments: z
       .array(
         z.object({
@@ -53,8 +53,8 @@ export const updateTaskSchema = z.object({
     priority: z.enum(["low", "medium", "high", "urgent"]).optional(),
     assignees: z.array(z.string().regex(objectIdRegex, "Invalid User ID in assignees")).optional(),
     position: z.number().optional(),
-    startDate: z.string().datetime().optional(),
-    dueDate: z.string().datetime().optional(),
+    startDate: z.string().datetime().nullable().optional(),
+    dueDate: z.string().datetime().nullable().optional(),
     attachments: z
       .array(
         z.object({
