@@ -8,7 +8,9 @@
     "board": "لوحة المهام",
     "team": "أعضاء مساحة العمل",
     "dashboard": "لوحة التحكم تفاعلية",
-    "reports": "التقارير والإحصائيات"
+    "reports": "التقارير والإحصائيات",
+    "gantt": "مخطط جانت",
+    "calendar": "عرض التقويم"
   },
   "welcome": {
     "title": "مرحباً بك في تيسك فلو!",
@@ -37,6 +39,8 @@
     "taskTitleLabel": "عنوان المهمة",
     "statusLabel": "الحالة / العمود",
     "priorityLabel": "الأهمية",
+    "startDateLabel": "تاريخ البدء",
+    "dueDateLabel": "تاريخ الاستحقاق",
     "descriptionLabel": "الوصف",
     "edit": "تعديل",
     "cancel": "إلغاء",
