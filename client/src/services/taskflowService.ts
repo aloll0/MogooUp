@@ -76,8 +76,8 @@ export interface Task {
     avatarUrl?: string;
   }>;
   reporterId: string;
-  startDate?: string;
-  dueDate?: string;
+  startDate?: string | null;
+  dueDate?: string | null;
   tags: string[];
   attachments: Attachment[];
   position: number;

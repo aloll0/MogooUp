@@ -8,6 +8,8 @@ import { taskflowService } from "../services/taskflowService";
 import type { Workspace, Space, List, Task, Comment, Attachment } from "../services/taskflowService";
 import { DashboardTab } from "../components/DashboardTab";
 import { ReportsTab } from "../components/ReportsTab";
+import { GanttTab } from "../components/GanttTab";
+import { CalendarTab } from "../components/CalendarTab";
 import {
   Plus,
   LogOut,
@@ -30,6 +32,8 @@ import {
   Bell,
   LayoutDashboard,
   BarChart2,
+  Calendar,
+  Clock,
 } from "lucide-react";
 
 // Static reference to prevent empty array literals from re-allocating memory and triggering render loops
@@ -251,6 +255,10 @@ const TaskDetailsModal: React.FC<TaskDetailsModalProps> = ({
   const [listId, setListId] = useState(task.listId);
   const [isUploading, setIsUploading] = useState(false);
 
+  // Date states
+  const [startDate, setStartDate] = useState(task.startDate ? task.startDate.substring(0, 10) : "");
+  const [dueDate, setDueDate] = useState(task.dueDate ? task.dueDate.substring(0, 10) : "");
+
   // Time tracking states
   const [timeEstimate, setTimeEstimate] = useState(task.timeEstimate || 0);
   const [logHours, setLogHours] = useState("");
@@ -273,7 +281,21 @@ const TaskDetailsModal: React.FC<TaskDetailsModalProps> = ({
     setPriority(task.priority);
     setListId(task.listId);
     setTimeEstimate(task.timeEstimate || 0);
+    setStartDate(task.startDate ? task.startDate.substring(0, 10) : "");
+    setDueDate(task.dueDate ? task.dueDate.substring(0, 10) : "");
   }, [task]);
+
+  const handleStartDateChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const val = e.target.value;
+    setStartDate(val);
+    updateTaskMutation.mutate({ startDate: val ? new Date(val).toISOString() : null });
+  };
+
+  const handleDueDateChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const val = e.target.value;
+    setDueDate(val);
+    updateTaskMutation.mutate({ dueDate: val ? new Date(val).toISOString() : null });
+  };
 
   // Mutations
   const updateTaskMutation = useMutation({
@@ -475,6 +497,29 @@ const TaskDetailsModal: React.FC<TaskDetailsModalProps> = ({
                   <option value="high">{t('priorities.high')}</option>
                   <option value="urgent">{t('priorities.urgent')}</option>
                 </select>
+              </div>
+            </div>
+
+            {/* Start Date & Due Date Row */}
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-1">
+                <label className="text-xs font-bold uppercase text-zinc-400 dark:text-zinc-500">{t('taskModal.startDateLabel', { defaultValue: "Start Date" })}</label>
+                <input
+                  type="date"
+                  value={startDate}
+                  onChange={handleStartDateChange}
+                  className="w-full bg-zinc-55 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-750 rounded-xl py-2 px-3 text-sm focus:ring-2 focus:ring-purple-500/50"
+                />
+              </div>
+
+              <div className="space-y-1">
+                <label className="text-xs font-bold uppercase text-zinc-400 dark:text-zinc-500">{t('taskModal.dueDateLabel', { defaultValue: "Due Date" })}</label>
+                <input
+                  type="date"
+                  value={dueDate}
+                  onChange={handleDueDateChange}
+                  className="w-full bg-zinc-55 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-750 rounded-xl py-2 px-3 text-sm focus:ring-2 focus:ring-purple-500/50"
+                />
               </div>
             </div>
 
@@ -782,7 +827,7 @@ export const Dashboard: React.FC = () => {
   // Active selections
   const [activeWorkspace, setActiveWorkspace] = useState<Workspace | null>(null);
   const [activeSpace, setActiveSpace] = useState<Space | null>(null);
-  const [activeTab, setActiveTab] = useState<"kanban" | "team" | "dashboard" | "reports">("kanban");
+  const [activeTab, setActiveTab] = useState<"kanban" | "team" | "dashboard" | "reports" | "gantt" | "calendar">("kanban");
   const [selectedTeamMember, setSelectedTeamMember] = useState<any>(null);
 
   // Selected task detail view modal state
@@ -856,7 +901,7 @@ export const Dashboard: React.FC = () => {
   const { data: workspaceTasksData } = useQuery({
     queryKey: ["workspaceTasks", activeWorkspace?._id],
     queryFn: () => taskflowService.getTasksByWorkspace(activeWorkspace!._id),
-    enabled: !!activeWorkspace?._id && ["team", "dashboard", "reports"].includes(activeTab),
+    enabled: !!activeWorkspace?._id && ["team", "dashboard", "reports", "gantt", "calendar"].includes(activeTab),
   });
   const workspaceTasks = workspaceTasksData || EMPTY_ARRAY;
 
@@ -1102,7 +1147,7 @@ export const Dashboard: React.FC = () => {
             </button>
           </div>
 
-          {/* Tab Navigation (Board vs Team vs Dashboard vs Reports) */}
+          {/* Tab Navigation (Board vs Team vs Dashboard vs Reports vs Gantt vs Calendar) */}
           <div className="px-4 py-2 border-b border-zinc-800 space-y-1">
             <button
               onClick={() => {
@@ -1130,6 +1175,34 @@ export const Dashboard: React.FC = () => {
             >
               <BarChart2 className="h-4 w-4" />
               <span>{t('sidebar.reports', { defaultValue: "Reports & Analytics" })}</span>
+            </button>
+
+            <button
+              onClick={() => {
+                setActiveTab("gantt");
+              }}
+              className={`w-full flex items-center gap-2.5 py-2 px-3 rounded-lg text-sm transition-all text-start cursor-pointer ${
+                activeTab === "gantt"
+                  ? "bg-zinc-850 text-zinc-100 font-semibold"
+                  : "text-zinc-400 hover:bg-zinc-800/50 hover:text-zinc-200"
+              }`}
+            >
+              <Clock className="h-4 w-4" />
+              <span>{t('sidebar.gantt', { defaultValue: "Gantt Chart" })}</span>
+            </button>
+
+            <button
+              onClick={() => {
+                setActiveTab("calendar");
+              }}
+              className={`w-full flex items-center gap-2.5 py-2 px-3 rounded-lg text-sm transition-all text-start cursor-pointer ${
+                activeTab === "calendar"
+                  ? "bg-zinc-850 text-zinc-100 font-semibold"
+                  : "text-zinc-400 hover:bg-zinc-800/50 hover:text-zinc-200"
+              }`}
+            >
+              <Calendar className="h-4 w-4" />
+              <span>{t('sidebar.calendar', { defaultValue: "Calendar View" })}</span>
             </button>
 
             <button
@@ -1288,6 +1361,22 @@ export const Dashboard: React.FC = () => {
                 <div className="flex items-center gap-3">
                   <BarChart2 className="h-5 w-5 text-purple-500" />
                   <h1 className="text-xl font-bold tracking-tight">{t('sidebar.reports', { defaultValue: "Reports & Analytics" })}</h1>
+                  <span className="text-xs font-semibold px-2 py-0.5 bg-zinc-100 dark:bg-zinc-800/80 rounded-md text-zinc-500 dark:text-zinc-400 select-none">
+                    {activeWorkspace?.name}
+                  </span>
+                </div>
+              ) : activeTab === "gantt" ? (
+                <div className="flex items-center gap-3">
+                  <Clock className="h-5 w-5 text-purple-500" />
+                  <h1 className="text-xl font-bold tracking-tight">{t('sidebar.gantt', { defaultValue: "Gantt Chart" })}</h1>
+                  <span className="text-xs font-semibold px-2 py-0.5 bg-zinc-100 dark:bg-zinc-800/80 rounded-md text-zinc-500 dark:text-zinc-400 select-none">
+                    {activeWorkspace?.name}
+                  </span>
+                </div>
+              ) : activeTab === "calendar" ? (
+                <div className="flex items-center gap-3">
+                  <Calendar className="h-5 w-5 text-purple-500" />
+                  <h1 className="text-xl font-bold tracking-tight">{t('sidebar.calendar', { defaultValue: "Calendar View" })}</h1>
                   <span className="text-xs font-semibold px-2 py-0.5 bg-zinc-100 dark:bg-zinc-800/80 rounded-md text-zinc-500 dark:text-zinc-400 select-none">
                     {activeWorkspace?.name}
                   </span>
@@ -1660,6 +1749,18 @@ export const Dashboard: React.FC = () => {
                 workspaceName={activeWorkspace?.name}
                 tasks={workspaceTasks}
                 members={members}
+              />
+            ) : activeTab === "gantt" ? (
+              <GanttTab
+                workspaceName={activeWorkspace?.name}
+                tasks={workspaceTasks}
+                onTaskClick={(task) => setSelectedTask(task)}
+              />
+            ) : activeTab === "calendar" ? (
+              <CalendarTab
+                workspaceName={activeWorkspace?.name}
+                tasks={workspaceTasks}
+                onTaskClick={(task) => setSelectedTask(task)}
               />
             ) : (
               <div className="flex-1 overflow-x-auto overflow-y-hidden p-6 bg-zinc-50/50 dark:bg-zinc-950/20 transition-theme kanban-scrollbar">

@@ -8,7 +8,9 @@
     "board": "Kanban Board",
     "team": "Workspace Team",
     "dashboard": "Widgets Dashboard",
-    "reports": "Reports & Analytics"
+    "reports": "Reports & Analytics",
+    "gantt": "Gantt Chart",
+    "calendar": "Calendar View"
   },
   "welcome": {
     "title": "Welcome to Taskflow!",
@@ -37,6 +39,8 @@
     "taskTitleLabel": "Task Title",
     "statusLabel": "Status / Column",
     "priorityLabel": "Priority",
+    "startDateLabel": "Start Date",
+    "dueDateLabel": "Due Date",
     "descriptionLabel": "Description",
     "edit": "Edit",
     "cancel": "Cancel",
