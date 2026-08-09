@@ -8,7 +8,8 @@ import {
   AlertCircle, 
   Users, 
   PieChart, 
-  Loader2 
+  Loader2,
+  Clock 
 } from "lucide-react";
 import html2pdf from "html2pdf.js";
 import { useDashboardOrderStore } from "../stores/useDashboardOrderStore";
@@ -363,6 +364,65 @@ export const DashboardTab: React.FC<DashboardTabProps> = ({
                   </div>
                 </>
               )}
+            </div>
+          </div>
+        );
+
+      case "time-tracking-summary":
+        const totalLoggedHours = tasks.reduce((sum, task) => {
+          const taskLogged = task.loggedTime?.reduce((tSum, entry) => tSum + entry.hours, 0) || 0;
+          return sum + taskLogged;
+        }, 0);
+
+        return (
+          <div className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-2xl p-6 shadow-sm flex flex-col h-full text-start transition-theme">
+            <h3 className="text-sm font-bold text-zinc-450 dark:text-zinc-500 uppercase tracking-wider mb-4 flex items-center justify-between">
+              <span>{t("timeTracker.timeTrackerWidgetTitle", { defaultValue: "Active Time Tracking" })}</span>
+              <Clock className="h-4 w-4 text-purple-500" />
+            </h3>
+
+            <div className="flex-1 flex flex-col justify-center min-h-[140px] space-y-4">
+              <div className="flex items-center gap-4 bg-zinc-55/40 dark:bg-zinc-950/20 p-4 rounded-xl border dark:border-zinc-800">
+                <Clock className="h-10 w-10 text-purple-500 shrink-0" />
+                <div>
+                  <span className="text-2xl font-black text-zinc-900 dark:text-zinc-50">
+                    {totalLoggedHours.toFixed(1)} {t("timeTracker.hours", { defaultValue: "hours" })}
+                  </span>
+                  <span className="text-[10px] font-bold text-zinc-450 dark:text-zinc-500 block uppercase tracking-wider mt-0.5">
+                    {t("timeTracker.totalHoursTracked", { defaultValue: "Total Logged Workspace Hours" })}
+                  </span>
+                </div>
+              </div>
+
+              {/* Show top tasks with logged work */}
+              <div className="space-y-2 text-start">
+                <span className="text-[10px] font-extrabold text-zinc-450 dark:text-zinc-500 uppercase tracking-wider block">
+                  Top Task Time Logs
+                </span>
+                <div className="max-h-24 overflow-y-auto space-y-2 pr-1 custom-scrollbar text-xs">
+                  {tasks
+                    .filter((t) => t.loggedTime && t.loggedTime.length > 0)
+                    .map((t) => {
+                      const sum = t.loggedTime!.reduce((s, e) => s + e.hours, 0);
+                      return { title: t.title, id: t._id, hours: sum };
+                    })
+                    .sort((a, b) => b.hours - a.hours)
+                    .slice(0, 3)
+                    .map((item) => (
+                      <div key={item.id} className="flex justify-between items-center p-2 bg-zinc-55/30 dark:bg-zinc-950/10 rounded-lg border dark:border-zinc-850">
+                        <span className="font-semibold text-zinc-700 dark:text-zinc-300 truncate max-w-[170px]">
+                          {item.title}
+                        </span>
+                        <span className="font-extrabold text-purple-500">
+                          {item.hours.toFixed(1)}h
+                        </span>
+                      </div>
+                    ))}
+                  {tasks.filter((t) => t.loggedTime && t.loggedTime.length > 0).length === 0 && (
+                    <p className="text-zinc-400 text-center py-2 italic">No task hours logged yet.</p>
+                  )}
+                </div>
+              </div>
             </div>
           </div>
         );

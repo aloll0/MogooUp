@@ -19,6 +19,20 @@
 
   --color-brand-primary: #aa3bff;
   --color-brand-secondary: #00f2fe;
+
+  /* Custom non-standard zinc shades used in project layouts */
+  --color-zinc-55: #f7f7f9;
+  --color-zinc-150: #ededf0;
+  --color-zinc-250: #dadade;
+  --color-zinc-350: #b8b8be;
+  --color-zinc-450: #8c8c94;
+  --color-zinc-455: #85858d;
+  --color-zinc-550: #63636b;
+  --color-zinc-555: #5e5e65;
+  --color-zinc-650: #48484f;
+  --color-zinc-750: #333338;
+  --color-zinc-850: #202024;
+  --color-zinc-855: #1c1c20;
 }
 
 @layer base {

@@ -9,7 +9,7 @@ interface DashboardOrderState {
 export const useDashboardOrderStore = create<DashboardOrderState>()(
   persist(
     (set) => ({
-      widgetOrder: ['completed-tasks', 'overdue-tasks', 'member-dist', 'priority-dist'],
+      widgetOrder: ['completed-tasks', 'overdue-tasks', 'member-dist', 'priority-dist', 'time-tracking-summary'],
       updateOrder: (newOrder) => set({ widgetOrder: newOrder }),
     }),
     {

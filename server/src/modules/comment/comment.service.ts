@@ -4,6 +4,7 @@ import { workspaceRepository } from "../workspace/workspace.repository";
 import { IComment } from "./comment.model";
 import { ForbiddenError, NotFoundError } from "../../utils/errors";
 import { notificationService } from "../notification/notification.service";
+import { broadcastToWorkspace } from "../../utils/socket";
 
 export class CommentService {
   async createComment(
@@ -41,6 +42,12 @@ export class CommentService {
         }
       }
     }
+
+    // Broadcast WebSocket event to all other workspace members
+    broadcastToWorkspace(task.workspaceId.toString(), "comment-created", {
+      taskId,
+      comment,
+    });
 
     return comment;
   }

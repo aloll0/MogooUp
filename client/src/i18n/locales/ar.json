@@ -10,7 +10,8 @@
     "dashboard": "لوحة التحكم تفاعلية",
     "reports": "التقارير والإحصائيات",
     "gantt": "مخطط جانت",
-    "calendar": "عرض التقويم"
+    "calendar": "عرض التقويم",
+    "goals": "الأهداف الإستراتيجية و OKRs"
   },
   "welcome": {
     "title": "مرحباً بك في تيسك فلو!",
@@ -169,5 +170,61 @@
     "widgetMembersTitle": "توزيع العمل على الأعضاء",
     "widgetPriorityTitle": "توزيع المهام حسب الأولويات",
     "noOverdueTasks": "عمل رائع! لا توجد مهام متأخرة في مساحة العمل هذه."
+  },
+  "scratchpad": {
+    "scratchpadTitle": "الملاحظات الشخصية السريعة",
+    "scratchpadPlaceholder": "اكتب أفكارك وملاحظاتك هنا... سيتم حفظها تلقائياً!",
+    "scratchpadSaving": "جاري الحفظ...",
+    "scratchpadSaved": "تم الحفظ سحابياً"
+  },
+  "timeTracker": {
+    "timeTracker": "تتبع الوقت",
+    "startTracking": "بدء المؤقت",
+    "pauseTracking": "إيقاف مؤقت",
+    "resumeTracking": "استئناف",
+    "stopTracking": "إيقاف وتسجيل",
+    "trackingTask": "جاري تتبع: {{taskTitle}}",
+    "noActiveTimer": "لا يوجد مؤقت قيد التشغيل",
+    "selectTaskToTrack": "اختر مهمة لتتبع الوقت",
+    "hoursSpent": "ساعات العمل المنقضية",
+    "commentLabel": "ملاحظة / وصف العمل",
+    "saveLog": "حفظ السجل",
+    "totalLogged": "إجمالي الوقت المسجل",
+    "hours": "ساعة",
+    "timeTrackerWidgetTitle": "مؤقت تتبع الوقت النشط",
+    "totalHoursTracked": "إجمالي ساعات العمل المسجلة في مساحة العمل"
+  },
+  "goalsTab": {
+    "goalsTitle": "الأهداف الإستراتيجية و OKRs",
+    "addGoal": "تعريف هدف جديد",
+    "goalNameLabel": "عنوان الهدف",
+    "goalNamePlaceholder": "مثال: إطلاق النسخة التجريبية",
+    "goalDescLabel": "الوصف",
+    "goalDescPlaceholder": "حدد النتيجة الإستراتيجية المرجوة...",
+    "startDate": "تاريخ البدء",
+    "dueDate": "تاريخ الاستحقاق",
+    "createGoalBtn": "إنشاء الهدف",
+    "activeGoals": "نشط",
+    "completedGoals": "مكتمل",
+    "cancelledGoals": "ملغي",
+    "noGoals": "لم يتم تحديد أي أهداف إستراتيجية بعد.",
+    "keyResultsTitle": "مؤشرات الأداء والمستهدفات (Key Results)",
+    "addKeyResult": "إضافة مؤشر أداء",
+    "krTitleLabel": "عنوان مؤشر الأداء",
+    "krTitlePlaceholder": "مثال: جذب 50 عميل جديد",
+    "krTypeLabel": "نوع القياس",
+    "krTypePercentage": "نسبة مئوية (0 - 100%)",
+    "krTypeNumber": "رقم مستهدف محدد",
+    "krStartValue": "القيمة المبدئية",
+    "krTargetValue": "القيمة المستهدفة",
+    "krCurrentValue": "القيمة الحالية",
+    "krUnit": "الواحدة (مثال: مستخدم، عميل)",
+    "addKRBtn": "إضافة مؤشر",
+    "progress": "التقدم",
+    "owner": "المسؤول",
+    "deleteGoal": "حذف الهدف",
+    "confirmDeleteGoal": "هل أنت متأكد من حذف هذا الهدف؟",
+    "goalDetails": "تفاصيل الهدف",
+    "editGoal": "تعديل تفاصيل الهدف"
   }
 }

@@ -10,7 +10,8 @@
     "dashboard": "Widgets Dashboard",
     "reports": "Reports & Analytics",
     "gantt": "Gantt Chart",
-    "calendar": "Calendar View"
+    "calendar": "Calendar View",
+    "goals": "Strategic Goals & OKRs"
   },
   "welcome": {
     "title": "Welcome to Taskflow!",
@@ -169,5 +170,61 @@
     "widgetMembersTitle": "Work Distribution",
     "widgetPriorityTitle": "Task Priorities Distribution",
     "noOverdueTasks": "Great job! No overdue tasks in this workspace."
+  },
+  "scratchpad": {
+    "scratchpadTitle": "Personal Scratchpad",
+    "scratchpadPlaceholder": "Type your quick notes or ideas here... they auto-save instantly!",
+    "scratchpadSaving": "Saving...",
+    "scratchpadSaved": "Saved to cloud"
+  },
+  "timeTracker": {
+    "timeTracker": "Time Tracker",
+    "startTracking": "Start Timer",
+    "pauseTracking": "Pause",
+    "resumeTracking": "Resume",
+    "stopTracking": "Stop & Log",
+    "trackingTask": "Tracking: {{taskTitle}}",
+    "noActiveTimer": "No running timer",
+    "selectTaskToTrack": "Select a task to track time",
+    "hoursSpent": "Hours Spent",
+    "commentLabel": "Comment / Work Description",
+    "saveLog": "Save Log",
+    "totalLogged": "Total Logged",
+    "hours": "hours",
+    "timeTrackerWidgetTitle": "Active Time Tracking",
+    "totalHoursTracked": "Total Logged Workspace Hours"
+  },
+  "goalsTab": {
+    "goalsTitle": "Strategic Goals & OKRs",
+    "addGoal": "Define Workspace Goal",
+    "goalNameLabel": "Goal Title",
+    "goalNamePlaceholder": "e.g. Launch Beta V1.0",
+    "goalDescLabel": "Description",
+    "goalDescPlaceholder": "Define the strategic outcome...",
+    "startDate": "Start Date",
+    "dueDate": "Due Date",
+    "createGoalBtn": "Create Goal",
+    "activeGoals": "Active",
+    "completedGoals": "Completed",
+    "cancelledGoals": "Cancelled",
+    "noGoals": "No strategic goals defined yet.",
+    "keyResultsTitle": "Key Results & Targets",
+    "addKeyResult": "Add Key Result",
+    "krTitleLabel": "Key Result Title",
+    "krTitlePlaceholder": "e.g. Onboard 50 customers",
+    "krTypeLabel": "Measurement Type",
+    "krTypePercentage": "Percentage (0 - 100%)",
+    "krTypeNumber": "Numeric Target",
+    "krStartValue": "Start Value",
+    "krTargetValue": "Target Value",
+    "krCurrentValue": "Current Value",
+    "krUnit": "Unit (e.g. users, calls)",
+    "addKRBtn": "Add KR",
+    "progress": "Progress",
+    "owner": "Owner",
+    "deleteGoal": "Delete Goal",
+    "confirmDeleteGoal": "Are you sure you want to delete this goal?",
+    "goalDetails": "Goal Details",
+    "editGoal": "Edit Goal Details"
   }
 }

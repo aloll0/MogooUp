@@ -16,6 +16,12 @@ export interface ILoggedTime {
   date?: Date;
 }
 
+export interface IChecklistItem {
+  _id?: Types.ObjectId;
+  title: string;
+  isCompleted: boolean;
+}
+
 export interface ITask extends Document {
   workspaceId: Types.ObjectId;
   spaceId: Types.ObjectId;
@@ -31,6 +37,7 @@ export interface ITask extends Document {
   dueDate?: Date;
   tags: string[];
   attachments: IAttachment[];
+  checklist: IChecklistItem[];
   position: number;
   timeEstimate?: number;
   loggedTime?: ILoggedTime[];
@@ -115,6 +122,15 @@ const taskSchema = new Schema<ITask>(
     },
     attachments: {
       type: [attachmentSchema],
+      default: [],
+    },
+    checklist: {
+      type: [
+        new Schema({
+          title: { type: String, required: true },
+          isCompleted: { type: Boolean, default: false },
+        })
+      ],
       default: [],
     },
     position: {

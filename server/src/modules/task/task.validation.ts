@@ -37,6 +37,16 @@ export const createTaskSchema = z.object({
         })
       )
       .optional(),
+    checklist: z
+      .array(
+        z.object({
+          _id: z.string().optional(),
+          title: z.string(),
+          isCompleted: z.boolean().default(false),
+        })
+      )
+      .optional(),
+    tags: z.array(z.string()).optional(),
   }),
 });
 
@@ -76,5 +86,15 @@ export const updateTaskSchema = z.object({
         })
       )
       .optional(),
+    checklist: z
+      .array(
+        z.object({
+          _id: z.string().optional(),
+          title: z.string(),
+          isCompleted: z.boolean().default(false),
+        })
+      )
+      .optional(),
+    tags: z.array(z.string()).optional(),
   }),
 });
