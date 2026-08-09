@@ -5,6 +5,8 @@ import { ITask } from "./task.model";
 import { ForbiddenError, NotFoundError } from "../../utils/errors";
 import { notificationService } from "../notification/notification.service";
 import mongoose from "mongoose";
+import { activityService } from "../activity/activity.service";
+import { broadcastToWorkspace } from "../../utils/socket";
 
 export class TaskService {
   async createTask(taskData: Partial<ITask> & { listId: string }, userId: string): Promise<ITask> {
@@ -52,6 +54,19 @@ export class TaskService {
         }
       }
     }
+
+    // Record Activity
+    await activityService.logActivity({
+      workspaceId: space.workspaceId,
+      userId: userId,
+      entityType: "task",
+      entityId: newTask._id,
+      action: "created",
+      details: { title: newTask.title },
+    });
+
+    // Broadcast WebSocket event
+    broadcastToWorkspace(space.workspaceId.toString(), "task-created", newTask);
 
     return newTask;
   }
@@ -141,6 +156,32 @@ export class TaskService {
       }
     }
 
+    // Determine action and detail updates
+    const isMoved = updateData.listId && updateData.listId.toString() !== oldListId;
+    const action = isMoved ? "moved" : "updated";
+
+    const changes: Record<string, any> = {};
+    if (updateData.title && updateData.title !== task.title) changes.title = updateData.title;
+    if (updateData.status && updateData.status !== task.status) changes.status = updateData.status;
+    if (updateData.priority && updateData.priority !== task.priority) changes.priority = updateData.priority;
+    if (updateData.dueDate) changes.dueDate = updateData.dueDate;
+
+    // Record Activity
+    await activityService.logActivity({
+      workspaceId: task.workspaceId,
+      userId: userId,
+      entityType: "task",
+      entityId: task._id,
+      action: action,
+      details: {
+        title: updatedTask.title,
+        changes,
+      },
+    });
+
+    // Broadcast WebSocket event
+    broadcastToWorkspace(task.workspaceId.toString(), "task-updated", updatedTask);
+
     return updatedTask;
   }
 
@@ -156,6 +197,19 @@ export class TaskService {
     }
 
     await taskRepository.deleteTask(taskId);
+
+    // Record Activity
+    await activityService.logActivity({
+      workspaceId: task.workspaceId,
+      userId: userId,
+      entityType: "task",
+      entityId: task._id,
+      action: "deleted",
+      details: { title: task.title },
+    });
+
+    // Broadcast WebSocket event
+    broadcastToWorkspace(task.workspaceId.toString(), "task-deleted", { taskId });
   }
 
   async getTasksByWorkspace(workspaceId: string, userId: string): Promise<ITask[]> {

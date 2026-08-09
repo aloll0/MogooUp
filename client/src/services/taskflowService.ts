@@ -58,6 +58,12 @@ export interface LoggedTimeEntry {
   date?: string;
 }
 
+export interface ChecklistItem {
+  _id?: string;
+  title: string;
+  isCompleted: boolean;
+}
+
 // Task interfaces
 export interface Task {
   _id: string;
@@ -80,6 +86,7 @@ export interface Task {
   dueDate?: string | null;
   tags: string[];
   attachments: Attachment[];
+  checklist?: ChecklistItem[];
   position: number;
   timeEstimate?: number;
   loggedTime?: LoggedTimeEntry[];
@@ -96,6 +103,57 @@ export interface Comment {
   };
   content: string;
   mentions: string[];
+  createdAt: string;
+}
+
+// Goals & OKRs interfaces
+export interface KeyResult {
+  _id?: string;
+  title: string;
+  targetType: "percentage" | "number";
+  startValue: number;
+  targetValue: number;
+  currentValue: number;
+  unit: string;
+}
+
+export interface Goal {
+  _id: string;
+  workspaceId: string;
+  ownerId: string;
+  title: string;
+  description: string;
+  status: "active" | "completed" | "cancelled";
+  startDate?: string | null;
+  endDate?: string | null;
+  keyResults: KeyResult[];
+  createdAt: string;
+  updatedAt: string;
+}
+
+// Scratchpad interfaces
+export interface Scratchpad {
+  _id: string;
+  userId: string;
+  content: string;
+}
+
+// Activity Log interfaces
+export interface ActivityLog {
+  _id: string;
+  workspaceId: string;
+  userId: {
+    _id: string;
+    fullName: string;
+    avatarUrl?: string;
+  };
+  entityType: "task" | "workspace" | "list" | "space" | "folder";
+  entityId: string;
+  action: "created" | "updated" | "deleted" | "moved";
+  details?: {
+    title?: string;
+    changes?: Record<string, any>;
+  };
   createdAt: string;
 }
 
@@ -230,5 +288,49 @@ export const taskflowService = {
   markAllNotificationsAsRead: async (): Promise<any> => {
     const response = await api.post("/notifications/mark-all-read");
     return response.data.data;
+  },
+
+  // Scratchpad API
+  getScratchpad: async (): Promise<Scratchpad> => {
+    const response = await api.get("/scratchpad");
+    return response.data.data.scratchpad;
+  },
+
+  updateScratchpad: async (content: string): Promise<Scratchpad> => {
+    const response = await api.put("/scratchpad", { content });
+    return response.data.data.scratchpad;
+  },
+
+  // Goals & OKRs API
+  getGoals: async (workspaceId: string): Promise<Goal[]> => {
+    const response = await api.get(`/goals/workspace/${workspaceId}`);
+    return response.data.data.goals;
+  },
+
+  createGoal: async (goalData: {
+    workspaceId: string;
+    title: string;
+    description?: string;
+    startDate?: string | null;
+    endDate?: string | null;
+    keyResults?: KeyResult[];
+  }): Promise<Goal> => {
+    const response = await api.post("/goals", goalData);
+    return response.data.data.goal;
+  },
+
+  updateGoal: async (goalId: string, updateData: Partial<Goal>): Promise<Goal> => {
+    const response = await api.put(`/goals/${goalId}`, updateData);
+    return response.data.data.goal;
+  },
+
+  deleteGoal: async (goalId: string): Promise<void> => {
+    await api.delete(`/goals/${goalId}`);
+  },
+
+  // Activities
+  getTaskActivities: async (taskId: string): Promise<ActivityLog[]> => {
+    const response = await api.get(`/activities/task/${taskId}`);
+    return response.data.data.activities;
   },
 };

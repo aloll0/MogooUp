@@ -2,6 +2,7 @@ import mongoose from "mongoose";
 import app from "./app";
 import { config } from "./config";
 import { logger } from "./utils/logger";
+import { initSocket } from "./utils/socket";
 
 // Catch uncaught exception errors immediately
 process.on("uncaughtException", (err) => {
@@ -24,6 +25,9 @@ const startServer = async () => {
     const server = app.listen(config.port, () => {
       logger.info(`Taskflow Backend server running in [${config.env}] mode on port ${config.port}`);
     });
+
+    // Initialize WebSocket Server
+    initSocket(server);
 
     // Catch unhandled promise rejections
     process.on("unhandledRejection", (err: any) => {

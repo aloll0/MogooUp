@@ -1,15 +1,21 @@
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect, useRef, lazy, Suspense } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useAuth } from "../contexts/AuthContext";
 import { useTheme } from "../contexts/ThemeContext";
 import { useTranslation } from "react-i18next";
 import { motion } from "framer-motion";
 import { taskflowService } from "../services/taskflowService";
-import type { Workspace, Space, List, Task, Comment, Attachment } from "../services/taskflowService";
-import { DashboardTab } from "../components/DashboardTab";
-import { ReportsTab } from "../components/ReportsTab";
-import { GanttTab } from "../components/GanttTab";
-import { CalendarTab } from "../components/CalendarTab";
+import type { Workspace, Space, List, Task, Attachment } from "../services/taskflowService";
+
+const DashboardTab = lazy(() => import("../components/DashboardTab").then(m => ({ default: m.DashboardTab })));
+const ReportsTab = lazy(() => import("../components/ReportsTab").then(m => ({ default: m.ReportsTab })));
+const GanttTab = lazy(() => import("../components/GanttTab").then(m => ({ default: m.GanttTab })));
+const CalendarTab = lazy(() => import("../components/CalendarTab").then(m => ({ default: m.CalendarTab })));
+const GoalsTab = lazy(() => import("../components/GoalsTab").then(m => ({ default: m.GoalsTab })));
+import { ScratchpadDrawer } from "../components/ScratchpadDrawer";
+import { TimeTrackerWidget } from "../components/TimeTrackerWidget";
+import { useTimeTrackerStore } from "../stores/useTimeTrackerStore";
+import { socketService } from "../services/socketService";
 import {
   Plus,
   LogOut,
@@ -21,6 +27,7 @@ import {
   Trash2,
   X,
   Loader2,
+  CheckSquare,
   Sun,
   Moon,
   MessageSquare,
@@ -34,6 +41,7 @@ import {
   BarChart2,
   Calendar,
   Clock,
+  Target,
 } from "lucide-react";
 
 // Static reference to prevent empty array literals from re-allocating memory and triggering render loops
@@ -69,10 +77,12 @@ export const KanbanColumn: React.FC<KanbanColumnProps> = ({
   onDeleteTask,
   onMoveTask,
   onTaskClick,
-  allLists,
+  allLists: _allLists,
   currentUserRole,
 }) => {
   const { t } = useTranslation();
+  const [isDragOver, setIsDragOver] = useState(false);
+
   // Query tasks for this specific list ID. Standard React Query caching.
   const { data: tasks = EMPTY_ARRAY, isLoading } = useQuery({
     queryKey: ["tasks", list._id],
@@ -80,7 +90,24 @@ export const KanbanColumn: React.FC<KanbanColumnProps> = ({
   });
 
   return (
-    <div className="w-72 shrink-0 bg-zinc-100/70 dark:bg-zinc-900/60 border border-zinc-200 dark:border-zinc-800/80 rounded-xl flex flex-col max-h-full transition-theme">
+    <div
+      onDragOver={(e) => e.preventDefault()}
+      onDragEnter={() => setIsDragOver(true)}
+      onDragLeave={() => setIsDragOver(false)}
+      onDrop={(e) => {
+        e.preventDefault();
+        setIsDragOver(false);
+        const taskId = e.dataTransfer.getData("text/plain");
+        if (taskId) {
+          onMoveTask(taskId, list._id, list.name.toLowerCase().replace(/\s+/g, "-"));
+        }
+      }}
+      className={`w-72 shrink-0 rounded-xl flex flex-col max-h-full transition-all duration-200 border-2 ${
+        isDragOver
+          ? "bg-purple-500/10 border-purple-500 border-dashed"
+          : "bg-zinc-100/70 dark:bg-zinc-900/60 border-zinc-250/20 dark:border-zinc-800/80"
+      }`}
+    >
       {/* Column Header */}
       <div className="p-3 flex items-center justify-between border-b border-zinc-200 dark:border-zinc-800 shrink-0">
         <div className="flex items-center gap-2">
@@ -121,7 +148,12 @@ export const KanbanColumn: React.FC<KanbanColumnProps> = ({
               <div
                 key={task._id}
                 onClick={() => onTaskClick(task)}
-                className="bg-white dark:bg-zinc-800 border border-zinc-200/80 dark:border-zinc-800/80 p-3 rounded-lg shadow-sm hover:shadow-md transition-all relative group text-start cursor-pointer overflow-hidden"
+                draggable
+                onDragStart={(e) => {
+                  e.stopPropagation();
+                  e.dataTransfer.setData("text/plain", task._id);
+                }}
+                className="bg-white dark:bg-zinc-800 border border-zinc-200/80 dark:border-zinc-800/80 p-3 rounded-lg shadow-sm hover:shadow-md transition-all relative group text-start cursor-grab active:cursor-grabbing overflow-hidden"
               >
                 {coverImage && (
                   <div className="h-28 -mx-3 -mt-3 mb-3 overflow-hidden border-b border-zinc-200 dark:border-zinc-800">
@@ -161,9 +193,22 @@ export const KanbanColumn: React.FC<KanbanColumnProps> = ({
                   </p>
                 )}
 
+                {task.tags && task.tags.length > 0 && (
+                  <div className="flex flex-wrap gap-1 mb-2.5">
+                    {task.tags.map((tag: string, idx: number) => (
+                      <span
+                        key={idx}
+                        className="text-[9px] font-extrabold px-1.5 py-0.5 rounded bg-purple-50 dark:bg-purple-900/35 text-purple-655 dark:text-purple-400 uppercase tracking-wide border border-purple-200/30 dark:border-purple-800/20"
+                      >
+                        {tag}
+                      </span>
+                    ))}
+                  </div>
+                )}
+
                 {/* Tags & Assignees */}
                 <div className="flex items-center justify-between">
-                  <div className="flex gap-1">
+                  <div className="flex gap-1 items-center">
                     <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full select-none capitalize ${getPriorityColor(task.priority)}`}>
                       {t(`priorities.${task.priority}`)}
                     </span>
@@ -171,6 +216,12 @@ export const KanbanColumn: React.FC<KanbanColumnProps> = ({
                       <span className="text-[10px] flex items-center gap-0.5 text-zinc-400 font-semibold">
                         <Paperclip className="h-2.5 w-2.5" />
                         {task.attachments.length}
+                      </span>
+                    )}
+                    {task.checklist && task.checklist.length > 0 && (
+                      <span className="text-[10px] flex items-center gap-0.5 text-zinc-400 font-semibold select-none">
+                        <CheckSquare className="h-2.5 w-2.5" />
+                        {task.checklist.filter(c => c.isCompleted).length}/{task.checklist.length}
                       </span>
                     )}
                   </div>
@@ -186,29 +237,6 @@ export const KanbanColumn: React.FC<KanbanColumnProps> = ({
                       />
                     ))}
                   </div>
-                </div>
-
-                {/* Column Shifting actions */}
-                <div className="mt-3 pt-2 border-t border-zinc-100 dark:border-zinc-800/40 flex justify-between gap-1">
-                  {allLists.map((targetList) => {
-                    if (targetList._id === list._id) return null;
-                    return (
-                      <button
-                        key={targetList._id}
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          onMoveTask(
-                            task._id,
-                            targetList._id,
-                            targetList.name.toLowerCase().replace(/\s+/g, "-")
-                          );
-                        }}
-                        className="text-[9px] font-medium text-zinc-400 hover:text-purple-500 px-1 py-0.5 rounded-md hover:bg-purple-500/5 transition-all truncate cursor-pointer"
-                      >
-                        {t('kanban.moveTo', { targetName: targetList.name })}
-                      </button>
-                    );
-                  })}
                 </div>
               </div>
             );
@@ -242,7 +270,7 @@ const TaskDetailsModal: React.FC<TaskDetailsModalProps> = ({
   workspaceMembers,
   allLists,
 }) => {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const { user } = useAuth();
   const queryClient = useQueryClient();
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -265,14 +293,175 @@ const TaskDetailsModal: React.FC<TaskDetailsModalProps> = ({
   const [logComment, setLogComment] = useState("");
   const [logDate, setLogDate] = useState(new Date().toISOString().substring(0, 10));
 
+  const [previewImageUrl, setPreviewImageUrl] = useState<string | null>(null);
+
+  const tracker = useTimeTrackerStore();
+  const isThisTaskTracked = tracker.activeTaskId === task._id;
+  const [elapsedStr, setElapsedStr] = useState("00:00:00");
+
+  const formatTime = (totalSeconds: number) => {
+    const hours = Math.floor(totalSeconds / 3600);
+    const minutes = Math.floor((totalSeconds % 3600) / 60);
+    const seconds = totalSeconds % 60;
+    return [hours, minutes, seconds]
+      .map((val) => (val < 10 ? `0${val}` : `${val}`))
+      .join(":");
+  };
+
+  useEffect(() => {
+    let interval: ReturnType<typeof setInterval> | null = null;
+    if (isThisTaskTracked && !tracker.isPaused) {
+      interval = setInterval(() => {
+        setElapsedStr(formatTime(tracker.getElapsedSeconds()));
+      }, 1000);
+    } else {
+      setElapsedStr(formatTime(tracker.getElapsedSeconds()));
+    }
+    return () => {
+      if (interval) clearInterval(interval);
+    };
+  }, [isThisTaskTracked, tracker.isPaused, tracker.startTime, tracker.elapsedSeconds]);
+
   // Comment state
   const [commentText, setCommentText] = useState("");
+  const [showMentionSuggestions, setShowMentionSuggestions] = useState(false);
+  const [mentionSearchText, setMentionSearchText] = useState("");
+  const [mentionStartIndex, setMentionStartIndex] = useState(-1);
+  const [selectedMentionUserIds, setSelectedMentionUserIds] = useState<string[]>([]);
+  const [newChecklistItemTitle, setNewChecklistItemTitle] = useState("");
+
+  const [newTagText, setNewTagText] = useState("");
+
+  const handleAddTagSubmit = () => {
+    const val = newTagText.trim();
+    if (val) {
+      const currentTags = task.tags || [];
+      if (!currentTags.includes(val)) {
+        const updatedTags = [...currentTags, val];
+        updateTaskMutation.mutate({ tags: updatedTags });
+      }
+      setNewTagText("");
+    }
+  };
+
+  const handleRemoveTag = (tagToRemove: string) => {
+    const currentTags = task.tags || [];
+    const updatedTags = currentTags.filter((t) => t !== tagToRemove);
+    updateTaskMutation.mutate({ tags: updatedTags });
+  };
+
+  const handleAddChecklistItem = (e: React.FormEvent) => {
+    e.preventDefault();
+    const title = newChecklistItemTitle.trim();
+    if (!title) return;
+
+    const currentChecklist = task.checklist || [];
+    const updatedChecklist = [...currentChecklist, { title, isCompleted: false }];
+    
+    updateTaskMutation.mutate({ checklist: updatedChecklist as any });
+    setNewChecklistItemTitle("");
+  };
+
+  const handleToggleChecklistItem = (itemId: string | undefined, isCompleted: boolean) => {
+    if (!itemId) return;
+    const currentChecklist = task.checklist || [];
+    const updatedChecklist = currentChecklist.map((item) =>
+      item._id === itemId ? { ...item, isCompleted } : item
+    );
+    updateTaskMutation.mutate({ checklist: updatedChecklist as any });
+  };
+
+  const handleRemoveChecklistItem = (itemId: string | undefined) => {
+    if (!itemId) return;
+    const currentChecklist = task.checklist || [];
+    const updatedChecklist = currentChecklist.filter((item) => item._id !== itemId);
+    updateTaskMutation.mutate({ checklist: updatedChecklist as any });
+  };
+
+  const handleCommentTextChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
+    const val = e.target.value;
+    setCommentText(val);
+
+    const selectionStart = e.target.selectionStart;
+    const lastAtPos = val.lastIndexOf("@", selectionStart - 1);
+
+    if (lastAtPos !== -1 && (lastAtPos === 0 || val[lastAtPos - 1] === " " || val[lastAtPos - 1] === "\n")) {
+      const textSinceAt = val.substring(lastAtPos + 1, selectionStart);
+      if (!textSinceAt.includes(" ")) {
+        setShowMentionSuggestions(true);
+        setMentionSearchText(textSinceAt);
+        setMentionStartIndex(lastAtPos);
+        return;
+      }
+    }
+    setShowMentionSuggestions(false);
+  };
+
+  const handleSelectMention = (member: any) => {
+    const beforeAt = commentText.substring(0, mentionStartIndex);
+    const afterCursor = commentText.substring(mentionStartIndex + mentionSearchText.length + 1);
+    const newText = `${beforeAt}@${member.userId.fullName} ${afterCursor}`;
+    
+    setCommentText(newText);
+    if (!selectedMentionUserIds.includes(member.userId._id)) {
+      setSelectedMentionUserIds([...selectedMentionUserIds, member.userId._id]);
+    }
+    setShowMentionSuggestions(false);
+  };
+
+  const filteredMembers = workspaceMembers.filter((m) =>
+    m.userId?.fullName?.toLowerCase().includes(mentionSearchText.toLowerCase())
+  );
 
   // Get comments query
   const { data: comments = EMPTY_ARRAY, isLoading: isLoadingComments } = useQuery({
     queryKey: ["comments", task._id],
     queryFn: () => taskflowService.getComments(task._id),
   });
+
+  // Get activities query
+  const { data: activities = EMPTY_ARRAY, isLoading: isLoadingActivities } = useQuery({
+    queryKey: ["activities", task._id],
+    queryFn: () => taskflowService.getTaskActivities(task._id),
+  });
+
+  const feedItems = [
+    ...comments.map((c) => ({ ...c, itemType: "comment" as const })),
+    ...activities.map((act) => ({ ...act, itemType: "activity" as const })),
+  ].sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime());
+
+  const renderActivityText = (act: any) => {
+    const isAr = i18n.language === 'ar';
+    
+    if (act.action === "created") {
+      return isAr ? `أنشأ هذه المهمة` : `created this task`;
+    }
+    if (act.action === "moved") {
+      return isAr ? `نقل هذه المهمة` : `moved this task`;
+    }
+    
+    const changes = act.details?.changes || {};
+    const changeKeys = Object.keys(changes);
+    if (changeKeys.length > 0) {
+      const descriptions = changeKeys.map((key) => {
+        const val = changes[key];
+        if (key === "status") {
+          return isAr ? `غير الحالة إلى "${val}"` : `changed status to "${val}"`;
+        }
+        if (key === "priority") {
+          return isAr ? `غير الأولوية إلى "${val}"` : `changed priority to "${val}"`;
+        }
+        if (key === "dueDate") {
+          const dateStr = val ? new Date(val).toLocaleDateString() : "";
+          return isAr ? `غير تاريخ الاستحقاق إلى ${dateStr}` : `changed due date to ${dateStr}`;
+        }
+        return isAr ? `عدّل ${key}` : `updated ${key}`;
+      });
+      return descriptions.join(", ");
+    }
+    
+    return isAr ? `عدّل هذه المهمة` : `updated this task`;
+  };
 
   // Sync state if task updates
   useEffect(() => {
@@ -306,10 +495,12 @@ const TaskDetailsModal: React.FC<TaskDetailsModalProps> = ({
   });
 
   const createCommentMutation = useMutation({
-    mutationFn: (content: string) => taskflowService.createComment(task._id, content),
+    mutationFn: (payload: { content: string; mentions: string[] }) =>
+      taskflowService.createComment(task._id, payload.content, payload.mentions),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["comments", task._id] });
       setCommentText("");
+      setSelectedMentionUserIds([]);
     },
   });
 
@@ -385,7 +576,10 @@ const TaskDetailsModal: React.FC<TaskDetailsModalProps> = ({
   const handlePostComment = (e: React.FormEvent) => {
     e.preventDefault();
     if (!commentText.trim()) return;
-    createCommentMutation.mutate(commentText);
+    createCommentMutation.mutate({
+      content: commentText,
+      mentions: selectedMentionUserIds,
+    });
   };
 
   const handleTimeEstimateBlur = () => {
@@ -523,6 +717,54 @@ const TaskDetailsModal: React.FC<TaskDetailsModalProps> = ({
               </div>
             </div>
 
+            {/* Tags / Labels Row */}
+            <div className="space-y-2 text-start">
+              <label className="text-xs font-bold uppercase text-zinc-400 dark:text-zinc-500">
+                {t('taskModal.tagsLabel', { defaultValue: "Tags & Labels" })}
+              </label>
+              <div className="flex flex-wrap gap-2 items-center">
+                {task.tags && task.tags.map((tag: string, idx: number) => (
+                  <span
+                    key={idx}
+                    className="flex items-center gap-1 text-[11px] font-bold px-2.5 py-1 rounded-lg bg-purple-50 dark:bg-purple-900/30 text-purple-600 dark:text-purple-400 border border-purple-200/25 dark:border-purple-800/30 group"
+                  >
+                    <span>{tag}</span>
+                    <button
+                      type="button"
+                      onClick={() => handleRemoveTag(tag)}
+                      className="text-zinc-450 hover:text-red-500 transition-all cursor-pointer font-bold leading-none text-xs"
+                    >
+                      &times;
+                    </button>
+                  </span>
+                ))}
+                
+                {/* Inline Add Tag input with Save/Add button */}
+                <div className="flex gap-1.5 items-center shrink-0">
+                  <input
+                    type="text"
+                    placeholder={t('taskModal.addTagPlaceholder', { defaultValue: "New tag..." })}
+                    value={newTagText}
+                    onChange={(e) => setNewTagText(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter") {
+                        e.preventDefault();
+                        handleAddTagSubmit();
+                      }
+                    }}
+                    className="bg-zinc-55 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-750 rounded-lg px-2.5 py-1 text-xs focus:outline-hidden focus:ring-1 focus:ring-purple-500 w-24 transition-all text-zinc-850 dark:text-zinc-200"
+                  />
+                  <button
+                    type="button"
+                    onClick={handleAddTagSubmit}
+                    className="px-2 py-1 bg-purple-650 hover:bg-purple-700 text-white rounded-lg text-[10px] font-bold transition-all cursor-pointer whitespace-nowrap shrink-0"
+                  >
+                    {t('taskModal.addTagBtn', { defaultValue: "Add" })}
+                  </button>
+                </div>
+              </div>
+            </div>
+
             {/* Task Description */}
             <div className="space-y-2">
               <div className="flex justify-between items-center">
@@ -567,6 +809,79 @@ const TaskDetailsModal: React.FC<TaskDetailsModalProps> = ({
               )}
             </div>
 
+            {/* Checklist / Subtasks Section */}
+            <div className="space-y-3 text-start">
+              {(() => {
+                const checklist = task.checklist || [];
+                const total = checklist.length;
+                const completed = checklist.filter((item) => item.isCompleted).length;
+                const percentage = total > 0 ? Math.round((completed / total) * 100) : 0;
+                return (
+                  <>
+                    <div className="flex items-center justify-between">
+                      <label className="text-xs font-bold uppercase text-zinc-400 dark:text-zinc-500">
+                        {t('taskModal.checklistLabel', { defaultValue: "Subtasks & Checklist" })}
+                      </label>
+                      <span className="text-xs font-bold text-purple-650 dark:text-purple-400">{percentage}%</span>
+                    </div>
+                    
+                    {/* Progress bar */}
+                    <div className="w-full bg-zinc-100 dark:bg-zinc-800 h-2 rounded-full overflow-hidden">
+                      <div
+                        className="bg-purple-600 h-full rounded-full transition-all duration-300"
+                        style={{ width: `${percentage}%` }}
+                      />
+                    </div>
+
+                    {/* Subtasks list */}
+                    {total > 0 && (
+                      <div className="space-y-2 max-h-48 overflow-y-auto pr-1">
+                        {checklist.map((item: any) => (
+                          <div key={item._id} className="flex items-center justify-between gap-2 group hover:bg-zinc-55 dark:hover:bg-zinc-850 p-1.5 rounded-lg transition-all border border-transparent hover:border-zinc-200/40 dark:hover:border-zinc-800/40">
+                            <label className="flex items-center gap-2.5 cursor-pointer select-none text-xs flex-1 text-zinc-800 dark:text-zinc-300">
+                              <input
+                                type="checkbox"
+                                checked={item.isCompleted}
+                                onChange={() => handleToggleChecklistItem(item._id, !item.isCompleted)}
+                                className="h-4 w-4 rounded-sm border-zinc-305 text-purple-600 focus:ring-purple-500 cursor-pointer"
+                              />
+                              <span className={item.isCompleted ? "line-through text-zinc-400 dark:text-zinc-500" : ""}>
+                                {item.title}
+                              </span>
+                            </label>
+                            <button
+                              type="button"
+                              onClick={() => handleRemoveChecklistItem(item._id)}
+                              className="opacity-0 group-hover:opacity-100 p-0.5 text-zinc-450 hover:text-red-500 transition-all cursor-pointer"
+                            >
+                              <Trash2 className="h-3.5 w-3.5" />
+                            </button>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </>
+                );
+              })()}
+
+              {/* Add Checklist Item inline form */}
+              <form onSubmit={handleAddChecklistItem} className="flex gap-2 items-center">
+                <input
+                  type="text"
+                  value={newChecklistItemTitle}
+                  onChange={(e) => setNewChecklistItemTitle(e.target.value)}
+                  placeholder={t('taskModal.newSubtaskPlaceholder', { defaultValue: "Add a subtask..." })}
+                  className="flex-1 bg-zinc-55 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-750 rounded-xl px-3 py-1.5 text-xs focus:ring-2 focus:ring-purple-500/50 text-zinc-900 dark:text-zinc-100 outline-hidden"
+                />
+                <button
+                  type="submit"
+                  className="px-3.5 py-1.5 bg-purple-600 hover:bg-purple-700 text-white rounded-xl text-xs font-bold transition-all cursor-pointer whitespace-nowrap"
+                >
+                  {t('taskModal.addSubtask', { defaultValue: "Add" })}
+                </button>
+              </form>
+            </div>
+
             {/* Attachments Section */}
             <div className="space-y-3">
               <div className="flex items-center justify-between">
@@ -597,7 +912,8 @@ const TaskDetailsModal: React.FC<TaskDetailsModalProps> = ({
                   {task.attachments.map((att, idx) => (
                     <div
                       key={idx}
-                      className="group border border-zinc-200 dark:border-zinc-800 rounded-lg overflow-hidden relative h-20"
+                      onClick={() => setPreviewImageUrl(att.url)}
+                      className="group border border-zinc-200 dark:border-zinc-800 rounded-lg overflow-hidden relative h-20 cursor-zoom-in hover:border-purple-500/50 transition-all"
                     >
                       <img src={att.url} alt={att.name} className="w-full h-full object-cover" />
                       <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
@@ -617,27 +933,97 @@ const TaskDetailsModal: React.FC<TaskDetailsModalProps> = ({
                 {t('stats.logTimeTitle', { defaultValue: "Time Tracking & Logs" })}
               </h3>
 
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 bg-zinc-50 dark:bg-zinc-950/20 p-4 rounded-xl border dark:border-zinc-800/80">
-                {/* Time Estimate Input */}
-                <div className="space-y-1">
-                  <label className="text-[10px] font-bold uppercase text-zinc-450 dark:text-zinc-500 block">
-                    {t('stats.timeEstimateLabel', { defaultValue: "Time Estimate (Hours)" })}
-                  </label>
-                  <input
-                    type="number"
-                    min="0"
-                    step="0.5"
-                    value={timeEstimate === 0 ? "" : timeEstimate}
-                    onChange={(e) => setTimeEstimate(e.target.value === "" ? 0 : Number(e.target.value))}
-                    onBlur={handleTimeEstimateBlur}
-                    placeholder={t('stats.timeEstimatePlaceholder', { defaultValue: "e.g. 5" })}
-                    className="w-full rounded-xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 py-1.5 px-2.5 text-xs focus:outline-hidden focus:ring-1 focus:ring-purple-500"
-                  />
+              {/* Interactive Timer Controls */}
+              <div className="flex items-center justify-between p-3 bg-zinc-50 dark:bg-zinc-950/20 border dark:border-zinc-850 rounded-xl text-xs">
+                <div className="flex items-center gap-2 text-zinc-700 dark:text-zinc-300">
+                  <Clock className={`h-4.5 w-4.5 shrink-0 ${isThisTaskTracked && !tracker.isPaused ? "text-purple-500 animate-pulse" : "text-zinc-400"}`} />
+                  <span className="font-bold">
+                    {isThisTaskTracked
+                      ? tracker.isPaused
+                        ? "Timer Paused"
+                        : "Timer Running"
+                      : "Track Time"}
+                  </span>
                 </div>
 
-                {/* Quick Log Form */}
-                <form onSubmit={handleLogTimeSubmit} className="space-y-1">
-                  <label className="text-[10px] font-bold uppercase text-zinc-450 dark:text-zinc-500 block">
+                <div className="flex items-center gap-3">
+                  {isThisTaskTracked && (
+                    <span className="font-mono text-xs font-black text-purple-600 dark:text-purple-400 bg-purple-500/5 px-2.5 py-1 rounded-lg border border-purple-500/10">
+                      {elapsedStr}
+                    </span>
+                  )}
+
+                  <div className="flex gap-1.5">
+                    {isThisTaskTracked ? (
+                      <>
+                        {tracker.isPaused ? (
+                          <button
+                            type="button"
+                            onClick={tracker.resume}
+                            className="bg-purple-600 hover:bg-purple-700 text-white text-[10px] font-bold px-2.5 py-1 rounded-lg cursor-pointer transition-all"
+                          >
+                            Resume
+                          </button>
+                        ) : (
+                          <button
+                            type="button"
+                            onClick={tracker.pause}
+                            className="bg-zinc-200 dark:bg-zinc-800 hover:bg-zinc-300 dark:hover:bg-zinc-700 text-zinc-700 dark:text-zinc-200 text-[10px] font-bold px-2.5 py-1 rounded-lg cursor-pointer transition-all"
+                          >
+                            Pause
+                          </button>
+                        )}
+                        <button
+                          type="button"
+                          onClick={() => {
+                            const totalSec = tracker.stop();
+                            const hoursDecimal = Math.max(0.01, Number((totalSec / 3600).toFixed(2)));
+                            setLogHours(hoursDecimal.toString());
+                          }}
+                          className="bg-red-600 hover:bg-red-700 text-white text-[10px] font-bold px-2.5 py-1 rounded-lg cursor-pointer transition-all"
+                        >
+                          Stop & Log
+                        </button>
+                      </>
+                    ) : (
+                      <button
+                        type="button"
+                        onClick={() => tracker.start(task._id, task.title)}
+                        disabled={tracker.activeTaskId !== null}
+                        className="bg-purple-600 hover:bg-purple-700 disabled:bg-zinc-200 dark:disabled:bg-zinc-800 disabled:text-zinc-400 text-white text-[10px] font-bold px-2.5 py-1.5 rounded-lg cursor-pointer transition-all"
+                        title={tracker.activeTaskId !== null ? "Another timer is currently running" : ""}
+                      >
+                        Start Timer
+                      </button>
+                    )}
+                  </div>
+                </div>
+              </div>
+
+              <div className="space-y-4 bg-zinc-55/30 dark:bg-zinc-950/20 p-4 rounded-xl border dark:border-zinc-800/80">
+                {/* Time Estimate Row */}
+                <div className="flex items-center justify-between gap-4 pb-3 border-b dark:border-zinc-850">
+                  <label className="text-xs font-bold uppercase text-zinc-450 dark:text-zinc-500 block">
+                    {t('stats.timeEstimateLabel', { defaultValue: "Time Estimate" })}
+                  </label>
+                  <div className="flex items-center gap-2">
+                    <input
+                      type="number"
+                      min="0"
+                      step="0.5"
+                      value={timeEstimate === 0 ? "" : timeEstimate}
+                      onChange={(e) => setTimeEstimate(e.target.value === "" ? 0 : Number(e.target.value))}
+                      onBlur={handleTimeEstimateBlur}
+                      placeholder="Hours"
+                      className="w-20 rounded-xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 py-1 px-2.5 text-xs text-center focus:outline-hidden focus:ring-1 focus:ring-purple-500 text-zinc-900 dark:text-zinc-100"
+                    />
+                    <span className="text-xs text-zinc-400 font-semibold">{t('timeTracker.hours')}</span>
+                  </div>
+                </div>
+
+                {/* Quick Log Form Row */}
+                <form onSubmit={handleLogTimeSubmit} className="space-y-2">
+                  <label className="text-xs font-bold uppercase text-zinc-455 dark:text-zinc-500 block">
                     {t('stats.logTimeTitle', { defaultValue: "Log Work Time" })}
                   </label>
                   <div className="flex gap-2">
@@ -649,18 +1035,18 @@ const TaskDetailsModal: React.FC<TaskDetailsModalProps> = ({
                       required
                       value={logHours}
                       onChange={(e) => setLogHours(e.target.value)}
-                      className="w-16 rounded-xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 py-1.5 px-2 text-xs focus:outline-hidden focus:ring-1 focus:ring-purple-500"
+                      className="w-16 rounded-xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 py-1.5 px-2 text-xs focus:outline-hidden focus:ring-1 focus:ring-purple-500 text-zinc-900 dark:text-zinc-100"
                     />
                     <input
                       type="text"
                       placeholder={t('stats.commentLabel', { defaultValue: "Notes..." })}
                       value={logComment}
                       onChange={(e) => setLogComment(e.target.value)}
-                      className="flex-1 rounded-xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 py-1.5 px-2 text-xs focus:outline-hidden focus:ring-1 focus:ring-purple-500"
+                      className="flex-1 rounded-xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 py-1.5 px-2 text-xs focus:outline-hidden focus:ring-1 focus:ring-purple-500 text-zinc-900 dark:text-zinc-100"
                     />
                     <button
                       type="submit"
-                      className="bg-purple-600 hover:bg-purple-700 text-white font-bold text-[10px] px-3 py-1.5 rounded-xl transition-all cursor-pointer shrink-0"
+                      className="bg-purple-600 hover:bg-purple-700 text-white font-bold text-[10px] px-3.5 py-1.5 rounded-xl transition-all cursor-pointer shrink-0"
                     >
                       {t('stats.logHoursBtn', { defaultValue: "Log" })}
                     </button>
@@ -669,7 +1055,7 @@ const TaskDetailsModal: React.FC<TaskDetailsModalProps> = ({
                     type="date"
                     value={logDate}
                     onChange={(e) => setLogDate(e.target.value)}
-                    className="w-full text-[10px] bg-transparent border-none text-zinc-455 dark:text-zinc-500 focus:outline-hidden mt-1"
+                    className="text-[10px] bg-transparent border-none text-zinc-455 dark:text-zinc-555 focus:outline-hidden"
                   />
                 </form>
               </div>
@@ -753,47 +1139,92 @@ const TaskDetailsModal: React.FC<TaskDetailsModalProps> = ({
           <div className="flex-1 flex flex-col min-h-0">
             <div className="flex items-center gap-2 mb-3 shrink-0">
               <MessageSquare className="h-4 w-4 text-zinc-400" />
-              <label className="text-xs font-bold uppercase text-zinc-400 dark:text-zinc-500">{t('taskModal.commentsLabel')}</label>
+              <label className="text-xs font-bold uppercase text-zinc-450 dark:text-zinc-500">
+                {t('taskModal.commentsLabel', { defaultValue: "Comments & Activity" })}
+              </label>
             </div>
 
-            {/* Scrollable list of comments */}
+            {/* Scrollable list of comments & activities */}
             <div className="flex-1 overflow-y-auto space-y-4 mb-4 pe-1 text-start">
-              {isLoadingComments ? (
+              {isLoadingComments || isLoadingActivities ? (
                 <div className="flex justify-center py-6">
                   <Loader2 className="h-5 w-5 animate-spin text-zinc-400" />
                 </div>
-              ) : comments.length === 0 ? (
+              ) : feedItems.length === 0 ? (
                 <p className="text-xs text-zinc-400 dark:text-zinc-500 italic py-4">{t('taskModal.noComments')}</p>
               ) : (
-                comments.map((c: Comment) => (
-                  <div key={c._id} className="flex gap-2.5 items-start">
-                    <img
-                      src={c.userId.avatarUrl || "https://api.dicebear.com/7.x/bottts/svg"}
-                      alt="avatar"
-                      className="h-7 w-7 rounded-full bg-zinc-850 shrink-0 border"
-                    />
-                    <div className="flex-1 bg-white dark:bg-zinc-850 p-3 rounded-xl shadow-xs border dark:border-zinc-800/40">
-                      <div className="flex items-center justify-between mb-1.5">
-                        <span className="text-xs font-bold text-zinc-800 dark:text-zinc-200">{c.userId.fullName}</span>
-                        <span className="text-[10px] text-zinc-400">
-                          {new Date(c.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                        </span>
+                feedItems.map((item: any) => {
+                  if (item.itemType === "comment") {
+                    return (
+                      <div key={item._id} className="flex gap-2.5 items-start">
+                        <img
+                          src={item.userId.avatarUrl || "https://api.dicebear.com/7.x/bottts/svg"}
+                          alt="avatar"
+                          className="h-7 w-7 rounded-full bg-zinc-850 shrink-0 border"
+                        />
+                        <div className="flex-1 bg-white dark:bg-zinc-850 p-3 rounded-xl shadow-xs border dark:border-zinc-800/40">
+                          <div className="flex items-center justify-between mb-1.5">
+                            <span className="text-xs font-bold text-zinc-800 dark:text-zinc-200">{item.userId.fullName}</span>
+                            <span className="text-[10px] text-zinc-400">
+                              {new Date(item.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                            </span>
+                          </div>
+                          <p className="text-xs text-zinc-650 dark:text-zinc-300 leading-relaxed break-words whitespace-pre-wrap">{item.content}</p>
+                        </div>
                       </div>
-                      <p className="text-xs text-zinc-650 dark:text-zinc-300 leading-relaxed break-words whitespace-pre-wrap">{c.content}</p>
-                    </div>
-                  </div>
-                ))
+                    );
+                  } else {
+                    return (
+                      <div key={item._id} className="flex gap-2.5 items-center pl-1">
+                        <img
+                          src={item.userId?.avatarUrl || "https://api.dicebear.com/7.x/bottts/svg"}
+                          alt="avatar"
+                          className="h-5.5 w-5.5 rounded-full bg-zinc-850 shrink-0 border dark:border-zinc-800"
+                        />
+                        <div className="flex-1 text-[11px] text-zinc-500 dark:text-zinc-400 leading-relaxed">
+                          <span className="font-bold text-zinc-800 dark:text-zinc-200 mr-1">
+                            {item.userId?.fullName || "User"}
+                          </span>
+                          <span>{renderActivityText(item)}</span>
+                          <span className="text-[9px] text-zinc-400 dark:text-zinc-500 ml-2 whitespace-nowrap">
+                            {new Date(item.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                          </span>
+                        </div>
+                      </div>
+                    );
+                  }
+                })
               )}
             </div>
 
             {/* Write comment input */}
-            <form onSubmit={handlePostComment} className="mt-auto shrink-0 pt-2 border-t dark:border-zinc-800">
+            <form onSubmit={handlePostComment} className="mt-auto shrink-0 pt-2 border-t dark:border-zinc-800 relative">
+              {showMentionSuggestions && filteredMembers.length > 0 && (
+                <div className="absolute bottom-full left-0 mb-1 w-full bg-white dark:bg-zinc-850 border dark:border-zinc-800 rounded-xl shadow-xl z-50 max-h-36 overflow-y-auto divide-y divide-zinc-100 dark:divide-zinc-800/60 text-start">
+                  {filteredMembers.map((m: any) => (
+                    <button
+                      key={m._id}
+                      type="button"
+                      onClick={() => handleSelectMention(m)}
+                      className="w-full flex items-center gap-2 p-2 hover:bg-zinc-100 dark:hover:bg-zinc-800 text-xs text-zinc-700 dark:text-zinc-350 transition-all cursor-pointer"
+                    >
+                      <img
+                        src={m.userId.avatarUrl || "https://api.dicebear.com/7.x/bottts/svg"}
+                        alt="avatar"
+                        className="h-5.5 w-5.5 rounded-full border bg-zinc-800 shrink-0"
+                      />
+                      <span className="font-bold text-zinc-800 dark:text-zinc-200">{m.userId.fullName}</span>
+                      <span className="text-[10px] text-zinc-400">({m.userId.email})</span>
+                    </button>
+                  ))}
+                </div>
+              )}
               <div className="relative">
                 <textarea
                   placeholder={t('taskModal.writeCommentPlaceholder')}
                   value={commentText}
-                  onChange={(e) => setCommentText(e.target.value)}
-                  className="w-full bg-white dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-800 rounded-xl py-2 ps-3 pe-10 text-xs focus:ring-2 focus:ring-purple-500/50 outline-hidden h-14 resize-none"
+                  onChange={handleCommentTextChange}
+                  className="w-full bg-white dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-800 rounded-xl py-2 ps-3 pe-10 text-xs focus:ring-2 focus:ring-purple-500/50 outline-hidden h-14 resize-none text-zinc-900 dark:text-zinc-100"
                   required
                 />
                 <button
@@ -813,6 +1244,27 @@ const TaskDetailsModal: React.FC<TaskDetailsModalProps> = ({
         </div>
 
       </div>
+
+      {/* Full-screen Image Lightbox Preview */}
+      {previewImageUrl && (
+        <div
+          onClick={() => setPreviewImageUrl(null)}
+          className="fixed inset-0 z-50 bg-black/85 backdrop-blur-md flex items-center justify-center cursor-zoom-out p-4 animate-fade-in"
+        >
+          <img
+            src={previewImageUrl}
+            alt="Preview"
+            className="max-w-full max-h-full object-contain rounded-lg shadow-2xl"
+          />
+          <button
+            type="button"
+            onClick={() => setPreviewImageUrl(null)}
+            className="absolute top-4 end-4 bg-zinc-900/60 hover:bg-zinc-900 text-white rounded-full p-2 cursor-pointer shadow-md transition-all"
+          >
+            <X className="h-6 w-6" />
+          </button>
+        </div>
+      )}
     </div>
   );
 };
@@ -827,7 +1279,7 @@ export const Dashboard: React.FC = () => {
   // Active selections
   const [activeWorkspace, setActiveWorkspace] = useState<Workspace | null>(null);
   const [activeSpace, setActiveSpace] = useState<Space | null>(null);
-  const [activeTab, setActiveTab] = useState<"kanban" | "team" | "dashboard" | "reports" | "gantt" | "calendar">("kanban");
+  const [activeTab, setActiveTab] = useState<"kanban" | "team" | "dashboard" | "reports" | "gantt" | "calendar" | "goals">("kanban");
   const [selectedTeamMember, setSelectedTeamMember] = useState<any>(null);
 
   // Selected task detail view modal state
@@ -840,6 +1292,7 @@ export const Dashboard: React.FC = () => {
   const [isTaskModalOpen, setIsTaskModalOpen] = useState(false);
   const [isInviteModalOpen, setIsInviteModalOpen] = useState(false);
   const [isNotificationsOpen, setIsNotificationsOpen] = useState(false);
+  const [isScratchpadOpen, setIsScratchpadOpen] = useState(false);
 
   // Inputs
   const [newWorkspaceName, setNewWorkspaceName] = useState("");
@@ -868,6 +1321,53 @@ export const Dashboard: React.FC = () => {
       setActiveWorkspace(workspaces[0]);
     }
   }, [workspaces, activeWorkspace]);
+
+  // WebSocket room setup & query invalidation
+  useEffect(() => {
+    const socket = socketService.connect();
+
+    if (activeWorkspace?._id) {
+      socketService.joinWorkspace(activeWorkspace._id);
+    }
+
+    const handleTaskCreated = () => {
+      queryClient.invalidateQueries({ queryKey: ["tasks"] });
+      queryClient.invalidateQueries({ queryKey: ["workspaceTasks", activeWorkspace?._id] });
+    };
+
+    const handleTaskUpdated = (payload: any) => {
+      queryClient.invalidateQueries({ queryKey: ["tasks"] });
+      queryClient.invalidateQueries({ queryKey: ["workspaceTasks", activeWorkspace?._id] });
+      if (payload?._id) {
+        queryClient.invalidateQueries({ queryKey: ["activities", payload._id] });
+      }
+    };
+
+    const handleTaskDeleted = () => {
+      queryClient.invalidateQueries({ queryKey: ["tasks"] });
+      queryClient.invalidateQueries({ queryKey: ["workspaceTasks", activeWorkspace?._id] });
+    };
+
+    const handleCommentCreated = (payload: { taskId: string }) => {
+      queryClient.invalidateQueries({ queryKey: ["comments", payload.taskId] });
+      queryClient.invalidateQueries({ queryKey: ["tasks"] });
+    };
+
+    socket.on("task-created", handleTaskCreated);
+    socket.on("task-updated", handleTaskUpdated);
+    socket.on("task-deleted", handleTaskDeleted);
+    socket.on("comment-created", handleCommentCreated);
+
+    return () => {
+      if (activeWorkspace?._id) {
+        socketService.leaveWorkspace(activeWorkspace._id);
+      }
+      socket.off("task-created", handleTaskCreated);
+      socket.off("task-updated", handleTaskUpdated);
+      socket.off("task-deleted", handleTaskDeleted);
+      socket.off("comment-created", handleCommentCreated);
+    };
+  }, [activeWorkspace?._id, queryClient]);
 
   const { data: spacesData, isLoading: isLoadingSpaces } = useQuery({
     queryKey: ["spaces", activeWorkspace?._id],
@@ -901,7 +1401,7 @@ export const Dashboard: React.FC = () => {
   const { data: workspaceTasksData } = useQuery({
     queryKey: ["workspaceTasks", activeWorkspace?._id],
     queryFn: () => taskflowService.getTasksByWorkspace(activeWorkspace!._id),
-    enabled: !!activeWorkspace?._id && ["team", "dashboard", "reports", "gantt", "calendar"].includes(activeTab),
+    enabled: !!activeWorkspace?._id,
   });
   const workspaceTasks = workspaceTasksData || EMPTY_ARRAY;
 
@@ -1235,6 +1735,20 @@ export const Dashboard: React.FC = () => {
               <Users className="h-4 w-4" />
               <span>{t('sidebar.team', { defaultValue: "Workspace Team" })}</span>
             </button>
+
+            <button
+              onClick={() => {
+                setActiveTab("goals");
+              }}
+              className={`w-full flex items-center gap-2.5 py-2 px-3 rounded-lg text-sm transition-all text-start cursor-pointer ${
+                activeTab === "goals"
+                  ? "bg-zinc-850 text-zinc-100 font-semibold"
+                  : "text-zinc-400 hover:bg-zinc-800/50 hover:text-zinc-200"
+              }`}
+            >
+              <Target className="h-4 w-4" />
+              <span>{t('sidebar.goals', { defaultValue: "Strategic Goals & OKRs" })}</span>
+            </button>
           </div>
 
           {/* Spaces Navigation */}
@@ -1445,14 +1959,23 @@ export const Dashboard: React.FC = () => {
 
                   {isNotificationsOpen && (
                     <div className="absolute end-0 mt-2 w-80 bg-white dark:bg-zinc-900 border dark:border-zinc-800 rounded-2xl shadow-xl overflow-hidden z-50 transition-theme max-h-96 flex flex-col">
-                      <div className="p-3 border-b dark:border-zinc-800 flex items-center justify-between shrink-0 bg-zinc-50/50 dark:bg-zinc-950/10">
-                        <span className="text-xs font-bold text-zinc-700 dark:text-zinc-300">
-                          {t('notifications.title', { defaultValue: "Notifications" })} ({unreadCount})
-                        </span>
+                      <div className="p-3 border-b dark:border-zinc-800 flex items-center justify-between shrink-0 bg-zinc-50/50 dark:bg-zinc-950/10 gap-2">
+                        <div className="flex items-center gap-1.5">
+                          <button
+                            onClick={() => setIsNotificationsOpen(false)}
+                            className="text-zinc-450 hover:text-zinc-650 dark:hover:text-zinc-200 transition-colors p-0.5 rounded-md hover:bg-zinc-200/50 dark:hover:bg-zinc-800 cursor-pointer"
+                            title="Close"
+                          >
+                            <X className="h-3.5 w-3.5" />
+                          </button>
+                          <span className="text-xs font-bold text-zinc-700 dark:text-zinc-300">
+                            {t('notifications.title', { defaultValue: "Notifications" })} ({unreadCount})
+                          </span>
+                        </div>
                         {unreadCount > 0 && (
                           <button
                             onClick={() => markAllReadMutation.mutate()}
-                            className="text-[10px] font-bold text-purple-650 hover:text-purple-700 dark:text-purple-400 dark:hover:text-purple-300 cursor-pointer"
+                            className="text-[10px] font-bold text-purple-650 hover:text-purple-700 dark:text-purple-400 dark:hover:text-purple-300 cursor-pointer whitespace-nowrap"
                           >
                             {t('notifications.markAllRead', { defaultValue: "Mark all as read" })}
                           </button>
@@ -1527,6 +2050,15 @@ export const Dashboard: React.FC = () => {
                   className="p-2 text-zinc-555 hover:text-zinc-950 dark:text-zinc-400 dark:hover:text-zinc-55 hover:bg-zinc-100 dark:hover:bg-zinc-800 rounded-lg transition-all cursor-pointer"
                 >
                   {theme === "light" ? <Moon className="h-4 w-4" /> : <Sun className="h-4 w-4" />}
+                </button>
+
+                {/* Scratchpad Trigger Button */}
+                <button
+                  onClick={() => setIsScratchpadOpen(true)}
+                  title={t('scratchpad.scratchpadTitle')}
+                  className="p-2 text-zinc-555 hover:text-zinc-950 dark:text-zinc-400 dark:hover:text-zinc-55 hover:bg-zinc-100 dark:hover:bg-zinc-800 rounded-lg transition-all cursor-pointer"
+                >
+                  <Edit3 className="h-4 w-4" />
                 </button>
 
                 <div className="flex items-center -space-x-2 overflow-hidden rtl:space-x-reverse">
@@ -1738,30 +2270,44 @@ export const Dashboard: React.FC = () => {
                 </div>
 
               </div>
-            ) : activeTab === "dashboard" ? (
-              <DashboardTab
-                workspaceName={activeWorkspace?.name}
-                tasks={workspaceTasks}
-                members={members}
-              />
-            ) : activeTab === "reports" ? (
-              <ReportsTab
-                workspaceName={activeWorkspace?.name}
-                tasks={workspaceTasks}
-                members={members}
-              />
-            ) : activeTab === "gantt" ? (
-              <GanttTab
-                workspaceName={activeWorkspace?.name}
-                tasks={workspaceTasks}
-                onTaskClick={(task) => setSelectedTask(task)}
-              />
-            ) : activeTab === "calendar" ? (
-              <CalendarTab
-                workspaceName={activeWorkspace?.name}
-                tasks={workspaceTasks}
-                onTaskClick={(task) => setSelectedTask(task)}
-              />
+            ) : activeTab === "dashboard" || activeTab === "goals" || activeTab === "reports" || activeTab === "gantt" || activeTab === "calendar" ? (
+              <Suspense fallback={
+                <div className="flex-1 flex items-center justify-center p-8 bg-zinc-50/50 dark:bg-zinc-950/20">
+                  <Loader2 className="h-8 w-8 animate-spin text-purple-500" />
+                </div>
+              }>
+                {activeTab === "dashboard" ? (
+                  <DashboardTab
+                    workspaceName={activeWorkspace?.name}
+                    tasks={workspaceTasks}
+                    members={members}
+                  />
+                ) : activeTab === "goals" ? (
+                  <GoalsTab
+                    workspaceId={activeWorkspace?._id || ""}
+                    members={members}
+                    currentUserRole={currentUserRole}
+                  />
+                ) : activeTab === "reports" ? (
+                  <ReportsTab
+                    workspaceName={activeWorkspace?.name}
+                    tasks={workspaceTasks}
+                    members={members}
+                  />
+                ) : activeTab === "gantt" ? (
+                  <GanttTab
+                    workspaceName={activeWorkspace?.name}
+                    tasks={workspaceTasks}
+                    onTaskClick={(task) => setSelectedTask(task)}
+                  />
+                ) : (
+                  <CalendarTab
+                    workspaceName={activeWorkspace?.name}
+                    tasks={workspaceTasks}
+                    onTaskClick={(task) => setSelectedTask(task)}
+                  />
+                )}
+              </Suspense>
             ) : (
               <div className="flex-1 overflow-x-auto overflow-y-hidden p-6 bg-zinc-50/50 dark:bg-zinc-950/20 transition-theme kanban-scrollbar">
                 <div className="flex gap-4 h-full items-start">
@@ -2133,6 +2679,16 @@ export const Dashboard: React.FC = () => {
 
           </div>
         </div>
+      )}
+
+      {/* Global Widgets & Drawers */}
+      <ScratchpadDrawer
+        isOpen={isScratchpadOpen}
+        onClose={() => setIsScratchpadOpen(false)}
+      />
+
+      {activeWorkspace && (
+        <TimeTrackerWidget tasks={workspaceTasks} />
       )}
 
     </div>
