@@ -56,7 +56,7 @@ export const CreateSpaceModal: React.FC<CreateSpaceModalProps> = ({
               placeholder={t('createSpaceModal.placeholderName')}
               value={newSpaceName}
               onChange={(e) => setNewSpaceName(e.target.value)}
-              className="w-full rounded-xl border border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-955/20 py-2 px-3 text-sm focus:outline-hidden focus:ring-2 focus:ring-purple-500/50 text-zinc-900 dark:text-zinc-100"
+              className="w-full rounded-xl border border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-black/30 py-2 px-3 text-sm focus:outline-hidden focus:ring-2 focus:ring-purple-500/50 text-zinc-900 dark:text-zinc-100"
               required
             />
           </div>
@@ -66,7 +66,7 @@ export const CreateSpaceModal: React.FC<CreateSpaceModalProps> = ({
               placeholder={t('createSpaceModal.placeholderDesc')}
               value={newSpaceDescription}
               onChange={(e) => setNewSpaceDescription(e.target.value)}
-              className="w-full rounded-xl border border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-955/20 py-2 px-3 text-sm focus:outline-hidden focus:ring-2 focus:ring-purple-500/50 h-20 text-zinc-900 dark:text-zinc-100"
+              className="w-full rounded-xl border border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-black/30 py-2 px-3 text-sm focus:outline-hidden focus:ring-2 focus:ring-purple-500/50 h-20 text-zinc-900 dark:text-zinc-100"
             />
           </div>
           <div className="space-y-1">
@@ -78,7 +78,7 @@ export const CreateSpaceModal: React.FC<CreateSpaceModalProps> = ({
                   type="button"
                   onClick={() => setNewSpaceColor(c)}
                   className={`h-7 w-7 rounded-full border-2 transition-all cursor-pointer ${
-                    newSpaceColor === c ? "border-zinc-955 dark:border-white scale-110" : "border-transparent hover:scale-105"
+                    newSpaceColor === c ? "border-zinc-950 dark:border-white scale-110" : "border-transparent hover:scale-105"
                   }`}
                   style={{ backgroundColor: c }}
                 />

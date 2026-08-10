@@ -47,7 +47,7 @@ export const CreateWorkspaceModal: React.FC<CreateWorkspaceModalProps> = ({
               placeholder={t('createWorkspaceModal.placeholder')}
               value={newWorkspaceName}
               onChange={(e) => setNewWorkspaceName(e.target.value)}
-              className="w-full rounded-xl border border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-955/20 py-2 px-3 text-sm focus:outline-hidden focus:ring-2 focus:ring-purple-500/50 text-zinc-900 dark:text-zinc-100"
+              className="w-full rounded-xl border border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-black/30 py-2 px-3 text-sm focus:outline-hidden focus:ring-2 focus:ring-purple-500/50 text-zinc-900 dark:text-zinc-100"
               required
             />
           </div>

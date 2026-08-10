@@ -136,7 +136,7 @@ export const KanbanColumn: React.FC<KanbanColumnProps> = ({
         <div className="flex items-center">
           <button
             onClick={() => onAddTaskClick(list._id)}
-            className="p-1 hover:bg-zinc-200 dark:hover:bg-zinc-850 rounded-md text-zinc-500 hover:text-zinc-955 dark:hover:text-zinc-55 transition-all cursor-pointer"
+            className="p-1 hover:bg-zinc-200 dark:hover:bg-zinc-850 rounded-md text-zinc-500 hover:text-zinc-950 dark:hover:text-zinc-55 transition-all cursor-pointer"
           >
             <Plus className="h-3.5 w-3.5" />
           </button>

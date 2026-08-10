@@ -547,7 +547,7 @@ export const TaskDetailsModal: React.FC<TaskDetailsModalProps> = ({
                   <textarea
                     value={description}
                     onChange={(e) => setDescription(e.target.value)}
-                    className="w-full rounded-xl border border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-955/20 py-2.5 px-3 text-sm focus:ring-2 focus:ring-purple-500/50 h-32"
+                    className="w-full rounded-xl border border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-black/30 py-2.5 px-3 text-sm focus:ring-2 focus:ring-purple-500/50 h-32"
                   />
                   <div className="flex justify-end gap-2">
                     <button
