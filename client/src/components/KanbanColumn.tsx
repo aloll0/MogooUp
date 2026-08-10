@@ -4,6 +4,8 @@ import { useTranslation } from "react-i18next";
 import { taskflowService } from "../services/taskflowService";
 import type { List, Task } from "../services/taskflowService";
 import { Plus, Trash2, Paperclip, CheckSquare, Loader2 } from "lucide-react";
+import { useToastStore } from "../stores/useToastStore";
+import { useConfirmStore } from "../stores/useConfirmStore";
 
 // Static reference to prevent empty array literals from re-allocating memory and triggering render loops
 const EMPTY_ARRAY: any[] = [];
@@ -25,6 +27,7 @@ interface KanbanColumnProps {
   list: List;
   onAddTaskClick: (listId: string) => void;
   onDeleteTask: (taskId: string) => void;
+  deletingTaskId?: string;
   onMoveTask: (taskId: string, listId: string, status: string) => void;
   onTaskClick: (task: Task) => void;
   allLists: List[];
@@ -35,6 +38,7 @@ export const KanbanColumn: React.FC<KanbanColumnProps> = ({
   list,
   onAddTaskClick,
   onDeleteTask,
+  deletingTaskId,
   onMoveTask,
   onTaskClick,
   allLists: _allLists,
@@ -159,17 +163,25 @@ export const KanbanColumn: React.FC<KanbanColumnProps> = ({
             const coverImage = task.attachments?.find((att) =>
               att.url.startsWith("data:image/") || att.name.match(/\.(jpeg|jpg|gif|png|webp)/i)
             );
+            const isDeleting = deletingTaskId === task._id;
             return (
               <div
                 key={task._id}
-                onClick={() => onTaskClick(task)}
-                draggable
+                onClick={() => !isDeleting && onTaskClick(task)}
+                draggable={!isDeleting}
                 onDragStart={(e) => {
                   e.stopPropagation();
                   e.dataTransfer.setData("text/plain", task._id);
                 }}
-                className="bg-white dark:bg-zinc-800 border border-zinc-200/80 dark:border-zinc-800/80 p-3 rounded-lg shadow-sm hover:shadow-md transition-all relative group text-start cursor-grab active:cursor-grabbing overflow-hidden"
+                className={`bg-white dark:bg-zinc-800 border border-zinc-200/80 dark:border-zinc-800/80 p-3 rounded-lg shadow-sm hover:shadow-md transition-all relative group text-start cursor-grab active:cursor-grabbing overflow-hidden ${
+                  isDeleting ? "opacity-40 pointer-events-none" : ""
+                }`}
               >
+                {isDeleting && (
+                  <div className="absolute inset-0 bg-zinc-950/10 dark:bg-black/40 flex items-center justify-center z-20">
+                    <Loader2 className="h-5 w-5 animate-spin text-purple-600 dark:text-purple-400" />
+                  </div>
+                )}
                 {coverImage && (
                   <div className="h-28 -mx-3 -mt-3 mb-3 overflow-hidden border-b border-zinc-200 dark:border-zinc-800">
                     <img
@@ -186,13 +198,19 @@ export const KanbanColumn: React.FC<KanbanColumnProps> = ({
                   </span>
 
                   <button
-                    onClick={(e) => {
+                    onClick={async (e) => {
                       e.stopPropagation();
                       if (!["owner", "admin", "manager"].includes(currentUserRole)) {
-                        alert(t('warnings.notAuthorizedDeleteTask'));
+                        useToastStore.getState().addToast(t('warnings.notAuthorizedDeleteTask'), "warning");
                         return;
                       }
-                      if (confirm(t('kanban.confirmDeleteTask'))) {
+                      const confirmed = await useConfirmStore.getState().show({
+                        title: t('kanban.deleteTaskTitle', { defaultValue: "Delete Task" }),
+                        message: t('kanban.confirmDeleteTask'),
+                        confirmText: t('common.delete', { defaultValue: "Delete" }),
+                        cancelText: t('common.cancel', { defaultValue: "Cancel" }),
+                      });
+                      if (confirmed) {
                         onDeleteTask(task._id);
                       }
                     }}

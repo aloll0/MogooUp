@@ -20,6 +20,14 @@ export const CreateSpaceModal: React.FC<CreateSpaceModalProps> = ({
   const [newSpaceDescription, setNewSpaceDescription] = useState("");
   const [newSpaceColor, setNewSpaceColor] = useState("#aa3bff");
 
+  React.useEffect(() => {
+    if (!isOpen) {
+      setNewSpaceName("");
+      setNewSpaceDescription("");
+      setNewSpaceColor("#aa3bff");
+    }
+  }, [isOpen]);
+
   if (!isOpen) return null;
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -30,10 +38,6 @@ export const CreateSpaceModal: React.FC<CreateSpaceModalProps> = ({
       description: newSpaceDescription,
       color: newSpaceColor,
     });
-    // Reset state
-    setNewSpaceName("");
-    setNewSpaceDescription("");
-    setNewSpaceColor("#aa3bff");
   };
 
   return (

@@ -18,13 +18,18 @@ export const CreateWorkspaceModal: React.FC<CreateWorkspaceModalProps> = ({
   const { t } = useTranslation();
   const [newWorkspaceName, setNewWorkspaceName] = useState("");
 
+  React.useEffect(() => {
+    if (!isOpen) {
+      setNewWorkspaceName("");
+    }
+  }, [isOpen]);
+
   if (!isOpen) return null;
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!newWorkspaceName.trim()) return;
     onSubmit(newWorkspaceName);
-    setNewWorkspaceName("");
   };
 
   return (

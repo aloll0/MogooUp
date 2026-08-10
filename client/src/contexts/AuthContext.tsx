@@ -1,5 +1,6 @@
 import React, { createContext, useContext, useState, useEffect } from "react";
 import { api, setAccessToken } from "../services/api";
+import { useQueryClient } from "@tanstack/react-query";
 
 export interface User {
   id: string;
@@ -23,6 +24,7 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [user, setUser] = useState<User | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const queryClient = useQueryClient();
 
   // Initialize session by refreshing the access token silently on load
   useEffect(() => {
@@ -52,6 +54,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     try {
       const response = await api.post("/auth/login", { email, password });
       const { user: loggedInUser, accessToken } = response.data.data;
+      queryClient.clear();
       setAccessToken(accessToken);
       setUser(loggedInUser);
     } catch (error) {
@@ -74,6 +77,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     } finally {
       setAccessToken(null);
       setUser(null);
+      queryClient.clear();
       setIsLoading(false);
     }
   };

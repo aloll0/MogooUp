@@ -18,13 +18,18 @@ export const CreateListModal: React.FC<CreateListModalProps> = ({
   const { t } = useTranslation();
   const [newListName, setNewListName] = useState("");
 
+  React.useEffect(() => {
+    if (!isOpen) {
+      setNewListName("");
+    }
+  }, [isOpen]);
+
   if (!isOpen) return null;
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!newListName.trim()) return;
     onSubmit(newListName);
-    setNewListName("");
   };
 
   return (
