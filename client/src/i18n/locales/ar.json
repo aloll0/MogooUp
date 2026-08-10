@@ -14,7 +14,7 @@
     "goals": "الأهداف الإستراتيجية و OKRs"
   },
   "welcome": {
-    "title": "مرحباً بك في تيسك فلو!",
+    "title": "مرحباً بك في Taskflow!",
     "subtitle": "تتطلب كل مساحة مشروع مساحة عمل للبدء. قم بإعداد مساحة العمل الخاصة بك لإطلاق القوائم وبطاقات كانبان.",
     "btnCreateWs": "إنشاء مساحة العمل الأولى الخاصة بك"
   },
@@ -226,5 +226,41 @@
     "confirmDeleteGoal": "هل أنت متأكد من حذف هذا الهدف؟",
     "goalDetails": "تفاصيل الهدف",
     "editGoal": "تعديل تفاصيل الهدف"
+  },
+  "auth": {
+    "signInTitle": "تسجيل الدخول",
+    "signUpTitle": "إنشاء حساب",
+    "signInSubtitle": "تسجيل الدخول إلى Taskflow",
+    "signUpSubtitle": "إنشاء حساب جديد",
+    "newToTaskflow": "جديد في Taskflow؟",
+    "createFreeAccount": "أنشئ حساباً مجانياً",
+    "alreadyHaveAccount": "لديك حساب بالفعل؟",
+    "signIn": "تسجيل الدخول",
+    "register": "إنشاء حساب",
+    "emailLabel": "البريد الإلكتروني",
+    "emailPlaceholder": "name@example.com",
+    "passwordLabel": "كلمة المرور",
+    "passwordPlaceholder": "أدخل كلمة المرور",
+    "fullNameLabel": "الاسم الكامل",
+    "fullNamePlaceholder": "جون دو",
+    "createPasswordPlaceholder": "أنشئ كلمة مرور قوية",
+    "forgotPassword": "نسيت كلمة المرور؟",
+    "signingIn": "جاري الدخول...",
+    "creatingAccount": "جاري إنشاء الحساب...",
+    "checkEmailTitle": "تحقق من بريدك الإلكتروني",
+    "checkEmailDesc": "لقد أرسلنا رابط تحقق إلى بريدك الإلكتروني. يرجى الضغط على الرابط لتفعيل حسابك والبدء في استخدام Taskflow.",
+    "goToLogin": "الذهاب لصفحة تسجيل الدخول",
+    "adventureTitle": "سجل دخولك لتبدأ مغامرتك!",
+    "adventureSubtitle": "الجيل القادم من مساحات إدارة المشاريع لتوحيد المهام، الدورات، المستندات، والتعاون الجماعي في بيئة عمل فائقة السرعة.",
+    "poweredBy": "POWERED BY ARAB PRO"
+  },
+  "validation": {
+    "invalidEmail": "يرجى إدخال بريد إلكتروني صالح",
+    "passwordRequired": "كلمة المرور مطلوبة",
+    "nameMin": "يجب أن يكون الاسم الكامل حرفين على الأقل",
+    "passwordMin": "يجب أن تكون كلمة المرور 8 أحرف على الأقل",
+    "passwordLower": "يجب أن تحتوي على حرف صغير واحد على الأقل",
+    "passwordUpper": "يجب أن تحتوي على حرف كبير واحد على الأقل",
+    "passwordNumber": "يجب أن تحتوي على رقم واحد على الأقل"
   }
 }

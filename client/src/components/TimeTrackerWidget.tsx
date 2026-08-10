@@ -146,7 +146,7 @@ export const TimeTrackerWidget: React.FC<TimeTrackerWidgetProps> = ({ tasks }) =
     <>
       {/* Floating Widget Bar */}
       <div
-        className={`fixed bottom-6 right-6 z-40 bg-zinc-900 text-zinc-100 rounded-2xl shadow-2xl border border-zinc-800 transition-all duration-300 overflow-hidden ${
+        className={`fixed bottom-6 ltr:right-6 ltr:left-auto rtl:left-6 rtl:right-auto z-40 bg-zinc-900 text-zinc-100 rounded-2xl shadow-2xl border border-zinc-800 transition-all duration-300 overflow-hidden ${
           isMinimized ? "w-44" : "w-80"
         }`}
       >
@@ -253,7 +253,7 @@ export const TimeTrackerWidget: React.FC<TimeTrackerWidgetProps> = ({ tasks }) =
           <div className="bg-white dark:bg-zinc-900 border dark:border-zinc-800 w-full max-w-md rounded-2xl overflow-hidden shadow-2xl p-6 relative">
             <button
               onClick={() => setIsLogModalOpen(false)}
-              className="absolute top-4 right-4 text-zinc-400 hover:text-zinc-650 dark:hover:text-zinc-200 cursor-pointer"
+              className="absolute top-4 ltr:right-4 ltr:left-auto rtl:left-4 rtl:right-auto text-zinc-400 hover:text-zinc-650 dark:hover:text-zinc-200 cursor-pointer"
             >
               <X className="h-5 w-5" />
             </button>

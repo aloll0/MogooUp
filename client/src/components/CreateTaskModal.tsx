@@ -56,7 +56,7 @@ export const CreateTaskModal: React.FC<CreateTaskModalProps> = ({
               placeholder={t('createTaskModal.placeholderTitle')}
               value={newTaskTitle}
               onChange={(e) => setNewTaskTitle(e.target.value)}
-              className="w-full rounded-xl border border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-955/20 py-2 px-3 text-sm focus:outline-hidden focus:ring-2 focus:ring-purple-500/50 text-zinc-900 dark:text-zinc-100"
+              className="w-full rounded-xl border border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-black/30 py-2 px-3 text-sm focus:outline-hidden focus:ring-2 focus:ring-purple-500/50 text-zinc-900 dark:text-zinc-100"
               required
             />
           </div>
@@ -66,7 +66,7 @@ export const CreateTaskModal: React.FC<CreateTaskModalProps> = ({
               placeholder={t('createTaskModal.placeholderDesc')}
               value={newTaskDesc}
               onChange={(e) => setNewTaskDesc(e.target.value)}
-              className="w-full rounded-xl border border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-955/20 py-2 px-3 text-sm focus:outline-hidden focus:ring-2 focus:ring-purple-500/50 h-20 text-zinc-900 dark:text-zinc-100"
+              className="w-full rounded-xl border border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-black/30 py-2 px-3 text-sm focus:outline-hidden focus:ring-2 focus:ring-purple-500/50 h-20 text-zinc-900 dark:text-zinc-100"
             />
           </div>
           <div className="space-y-1">

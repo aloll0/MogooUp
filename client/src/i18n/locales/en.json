@@ -226,5 +226,41 @@
     "confirmDeleteGoal": "Are you sure you want to delete this goal?",
     "goalDetails": "Goal Details",
     "editGoal": "Edit Goal Details"
+  },
+  "auth": {
+    "signInTitle": "Sign In",
+    "signUpTitle": "Sign Up",
+    "signInSubtitle": "Sign in to Taskflow",
+    "signUpSubtitle": "Create an account",
+    "newToTaskflow": "New to Taskflow?",
+    "createFreeAccount": "Create a free account",
+    "alreadyHaveAccount": "Already have an account?",
+    "signIn": "Sign In",
+    "register": "Register",
+    "emailLabel": "Email Address",
+    "emailPlaceholder": "name@example.com",
+    "passwordLabel": "Password",
+    "passwordPlaceholder": "Enter password",
+    "fullNameLabel": "Full Name",
+    "fullNamePlaceholder": "John Doe",
+    "createPasswordPlaceholder": "Create a strong password",
+    "forgotPassword": "Forgot password?",
+    "signingIn": "Signing in...",
+    "creatingAccount": "Creating account...",
+    "checkEmailTitle": "Check your email",
+    "checkEmailDesc": "We've sent a verification link to your email address. Please click the link to verify your account and activate Taskflow.",
+    "goToLogin": "Go to Login",
+    "adventureTitle": "SIGN IN TO YOUR ADVENTURE!",
+    "adventureSubtitle": "The next-generation project space unifying tasks, sprints, docs, and team collaboration in one extremely fast workspace.",
+    "poweredBy": "POWERED BY ARAB PRO"
+  },
+  "validation": {
+    "invalidEmail": "Please enter a valid email address",
+    "passwordRequired": "Password is required",
+    "nameMin": "Full name must be at least 2 characters long",
+    "passwordMin": "Password must be at least 8 characters long",
+    "passwordLower": "Must include at least one lowercase letter",
+    "passwordUpper": "Must include at least one uppercase letter",
+    "passwordNumber": "Must include at least one number"
   }
 }
