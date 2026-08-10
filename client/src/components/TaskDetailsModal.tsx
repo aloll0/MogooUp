@@ -15,6 +15,8 @@ import {
   Check,
   Loader2,
 } from "lucide-react";
+import { useToastStore } from "../stores/useToastStore";
+import { useConfirmStore } from "../stores/useConfirmStore";
 
 // Static reference to prevent empty array literals from re-allocating memory and triggering render loops
 const EMPTY_ARRAY: any[] = [];
@@ -44,6 +46,7 @@ export const TaskDetailsModal: React.FC<TaskDetailsModalProps> = ({
   const [priority, setPriority] = useState(task.priority);
   const [listId, setListId] = useState(task.listId);
   const [isUploading, setIsUploading] = useState(false);
+  const [deletingAttachmentId, setDeletingAttachmentId] = useState<string | null>(null);
 
   // Date states
   const [startDate, setStartDate] = useState(task.startDate ? task.startDate.substring(0, 10) : "");
@@ -251,8 +254,66 @@ export const TaskDetailsModal: React.FC<TaskDetailsModalProps> = ({
   // Mutations
   const updateTaskMutation = useMutation({
     mutationFn: (updateData: Partial<Task>) => taskflowService.updateTask(task._id, updateData),
-    onSuccess: () => {
+    onMutate: async (updateData) => {
+      // Cancel outgoing refetches so they don't overwrite our optimistic update
+      await queryClient.cancelQueries({ queryKey: ["tasks"] });
+      await queryClient.cancelQueries({ queryKey: ["workspaceTasks"] });
+
+      // Snapshot previous caches
+      const previousWorkspaceQueries = queryClient.getQueriesData({ queryKey: ["workspaceTasks"] });
+      const previousColumnTasks = queryClient.getQueryData(["tasks", task.listId]);
+
+      // Optimistically update ["workspaceTasks", ...]
+      queryClient.setQueriesData({ queryKey: ["workspaceTasks"] }, (oldData: Task[] | undefined) => {
+        if (!oldData) return oldData;
+        return oldData.map((t) => (t._id === task._id ? { ...t, ...updateData } : t));
+      });
+
+      // Optimistically update ["tasks", listId]
+      queryClient.setQueryData(["tasks", task.listId], (oldData: Task[] | undefined) => {
+        if (!oldData) return oldData;
+        
+        // If listId changed, we might need to remove it from this list or move it
+        if (updateData.listId && updateData.listId !== task.listId) {
+          // Remove from source list
+          return oldData.filter((t) => t._id !== task._id);
+        }
+        
+        return oldData.map((t) => (t._id === task._id ? { ...t, ...updateData } : t));
+      });
+
+      // If listId changed, we also need to add it to the target list
+      let previousTargetTasks: Task[] | undefined;
+      if (updateData.listId && updateData.listId !== task.listId) {
+        previousTargetTasks = queryClient.getQueryData(["tasks", updateData.listId]);
+        queryClient.setQueryData(["tasks", updateData.listId], (oldData: Task[] | undefined) => {
+          const targetTasks = oldData || [];
+          const updatedTask = { ...task, ...updateData };
+          if (!targetTasks.some((t) => t._id === task._id)) {
+            return [...targetTasks, updatedTask];
+          }
+          return targetTasks.map((t) => (t._id === task._id ? updatedTask : t));
+        });
+      }
+
+      return { previousWorkspaceQueries, previousColumnTasks, previousTargetTasks, targetListId: updateData.listId };
+    },
+    onError: (_err, _updateData, context) => {
+      // Rollback on error
+      if (context) {
+        context.previousWorkspaceQueries.forEach(([queryKey, oldData]) => {
+          queryClient.setQueryData(queryKey, oldData);
+        });
+        queryClient.setQueryData(["tasks", task.listId], context.previousColumnTasks);
+        if (context.targetListId && context.previousTargetTasks) {
+          queryClient.setQueryData(["tasks", context.targetListId], context.previousTargetTasks);
+        }
+      }
+    },
+    onSettled: () => {
+      // Invalidate queries to sync with backend
       queryClient.invalidateQueries({ queryKey: ["tasks"] });
+      queryClient.invalidateQueries({ queryKey: ["workspaceTasks"] });
     },
   });
 
@@ -327,12 +388,27 @@ export const TaskDetailsModal: React.FC<TaskDetailsModalProps> = ({
           attachments: [...currentAttachments, newAttachment],
         });
       } catch (err) {
-        alert(t('taskModal.uploadCoverFailed'));
+        useToastStore.getState().addToast(t('taskModal.uploadCoverFailed'), "error");
       } finally {
         setIsUploading(false);
       }
     };
     reader.readAsDataURL(file);
+  };
+
+  const handleDeleteAttachment = async (publicId: string) => {
+    setDeletingAttachmentId(publicId);
+    try {
+      const currentAttachments = task.attachments || [];
+      const updatedAttachments = currentAttachments.filter((att) => (att.publicId || att.name) !== publicId);
+      await updateTaskMutation.mutateAsync({
+        attachments: updatedAttachments,
+      });
+    } catch (err) {
+      useToastStore.getState().addToast("Failed to delete attachment", "error");
+    } finally {
+      setDeletingAttachmentId(null);
+    }
   };
 
   const handlePostComment = (e: React.FormEvent) => {
@@ -355,7 +431,7 @@ export const TaskDetailsModal: React.FC<TaskDetailsModalProps> = ({
     e.preventDefault();
     const hours = Number(logHours);
     if (isNaN(hours) || hours <= 0) {
-      alert("Please enter a valid number of hours.");
+      useToastStore.getState().addToast("Please enter a valid number of hours.", "warning");
       return;
     }
 
@@ -669,20 +745,62 @@ export const TaskDetailsModal: React.FC<TaskDetailsModalProps> = ({
                 />
               </div>
 
-              {task.attachments && task.attachments.length > 0 ? (
+              {(task.attachments && task.attachments.length > 0) || isUploading ? (
                 <div className="grid grid-cols-3 gap-2.5">
-                  {task.attachments.map((att, idx) => (
-                    <div
-                      key={idx}
-                      onClick={() => setPreviewImageUrl(att.url)}
-                      className="group border border-zinc-200 dark:border-zinc-800 rounded-lg overflow-hidden relative h-20 cursor-zoom-in hover:border-purple-500/50 transition-all"
-                    >
-                      <img src={att.url} alt={att.name} className="w-full h-full object-cover" />
-                      <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
-                        <span className="text-[10px] text-white font-semibold truncate px-2">{att.name}</span>
+                  {task.attachments && task.attachments.map((att, idx) => {
+                    const uniqueId = att.publicId || att.name || `b64-${idx}`;
+                    const isDeleting = deletingAttachmentId === uniqueId;
+                    return (
+                      <div
+                        key={idx}
+                        className="group border border-zinc-200 dark:border-zinc-800 rounded-lg overflow-hidden relative h-20 hover:border-purple-500/50 transition-all"
+                      >
+                        <img
+                          src={att.url}
+                          alt={att.name}
+                          onClick={() => !isDeleting && setPreviewImageUrl(att.url)}
+                          className="w-full h-full object-cover cursor-zoom-in"
+                        />
+                        <div
+                          onClick={() => !isDeleting && setPreviewImageUrl(att.url)}
+                          className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center cursor-zoom-in"
+                        >
+                          <span className="text-[10px] text-white font-semibold truncate px-2">{att.name}</span>
+                        </div>
+
+                        {isDeleting ? (
+                          <div className="absolute inset-0 bg-black/60 flex items-center justify-center z-10">
+                            <Loader2 className="h-5 w-5 animate-spin text-purple-500" />
+                          </div>
+                        ) : (
+                          <button
+                            type="button"
+                            onClick={async (e) => {
+                              e.stopPropagation();
+                              const confirmed = await useConfirmStore.getState().show({
+                                title: t('taskModal.deleteAttachmentTitle', { defaultValue: "Delete Attachment" }),
+                                message: t('taskModal.confirmDeleteAttachment', { defaultValue: "Are you sure you want to delete this attachment?" }),
+                                confirmText: t('common.delete', { defaultValue: "Delete" }),
+                                cancelText: t('common.cancel', { defaultValue: "Cancel" }),
+                              });
+                              if (confirmed) {
+                                handleDeleteAttachment(uniqueId);
+                              }
+                            }}
+                            className="absolute top-1 right-1 p-1 bg-red-650 hover:bg-red-750 text-white rounded-md opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer z-10 shadow-sm"
+                            title={t('taskModal.deleteAttachment', { defaultValue: "Delete Attachment" })}
+                          >
+                            <Trash2 className="h-3.5 w-3.5" />
+                          </button>
+                        )}
                       </div>
+                    );
+                  })}
+                  {isUploading && (
+                    <div className="border border-zinc-200 dark:border-zinc-800 rounded-lg overflow-hidden flex items-center justify-center h-20 bg-zinc-100/50 dark:bg-zinc-800/20 animate-pulse">
+                      <Loader2 className="h-5 w-5 animate-spin text-purple-650 dark:text-purple-400" />
                     </div>
-                  ))}
+                  )}
                 </div>
               ) : (
                 <p className="text-xs text-zinc-400 dark:text-zinc-555 italic">{t('taskModal.noAttachments')}</p>

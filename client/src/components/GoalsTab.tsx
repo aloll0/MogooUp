@@ -17,6 +17,8 @@ import {
 } from "lucide-react";
 import { taskflowService } from "../services/taskflowService";
 import type { Goal, KeyResult } from "../services/taskflowService";
+import { useToastStore } from "../stores/useToastStore";
+import { useConfirmStore } from "../stores/useConfirmStore";
 
 interface GoalsTabProps {
   workspaceId: string;
@@ -101,7 +103,7 @@ export const GoalsTab: React.FC<GoalsTabProps> = ({ workspaceId, members: _membe
     const targetVal = Number(krTarget);
     
     if (isNaN(startVal) || isNaN(targetVal)) {
-      alert("Values must be numbers");
+      useToastStore.getState().addToast("Values must be numbers", "warning");
       return;
     }
 
@@ -137,13 +139,19 @@ export const GoalsTab: React.FC<GoalsTabProps> = ({ workspaceId, members: _membe
     });
   };
 
-  const handleDeleteGoal = (goalId: string) => {
+  const handleDeleteGoal = async (goalId: string) => {
     if (!["owner", "admin", "manager"].includes(currentUserRole)) {
-      alert(t("warnings.notAdminSpace"));
+      useToastStore.getState().addToast(t("warnings.notAdminSpace"), "warning");
       return;
     }
 
-    if (confirm(t("goalsTab.confirmDeleteGoal"))) {
+    const confirmed = await useConfirmStore.getState().show({
+      title: t("goalsTab.deleteGoalTitle", { defaultValue: "Delete Strategic Goal" }),
+      message: t("goalsTab.confirmDeleteGoal"),
+      confirmText: t("common.delete", { defaultValue: "Delete" }),
+      cancelText: t("common.cancel", { defaultValue: "Cancel" }),
+    });
+    if (confirmed) {
       deleteGoalMutation.mutate(goalId);
     }
   };

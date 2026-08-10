@@ -20,6 +20,14 @@ export const CreateTaskModal: React.FC<CreateTaskModalProps> = ({
   const [newTaskDesc, setNewTaskDesc] = useState("");
   const [newTaskPriority, setNewTaskPriority] = useState<"low" | "medium" | "high" | "urgent">("medium");
 
+  React.useEffect(() => {
+    if (!isOpen) {
+      setNewTaskTitle("");
+      setNewTaskDesc("");
+      setNewTaskPriority("medium");
+    }
+  }, [isOpen]);
+
   if (!isOpen) return null;
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -30,10 +38,6 @@ export const CreateTaskModal: React.FC<CreateTaskModalProps> = ({
       description: newTaskDesc,
       priority: newTaskPriority,
     });
-    // Reset state
-    setNewTaskTitle("");
-    setNewTaskDesc("");
-    setNewTaskPriority("medium");
   };
 
   return (

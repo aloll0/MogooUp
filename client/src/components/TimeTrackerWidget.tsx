@@ -6,6 +6,7 @@ import { taskflowService } from "../services/taskflowService";
 import type { Task } from "../services/taskflowService";
 import { useQueryClient } from "@tanstack/react-query";
 import { useAuth } from "../contexts/AuthContext";
+import { useToastStore } from "../stores/useToastStore";
 
 interface TimeTrackerWidgetProps {
   tasks: Task[];
@@ -100,7 +101,7 @@ export const TimeTrackerWidget: React.FC<TimeTrackerWidgetProps> = ({ tasks }) =
 
     const hoursVal = Number(logHours);
     if (isNaN(hoursVal) || hoursVal <= 0) {
-      alert("Please enter a valid number of hours.");
+      useToastStore.getState().addToast("Please enter a valid number of hours.", "warning");
       return;
     }
 
@@ -133,7 +134,7 @@ export const TimeTrackerWidget: React.FC<TimeTrackerWidgetProps> = ({ tasks }) =
       queryClient.invalidateQueries({ queryKey: ["task", task._id] });
     } catch (err) {
       console.error("Failed to log tracked time", err);
-      alert("Error saving time log.");
+      useToastStore.getState().addToast("Error saving time log.", "error");
     } finally {
       setIsSaving(false);
     }
@@ -147,14 +148,14 @@ export const TimeTrackerWidget: React.FC<TimeTrackerWidgetProps> = ({ tasks }) =
       {/* Floating Widget Bar */}
       <div
         className={`fixed bottom-6 ltr:right-6 ltr:left-auto rtl:left-6 rtl:right-auto z-40 bg-zinc-900 text-zinc-100 rounded-2xl shadow-2xl border border-zinc-800 transition-all duration-300 overflow-hidden ${
-          isMinimized ? "w-44" : "w-80"
+          isMinimized ? "w-48" : "w-80"
         }`}
       >
         {/* Header Title / Toggle */}
         <div className="flex items-center justify-between p-3.5 bg-zinc-950 border-b border-zinc-800">
           <div className="flex items-center gap-2 font-bold text-xs select-none">
             <Clock className={`h-4 w-4 ${activeTaskId && !isPaused ? "text-purple-400 animate-pulse" : "text-zinc-400"}`} />
-            <span>{t("timeTracker.timeTracker")}</span>
+            <span>{t("timeTracker.timeTracker")} {isMinimized && activeTaskId && `(${displayTime})`}</span>
           </div>
 
           <button
@@ -166,7 +167,8 @@ export const TimeTrackerWidget: React.FC<TimeTrackerWidgetProps> = ({ tasks }) =
         </div>
 
         {/* Contents */}
-        <div className="p-4 space-y-3">
+        {!isMinimized && (
+          <div className="p-4 space-y-3">
           {activeTaskId ? (
             // Timer active status layout
             <div className="space-y-3">
@@ -245,6 +247,7 @@ export const TimeTrackerWidget: React.FC<TimeTrackerWidgetProps> = ({ tasks }) =
             )
           )}
         </div>
+        )}
       </div>
 
       {/* Log tracked hours modal popup */}

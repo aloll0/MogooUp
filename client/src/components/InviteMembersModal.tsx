@@ -1,6 +1,7 @@
 import React, { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { X, Loader2 } from "lucide-react";
+import { useConfirmStore } from "../stores/useConfirmStore";
 
 interface InviteMembersModalProps {
   isOpen: boolean;
@@ -133,9 +134,15 @@ export const InviteMembersModal: React.FC<InviteMembersModalProps> = ({
                       {canEditRole ? (
                         <select
                           value={m.role}
-                          onChange={(e) => {
+                          onChange={async (e) => {
                             const newRole = e.target.value;
-                            if (confirm(t('workspaceMembersModal.confirmRoleChange'))) {
+                            const confirmed = await useConfirmStore.getState().show({
+                              title: t('workspaceMembersModal.confirmRoleChangeTitle', { defaultValue: "Change Member Role" }),
+                              message: t('workspaceMembersModal.confirmRoleChange'),
+                              confirmText: t('common.save', { defaultValue: "Save" }),
+                              cancelText: t('common.cancel', { defaultValue: "Cancel" }),
+                            });
+                            if (confirmed) {
                               onUpdateRole(m.userId?._id, newRole);
                             }
                           }}

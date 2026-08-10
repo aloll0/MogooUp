@@ -6,6 +6,7 @@ import { useTranslation } from "react-i18next";
 import { motion, AnimatePresence } from "framer-motion";
 import { taskflowService } from "../services/taskflowService";
 import type { Workspace, Space, Task } from "../services/taskflowService";
+import { useToastStore } from "../stores/useToastStore";
 
 const DashboardTab = lazy(() => import("../components/DashboardTab").then(m => ({ default: m.DashboardTab })));
 const ReportsTab = lazy(() => import("../components/ReportsTab").then(m => ({ default: m.ReportsTab })));
@@ -258,6 +259,7 @@ export const Dashboard: React.FC = () => {
       taskflowService.createTask(data),
     onSuccess: (_, variables) => {
       queryClient.invalidateQueries({ queryKey: ["tasks", variables.listId] });
+      queryClient.invalidateQueries({ queryKey: ["workspaceTasks", activeWorkspace?._id] });
       setIsTaskModalOpen(false);
       setTargetListIdForTask(null);
     },
@@ -266,15 +268,125 @@ export const Dashboard: React.FC = () => {
   const moveTaskMutation = useMutation({
     mutationFn: (data: { taskId: string; listId: string; status: string }) =>
       taskflowService.updateTask(data.taskId, { listId: data.listId, status: data.status }),
-    onSuccess: () => {
+    onMutate: async (variables) => {
+      // Cancel outgoing refetches so they don't overwrite our optimistic update
+      await queryClient.cancelQueries({ queryKey: ["tasks"] });
+      await queryClient.cancelQueries({ queryKey: ["workspaceTasks", activeWorkspace?._id] });
+
+      // Snapshot the previous values
+      const previousWorkspaceTasks = queryClient.getQueryData(["workspaceTasks", activeWorkspace?._id]);
+
+      // Find the task to get its source list ID
+      const allTasks = (previousWorkspaceTasks as Task[]) || [];
+      const taskToMove = allTasks.find((t) => t._id === variables.taskId);
+
+      let previousSourceTasks: Task[] | undefined;
+      let previousTargetTasks: Task[] | undefined;
+      const sourceListId = taskToMove?.listId;
+      const targetListId = variables.listId;
+
+      if (sourceListId) {
+        previousSourceTasks = queryClient.getQueryData(["tasks", sourceListId]);
+      }
+      previousTargetTasks = queryClient.getQueryData(["tasks", targetListId]);
+
+      // Optimistically update workspace tasks
+      if (taskToMove) {
+        const updatedTask = { ...taskToMove, listId: targetListId, status: variables.status };
+        
+        queryClient.setQueryData(
+          ["workspaceTasks", activeWorkspace?._id],
+          allTasks.map((t) => (t._id === variables.taskId ? updatedTask : t))
+        );
+
+        // Optimistically update source list tasks
+        if (sourceListId) {
+          const sourceTasks = (previousSourceTasks || []).filter((t) => t._id !== variables.taskId);
+          queryClient.setQueryData(["tasks", sourceListId], sourceTasks);
+        }
+
+        // Optimistically update target list tasks
+        const targetTasks = previousTargetTasks || [];
+        // Make sure it doesn't already exist in target
+        if (!targetTasks.some((t) => t._id === variables.taskId)) {
+          queryClient.setQueryData(["tasks", targetListId], [...targetTasks, updatedTask]);
+        }
+      }
+
+      // Return context with snapshotted values
+      return { previousWorkspaceTasks, previousSourceTasks, previousTargetTasks, sourceListId, targetListId };
+    },
+    onError: (_err, _variables, context) => {
+      // Rollback to the previous values on error
+      if (context) {
+        queryClient.setQueryData(["workspaceTasks", activeWorkspace?._id], context.previousWorkspaceTasks);
+        if (context.sourceListId) {
+          queryClient.setQueryData(["tasks", context.sourceListId], context.previousSourceTasks);
+        }
+        queryClient.setQueryData(["tasks", context.targetListId], context.previousTargetTasks);
+      }
+    },
+    onSettled: () => {
+      // Invalidate queries to sync with backend
       queryClient.invalidateQueries({ queryKey: ["tasks"] });
+      queryClient.invalidateQueries({ queryKey: ["workspaceTasks", activeWorkspace?._id] });
     },
   });
 
   const deleteTaskMutation = useMutation({
     mutationFn: (taskId: string) => taskflowService.deleteTask(taskId),
-    onSuccess: () => {
+    onMutate: async (taskId) => {
+      // Cancel outgoing refetches so they don't overwrite our optimistic update
+      await queryClient.cancelQueries({ queryKey: ["tasks"] });
+      await queryClient.cancelQueries({ queryKey: ["workspaceTasks", activeWorkspace?._id] });
+
+      // Snapshot the previous values
+      const previousWorkspaceTasks = queryClient.getQueryData(["workspaceTasks", activeWorkspace?._id]);
+
+      // Find the task to get its list ID
+      const allTasks = (previousWorkspaceTasks as Task[]) || [];
+      const taskToDelete = allTasks.find((t) => t._id === taskId);
+      const listId = taskToDelete?.listId;
+
+      let previousListTasks: Task[] | undefined;
+      if (listId) {
+        previousListTasks = queryClient.getQueryData(["tasks", listId]);
+      }
+
+      // Optimistically update workspace tasks
+      queryClient.setQueryData(
+        ["workspaceTasks", activeWorkspace?._id],
+        allTasks.filter((t) => t._id !== taskId)
+      );
+
+      // Optimistically update column list tasks
+      if (listId && previousListTasks) {
+        queryClient.setQueryData(
+          ["tasks", listId],
+          previousListTasks.filter((t) => t._id !== taskId)
+        );
+      }
+
+      // Return context with snapshotted values
+      return { previousWorkspaceTasks, previousListTasks, listId };
+    },
+    onError: (err: any, _taskId, context) => {
+      // Display the error to the user
+      const errMsg = err?.response?.data?.error?.message || err?.message || "Failed to delete task";
+      useToastStore.getState().addToast(errMsg, "error");
+
+      // Rollback to the previous values on error
+      if (context) {
+        queryClient.setQueryData(["workspaceTasks", activeWorkspace?._id], context.previousWorkspaceTasks);
+        if (context.listId) {
+          queryClient.setQueryData(["tasks", context.listId], context.previousListTasks);
+        }
+      }
+    },
+    onSettled: () => {
+      // Invalidate queries to sync with backend
       queryClient.invalidateQueries({ queryKey: ["tasks"] });
+      queryClient.invalidateQueries({ queryKey: ["workspaceTasks", activeWorkspace?._id] });
     },
   });
 
@@ -284,10 +396,10 @@ export const Dashboard: React.FC = () => {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["members", activeWorkspace?._id] });
       setIsInviteModalOpen(false);
-      alert(t('inviteModal.success'));
+      useToastStore.getState().addToast(t('inviteModal.success'), "success");
     },
     onError: (err: any) => {
-      alert(err?.response?.data?.error?.message || t('inviteModal.failed'));
+      useToastStore.getState().addToast(err?.response?.data?.error?.message || t('inviteModal.failed'), "error");
     },
   });
 
@@ -296,16 +408,16 @@ export const Dashboard: React.FC = () => {
       taskflowService.updateWorkspaceMemberRole(activeWorkspace!._id, data.userId, data.role),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["members", activeWorkspace?._id] });
-      alert(t('workspaceMembersModal.roleChangeSuccess'));
+      useToastStore.getState().addToast(t('workspaceMembersModal.roleChangeSuccess'), "success");
     },
     onError: (err: any) => {
-      alert(err?.response?.data?.error?.message || t('workspaceMembersModal.roleChangeFailed'));
+      useToastStore.getState().addToast(err?.response?.data?.error?.message || t('workspaceMembersModal.roleChangeFailed'), "error");
     },
   });
 
     const handleOpenSpaceModal = () => {
     if (!["owner", "admin"].includes(currentUserRole)) {
-      alert(t('warnings.notAdminSpace'));
+      useToastStore.getState().addToast(t('warnings.notAdminSpace'), "warning");
       return;
     }
     setIsSpaceModalOpen(true);
@@ -313,7 +425,7 @@ export const Dashboard: React.FC = () => {
 
   const handleOpenListModal = () => {
     if (!["owner", "admin", "manager"].includes(currentUserRole)) {
-      alert(t('warnings.notAdminOrManagerColumn'));
+      useToastStore.getState().addToast(t('warnings.notAdminOrManagerColumn'), "warning");
       return;
     }
     setIsListModalOpen(true);
@@ -321,7 +433,7 @@ export const Dashboard: React.FC = () => {
 
   const openAddTaskModal = (listId: string) => {
     if (!["owner", "admin", "manager", "member"].includes(currentUserRole)) {
-      alert(t('warnings.notAuthorizedTask'));
+      useToastStore.getState().addToast(t('warnings.notAuthorizedTask'), "warning");
       return;
     }
     setTargetListIdForTask(listId);
@@ -330,7 +442,7 @@ export const Dashboard: React.FC = () => {
 
   const handleOpenInviteModal = () => {
     if (!["owner", "admin"].includes(currentUserRole)) {
-      alert(t('warnings.notAdminInvite'));
+      useToastStore.getState().addToast(t('warnings.notAdminInvite'), "warning");
       return;
     }
     setIsInviteModalOpen(true);
@@ -436,7 +548,7 @@ export const Dashboard: React.FC = () => {
           </div>
 
           {/* Spaces Navigation */}
-          <div className="p-3 flex-1 flex flex-col min-h-0">
+          <div className="p-3 flex flex-col">
             <div className={`flex items-center justify-between mb-3 ${isSidebarCollapsed ? "justify-center" : ""}`}>
               {!isSidebarCollapsed && (
                 <span className="text-xs font-semibold text-zinc-500 uppercase tracking-wider block">
@@ -452,7 +564,7 @@ export const Dashboard: React.FC = () => {
               </button>
             </div>
 
-            <nav className={`space-y-1 overflow-y-auto flex-1 ${isSidebarCollapsed ? "flex flex-col items-center" : ""}`}>
+            <nav className={`space-y-1 ${isSidebarCollapsed ? "flex flex-col items-center" : ""}`}>
               {isLoadingSpaces ? (
                 <div className="flex justify-center p-4">
                   <Loader2 className="h-5 w-5 animate-spin text-zinc-655" />
@@ -1032,6 +1144,7 @@ export const Dashboard: React.FC = () => {
                       list={list}
                       onAddTaskClick={openAddTaskModal}
                       onDeleteTask={(taskId) => deleteTaskMutation.mutate(taskId)}
+                      deletingTaskId={deleteTaskMutation.isPending ? deleteTaskMutation.variables : undefined}
                       onMoveTask={(taskId, listId, status) =>
                         moveTaskMutation.mutate({ taskId, listId, status })
                       }
