@@ -109,12 +109,12 @@ export const Register: React.FC = () => {
           </div>
           <div className="space-y-2">
             <h2 className="text-2xl font-extrabold bg-gradient-to-r from-white to-purple-200 bg-clip-text text-transparent">
-              {t("auth.checkEmailTitle", "Check your email")}
+              {t("auth.registerSuccessTitle", "Registration Successful!")}
             </h2>
-            <p className="text-sm text-purple-200/60 leading-relaxed font-light">
+            <p className="text-sm text-purple-200/80 leading-relaxed font-semibold">
               {t(
-                "auth.checkEmailDesc",
-                "We've sent a verification link to your email address. Please click the link to verify your account and activate Taskflow."
+                "auth.pendingApprovalDesc",
+                "Your account has been created successfully! It is now pending administrator approval. Once a System Administrator approves your account, you will be able to log in."
               )}
             </p>
           </div>

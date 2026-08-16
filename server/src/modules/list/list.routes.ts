@@ -12,5 +12,6 @@ router.use(authMiddleware);
 router.post("/", validateRequest(createListSchema), listController.create);
 router.get("/space/:spaceId", listController.list);
 router.put("/:listId", validateRequest(updateListSchema), listController.update);
+router.delete("/:listId", listController.delete);
 
 export default router;

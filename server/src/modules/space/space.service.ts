@@ -36,7 +36,7 @@ export class SpaceService {
       }
     }
 
-    return spaceRepository.createSpace({
+    const newSpace = await spaceRepository.createSpace({
       workspaceId: new mongoose.Types.ObjectId(workspaceId),
       name,
       description,
@@ -44,6 +44,17 @@ export class SpaceService {
       isPrivate: !!isPrivate,
       allowedMembers: allowedUserIds,
     });
+
+    // Automatically initialize 4 default lists for the space
+    const ListModel = mongoose.model("List");
+    await ListModel.create([
+      { spaceId: newSpace._id, name: "To Do", position: 1000 },
+      { spaceId: newSpace._id, name: "In Progress", position: 2000 },
+      { spaceId: newSpace._id, name: "Review", position: 3000 },
+      { spaceId: newSpace._id, name: "Done", position: 4000 },
+    ]);
+
+    return newSpace;
   }
 
   async getWorkspaceSpaces(workspaceId: string, userId: string): Promise<ISpace[]> {

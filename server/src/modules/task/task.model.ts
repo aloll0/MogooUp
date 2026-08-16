@@ -22,6 +22,13 @@ export interface IChecklistItem {
   isCompleted: boolean;
 }
 
+export interface IRevisionNote {
+  _id?: Types.ObjectId;
+  notes: string;
+  requestedBy: Types.ObjectId;
+  createdAt: Date;
+}
+
 export interface ITask extends Document {
   workspaceId: Types.ObjectId;
   spaceId: Types.ObjectId;
@@ -41,6 +48,8 @@ export interface ITask extends Document {
   position: number;
   timeEstimate?: number;
   loggedTime?: ILoggedTime[];
+  needsRevision?: boolean;
+  revisionNotes?: IRevisionNote[];
   createdAt: Date;
   updatedAt: Date;
 }
@@ -136,6 +145,20 @@ const taskSchema = new Schema<ITask>(
     position: {
       type: Number,
       default: 0,
+    },
+    needsRevision: {
+      type: Boolean,
+      default: false,
+    },
+    revisionNotes: {
+      type: [
+        {
+          notes: { type: String, required: true },
+          requestedBy: { type: Schema.Types.ObjectId, ref: "User", required: true },
+          createdAt: { type: Date, default: Date.now },
+        }
+      ],
+      default: [],
     },
     timeEstimate: {
       type: Number,

@@ -51,6 +51,22 @@ export class ListController {
       next(error);
     }
   };
+
+  delete = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+    try {
+      const { listId } = req.params;
+      const userId = req.user!.userId;
+      
+      await listService.deleteList(listId, userId);
+      
+      res.status(200).json({
+        success: true,
+        message: "List deleted successfully",
+      });
+    } catch (error) {
+      next(error);
+    }
+  };
 }
 
 export const listController = new ListController();

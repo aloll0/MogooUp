@@ -27,7 +27,19 @@ const seedData = async () => {
 
     logger.info("Collections cleared. Creating users...");
 
-    // Create Admin User
+    // Create Arab Pro System Admin User
+    const arabProAdminPasswordHash = await bcrypt.hash("password123", 12);
+    const arabProAdmin = await UserModel.create({
+      email: "admin@arabpro.com",
+      passwordHash: arabProAdminPasswordHash,
+      fullName: "Arab Pro Admin",
+      avatarUrl: "https://api.dicebear.com/7.x/bottts/svg?seed=ArabPro",
+      isVerified: true,
+      isApproved: true,
+      isSystemAdmin: true,
+    });
+
+    // Create Admin User (Workspace manager)
     const adminPasswordHash = await bcrypt.hash("password123", 12);
     const adminUser = await UserModel.create({
       email: "admin@taskflow.com",
@@ -35,6 +47,8 @@ const seedData = async () => {
       fullName: "Taskflow Admin",
       avatarUrl: "https://api.dicebear.com/7.x/bottts/svg?seed=Admin",
       isVerified: true,
+      isApproved: true,
+      isSystemAdmin: false,
     });  
 
     // Create Developer User
@@ -45,9 +59,23 @@ const seedData = async () => {
       fullName: "Taskflow Developer",
       avatarUrl: "https://api.dicebear.com/7.x/bottts/svg?seed=Dev",
       isVerified: true,
+      isApproved: true,
+      isSystemAdmin: false,
     });
 
-    logger.info(`Users created successfully: ${adminUser.email}, ${devUser.email}`);
+    // Create UI Designer User
+    const designerPasswordHash = await bcrypt.hash("password123", 12);
+    const designerUser = await UserModel.create({
+      email: "maryam@taskflow.com",
+      passwordHash: designerPasswordHash,
+      fullName: "Maryam UI Designer",
+      avatarUrl: "https://api.dicebear.com/7.x/bottts/svg?seed=Maryam",
+      isVerified: true,
+      isApproved: true,
+      isSystemAdmin: false,
+    });
+
+    logger.info(`Users created successfully: ${adminUser.email}, ${devUser.email}, ${designerUser.email}, ${arabProAdmin.email}`);
 
     // Create Workspace
     const workspace = await WorkspaceModel.create({
@@ -71,6 +99,18 @@ const seedData = async () => {
         workspaceId: workspace._id as mongoose.Types.ObjectId,
         userId: devUser._id as mongoose.Types.ObjectId,
         role: "member",
+        status: "active",
+      },
+      {
+        workspaceId: workspace._id as mongoose.Types.ObjectId,
+        userId: designerUser._id as mongoose.Types.ObjectId,
+        role: "member",
+        status: "active",
+      },
+      {
+        workspaceId: workspace._id as mongoose.Types.ObjectId,
+        userId: arabProAdmin._id as mongoose.Types.ObjectId,
+        role: "admin",
         status: "active",
       },
     ]);

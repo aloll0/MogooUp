@@ -3,6 +3,7 @@ import { spaceRepository } from "../space/space.repository";
 import { workspaceRepository } from "../workspace/workspace.repository";
 import { IList } from "./list.model";
 import { ForbiddenError, NotFoundError } from "../../utils/errors";
+import mongoose from "mongoose";
 
 export class ListService {
   async createList(
@@ -64,6 +65,31 @@ export class ListService {
     }
 
     return updatedList;
+  }
+
+  async deleteList(listId: string, userId: string): Promise<void> {
+    const list = await listRepository.findById(listId);
+    if (!list) {
+      throw new NotFoundError("List not found");
+    }
+
+    const space = await spaceRepository.findById(list.spaceId.toString());
+    if (!space) {
+      throw new NotFoundError("Associated Space not found");
+    }
+
+    // Verify membership permissions
+    const membership = await workspaceRepository.findMembership(space.workspaceId.toString(), userId);
+    if (!membership || !["owner", "admin", "manager"].includes(membership.role)) {
+      throw new ForbiddenError("Insufficient permissions to delete lists");
+    }
+
+    // Delete tasks inside this list
+    const TaskModel = mongoose.model("Task");
+    await TaskModel.deleteMany({ listId: list._id });
+
+    // Delete the list itself
+    await listRepository.deleteList(listId);
   }
 }
 
