@@ -23,6 +23,23 @@ export interface WorkspaceMember {
   status: "active" | "invited" | "suspended";
 }
 
+// Client Project interfaces
+export interface ClientProjectService {
+  name: string;
+  isChecked: boolean;
+}
+
+export interface ClientProject {
+  _id: string;
+  workspaceId: string;
+  clientName: string;
+  description?: string;
+  services: ClientProjectService[];
+  notes?: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
 // Space interfaces
 export interface Space {
   _id: string;
@@ -90,6 +107,18 @@ export interface Task {
   position: number;
   timeEstimate?: number;
   loggedTime?: LoggedTimeEntry[];
+  needsRevision?: boolean;
+  revisionNotes?: Array<{
+    _id?: string;
+    notes: string;
+    requestedBy: {
+      _id: string;
+      fullName: string;
+      email: string;
+      avatarUrl?: string;
+    } | string;
+    createdAt: string;
+  }>;
 }
 
 export interface Comment {
@@ -227,6 +256,10 @@ export const taskflowService = {
     return response.data.data.list;
   },
 
+  deleteList: async (listId: string): Promise<void> => {
+    await api.delete(`/lists/${listId}`);
+  },
+
   // Tasks
   getTasksByList: async (listId: string): Promise<Task[]> => {
     const response = await api.get(`/tasks/list/${listId}`);
@@ -332,5 +365,51 @@ export const taskflowService = {
   getTaskActivities: async (taskId: string): Promise<ActivityLog[]> => {
     const response = await api.get(`/activities/task/${taskId}`);
     return response.data.data.activities;
+  },
+
+  // System Administration
+  getAdminUsers: async (): Promise<any[]> => {
+    const response = await api.get("/auth/admin/users");
+    return response.data.data.users;
+  },
+
+  approveUser: async (userId: string): Promise<any> => {
+    const response = await api.put(`/auth/admin/users/${userId}/approve`);
+    return response.data.data.user;
+  },
+
+  suspendUser: async (userId: string): Promise<any> => {
+    const response = await api.put(`/auth/admin/users/${userId}/suspend`);
+    return response.data.data.user;
+  },
+
+  getAdminWorkspaces: async (): Promise<any[]> => {
+    const response = await api.get("/auth/admin/workspaces");
+    return response.data.data.workspaces;
+  },
+
+  requestTaskRevision: async (taskId: string, data: { notes: string; assigneeId?: string; listId?: string }): Promise<Task> => {
+    const response = await api.post(`/tasks/${taskId}/revision`, data);
+    return response.data.data.task;
+  },
+
+  // Client Projects & Services Checklist
+  getClientProjects: async (workspaceId: string): Promise<ClientProject[]> => {
+    const response = await api.get(`/workspaces/${workspaceId}/clients`);
+    return response.data.data.clients;
+  },
+
+  createClientProject: async (workspaceId: string, data: Partial<ClientProject>): Promise<ClientProject> => {
+    const response = await api.post(`/workspaces/${workspaceId}/clients`, data);
+    return response.data.data.client;
+  },
+
+  updateClientProject: async (workspaceId: string, clientId: string, data: Partial<ClientProject>): Promise<ClientProject> => {
+    const response = await api.put(`/workspaces/${workspaceId}/clients/${clientId}`, data);
+    return response.data.data.client;
+  },
+
+  deleteClientProject: async (workspaceId: string, clientId: string): Promise<void> => {
+    await api.delete(`/workspaces/${workspaceId}/clients/${clientId}`);
   },
 };

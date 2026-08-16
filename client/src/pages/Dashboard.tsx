@@ -13,6 +13,8 @@ const ReportsTab = lazy(() => import("../components/ReportsTab").then(m => ({ de
 const GanttTab = lazy(() => import("../components/GanttTab").then(m => ({ default: m.GanttTab })));
 const CalendarTab = lazy(() => import("../components/CalendarTab").then(m => ({ default: m.CalendarTab })));
 const GoalsTab = lazy(() => import("../components/GoalsTab").then(m => ({ default: m.GoalsTab })));
+const AdminPanel = lazy(() => import("../components/AdminPanel").then(m => ({ default: m.AdminPanel })));
+const ClientProjectsTab = lazy(() => import("../components/ClientProjectsTab").then(m => ({ default: m.ClientProjectsTab })));
 import { ScratchpadDrawer } from "../components/ScratchpadDrawer";
 import { TimeTrackerWidget } from "../components/TimeTrackerWidget";
 import { socketService } from "../services/socketService";
@@ -49,6 +51,7 @@ import {
   Calendar,
   Clock,
   Target,
+  Shield,
 } from "lucide-react";
 
 // Static reference to prevent empty array literals from re-allocating memory and triggering render loops
@@ -77,8 +80,15 @@ export const Dashboard: React.FC = () => {
   // Active selections
   const [activeWorkspace, setActiveWorkspace] = useState<Workspace | null>(null);
   const [activeSpace, setActiveSpace] = useState<Space | null>(null);
-  const [activeTab, setActiveTab] = useState<"kanban" | "team" | "dashboard" | "reports" | "gantt" | "calendar" | "goals">("kanban");
+  const [activeTab, setActiveTab] = useState<"kanban" | "team" | "dashboard" | "reports" | "gantt" | "calendar" | "goals" | "admin" | "clients">("kanban");
   const [selectedTeamMember, setSelectedTeamMember] = useState<any>(null);
+
+  // Auto-switch to admin tab if user is system admin
+  React.useEffect(() => {
+    if (user?.isSystemAdmin) {
+      setActiveTab("admin");
+    }
+  }, [user]);
 
   // Selected task detail view modal state
   const [selectedTask, setSelectedTask] = useState<Task | null>(null);
@@ -390,6 +400,17 @@ export const Dashboard: React.FC = () => {
     },
   });
 
+  const deleteListMutation = useMutation({
+    mutationFn: taskflowService.deleteList,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["lists", activeSpace?._id] });
+      useToastStore.getState().addToast("Column deleted successfully", "success");
+    },
+    onError: (err: any) => {
+      useToastStore.getState().addToast(err?.response?.data?.error?.message || "Failed to delete column", "error");
+    }
+  });
+
   const inviteMemberMutation = useMutation({
     mutationFn: (data: { email: string; role: string }) =>
       taskflowService.inviteWorkspaceMember(activeWorkspace!._id, data.email, data.role),
@@ -475,7 +496,7 @@ export const Dashboard: React.FC = () => {
           </div>
 
           {/* Workspace Switcher */}
-          {!isSidebarCollapsed && (
+          {!isSidebarCollapsed && !user?.isSystemAdmin && (
             <div className="p-4 border-b border-[#1f1035]">
               <label className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest block mb-2">
                 {t('sidebar.currentWorkspace')}
@@ -511,13 +532,21 @@ export const Dashboard: React.FC = () => {
           {/* Tab Navigation */}
           <div className={`px-2 py-3 border-b border-[#1f1035] space-y-1 ${isSidebarCollapsed ? "flex flex-col items-center" : ""}`}>
             {[
-              { id: "dashboard", icon: LayoutDashboard, label: t('sidebar.dashboard', { defaultValue: "Widgets Dashboard" }) },
-              { id: "reports", icon: BarChart2, label: t('sidebar.reports', { defaultValue: "Reports & Analytics" }) },
-              { id: "gantt", icon: Clock, label: t('sidebar.gantt', { defaultValue: "Gantt Chart" }) },
-              { id: "calendar", icon: Calendar, label: t('sidebar.calendar', { defaultValue: "Calendar View" }) },
-              { id: "kanban", icon: Layers, label: t('sidebar.board', { defaultValue: "Kanban Board" }) },
-              { id: "team", icon: Users, label: t('sidebar.team', { defaultValue: "Workspace Team" }) },
-              { id: "goals", icon: Target, label: t('sidebar.goals', { defaultValue: "Strategic Goals & OKRs" }) },
+              ...(!user?.isSystemAdmin
+                ? [
+                    { id: "dashboard", icon: LayoutDashboard, label: t('sidebar.dashboard', { defaultValue: "Widgets Dashboard" }) },
+                    { id: "reports", icon: BarChart2, label: t('sidebar.reports', { defaultValue: "Reports & Analytics" }) },
+                    { id: "clients", icon: Briefcase, label: t('sidebar.clients', { defaultValue: "Client Projects" }) },
+                    { id: "gantt", icon: Clock, label: t('sidebar.gantt', { defaultValue: "Gantt Chart" }) },
+                    { id: "calendar", icon: Calendar, label: t('sidebar.calendar', { defaultValue: "Calendar View" }) },
+                    { id: "kanban", icon: Layers, label: t('sidebar.board', { defaultValue: "Kanban Board" }) },
+                    { id: "team", icon: Users, label: t('sidebar.team', { defaultValue: "Workspace Team" }) },
+                    { id: "goals", icon: Target, label: t('sidebar.goals', { defaultValue: "Strategic Goals & OKRs" }) },
+                  ]
+                : []),
+              ...(user?.isSystemAdmin
+                ? [{ id: "admin", icon: Shield, label: t('sidebar.adminConsole', { defaultValue: "Admin Console" }) }]
+                : []),
             ].map((tab) => {
               const Icon = tab.icon;
               const isActive = activeTab === tab.id;
@@ -548,8 +577,9 @@ export const Dashboard: React.FC = () => {
           </div>
 
           {/* Spaces Navigation */}
-          <div className="p-3 flex flex-col">
-            <div className={`flex items-center justify-between mb-3 ${isSidebarCollapsed ? "justify-center" : ""}`}>
+          {!user?.isSystemAdmin && (
+            <div className="p-3 flex flex-col">
+              <div className={`flex items-center justify-between mb-3 ${isSidebarCollapsed ? "justify-center" : ""}`}>
               {!isSidebarCollapsed && (
                 <span className="text-xs font-semibold text-zinc-500 uppercase tracking-wider block">
                   {t('sidebar.spaces')} ({spaces.length})
@@ -601,6 +631,7 @@ export const Dashboard: React.FC = () => {
               )}
             </nav>
           </div>
+          )}
         </div>
 
         {/* Footer Profile */}
@@ -641,7 +672,30 @@ export const Dashboard: React.FC = () => {
 
       {/* 2. MAIN BOARD WORKSPACE */}
       <main className="flex-1 flex flex-col min-w-0 overflow-hidden">
-        {workspaces.length === 0 && !isLoadingWorkspaces ? (
+        {user?.isSystemAdmin ? (
+          <div className="flex-1 flex flex-col overflow-hidden animate-fade-in text-start">
+            {/* Header Toolbar */}
+            <header className="h-16 border-b border-zinc-200 dark:border-white/5 bg-white dark:bg-[#120722]/30 backdrop-blur-md p-4 flex items-center justify-between shrink-0 transition-theme relative z-20">
+              <div className="flex items-center gap-3">
+                <Shield className="h-5 w-5 text-purple-500" />
+                <h1 className="text-xl font-bold tracking-tight">{t('sidebar.adminConsole', { defaultValue: "Admin Console" })}</h1>
+                <span className="text-xs font-semibold px-2 py-0.5 bg-zinc-100 dark:bg-zinc-800/80 rounded-md text-zinc-500 dark:text-zinc-400 select-none">
+                  Arab Pro Platform Admin
+                </span>
+              </div>
+            </header>
+            
+            <div className="flex-1 overflow-y-auto min-h-0">
+              <Suspense fallback={
+                <div className="flex-1 flex items-center justify-center p-8 bg-zinc-50/50 dark:bg-zinc-950/20">
+                  <Loader2 className="h-8 w-8 animate-spin text-purple-500" />
+                </div>
+              }>
+                <AdminPanel />
+              </Suspense>
+            </div>
+          </div>
+        ) : workspaces.length === 0 && !isLoadingWorkspaces ? (
           <div className="flex-1 flex flex-col items-center justify-center p-8 text-center max-w-md mx-auto animate-fade-in">
             <Briefcase className="h-16 w-16 text-purple-500 mb-6" />
             <h1 className="text-3xl font-extrabold mb-3">{t('welcome.title')}</h1>
@@ -673,7 +727,23 @@ export const Dashboard: React.FC = () => {
           <div className="flex-1 flex flex-col overflow-hidden">
             {/* Header Toolbar */}
             <header className="h-16 border-b border-zinc-200 dark:border-white/5 bg-white dark:bg-[#120722]/30 backdrop-blur-md p-4 flex items-center justify-between shrink-0 transition-theme relative z-20">
-              {activeTab === "team" ? (
+              {activeTab === "admin" ? (
+                <div className="flex items-center gap-3">
+                  <Shield className="h-5 w-5 text-purple-500" />
+                  <h1 className="text-xl font-bold tracking-tight">{t('sidebar.adminConsole', { defaultValue: "Admin Console" })}</h1>
+                  <span className="text-xs font-semibold px-2 py-0.5 bg-zinc-100 dark:bg-zinc-800/80 rounded-md text-zinc-500 dark:text-zinc-400 select-none">
+                    Arab Pro Platform Admin
+                  </span>
+                </div>
+              ) : activeTab === "clients" ? (
+                <div className="flex items-center gap-3">
+                  <Briefcase className="h-5 w-5 text-purple-500" />
+                  <h1 className="text-xl font-bold tracking-tight">{t('sidebar.clients', { defaultValue: "Client Projects" })}</h1>
+                  <span className="text-xs font-semibold px-2 py-0.5 bg-zinc-100 dark:bg-zinc-800/80 rounded-md text-zinc-500 dark:text-zinc-400 select-none">
+                    {activeWorkspace?.name}
+                  </span>
+                </div>
+              ) : activeTab === "team" ? (
                 <div className="flex items-center gap-3">
                   <Users className="h-5 w-5 text-purple-500" />
                   <h1 className="text-xl font-bold tracking-tight">{t('sidebar.team', { defaultValue: "Workspace Team" })}</h1>
@@ -1097,6 +1167,25 @@ export const Dashboard: React.FC = () => {
                 </div>
 
               </div>
+            ) : activeTab === "admin" ? (
+              <Suspense fallback={
+                <div className="flex-1 flex items-center justify-center p-8 bg-zinc-50/50 dark:bg-zinc-950/20">
+                  <Loader2 className="h-8 w-8 animate-spin text-purple-500" />
+                </div>
+              }>
+                <AdminPanel />
+              </Suspense>
+            ) : activeTab === "clients" ? (
+              <Suspense fallback={
+                <div className="flex-1 flex items-center justify-center p-8 bg-zinc-50/50 dark:bg-zinc-950/20">
+                  <Loader2 className="h-8 w-8 animate-spin text-purple-500" />
+                </div>
+              }>
+                <ClientProjectsTab
+                  workspaceId={activeWorkspace?._id || ""}
+                  currentUserRole={currentUserRole}
+                />
+              </Suspense>
             ) : activeTab === "dashboard" || activeTab === "goals" || activeTab === "reports" || activeTab === "gantt" || activeTab === "calendar" ? (
               <Suspense fallback={
                 <div className="flex-1 flex items-center justify-center p-8 bg-zinc-50/50 dark:bg-zinc-950/20">
@@ -1148,6 +1237,7 @@ export const Dashboard: React.FC = () => {
                       onMoveTask={(taskId, listId, status) =>
                         moveTaskMutation.mutate({ taskId, listId, status })
                       }
+                      onDeleteList={(listId) => deleteListMutation.mutate(listId)}
                       onTaskClick={(task) => setSelectedTask(task)}
                       allLists={lists}
                       currentUserRole={currentUserRole}
@@ -1253,7 +1343,7 @@ export const Dashboard: React.FC = () => {
         onClose={() => setIsScratchpadOpen(false)}
       />
 
-      {activeWorkspace && (
+      {activeWorkspace && !user?.isSystemAdmin && (
         <TimeTrackerWidget tasks={workspaceTasks} />
       )}
 

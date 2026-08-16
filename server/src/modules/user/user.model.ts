@@ -6,6 +6,8 @@ export interface IUser extends Document {
   fullName: string;
   avatarUrl?: string;
   isVerified: boolean;
+  isApproved: boolean;
+  isSystemAdmin: boolean;
   verificationToken?: string;
   resetPasswordToken?: string;
   resetPasswordExpires?: Date;
@@ -38,6 +40,14 @@ const userSchema = new Schema<IUser>(
       default: "",
     },
     isVerified: {
+      type: Boolean,
+      default: false,
+    },
+    isApproved: {
+      type: Boolean,
+      default: false,
+    },
+    isSystemAdmin: {
       type: Boolean,
       default: false,
     },

@@ -8,6 +8,8 @@ export interface User {
   fullName: string;
   avatarUrl?: string;
   isVerified: boolean;
+  isApproved?: boolean;
+  isSystemAdmin?: boolean;
 }
 
 interface AuthContextType {

@@ -15,5 +15,6 @@ router.get("/workspace/:workspaceId", taskController.listByWorkspace);
 router.get("/:taskId", taskController.getById);
 router.put("/:taskId", validateRequest(updateTaskSchema), taskController.update);
 router.delete("/:taskId", taskController.delete);
+router.post("/:taskId/revision", taskController.requestRevision);
 
 export default router;

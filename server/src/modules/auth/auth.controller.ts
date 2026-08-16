@@ -1,6 +1,9 @@
 import { Request, Response, NextFunction } from "express";
 import { authService } from "./auth.service";
 import { config } from "../../config";
+import { UserModel } from "../user/user.model";
+import { WorkspaceModel } from "../workspace/workspace.model";
+import mongoose from "mongoose";
 
 export class AuthController {
   private setRefreshTokenCookie(res: Response, refreshToken: string): void {
@@ -48,6 +51,8 @@ export class AuthController {
             fullName: user.fullName,
             avatarUrl: user.avatarUrl,
             isVerified: user.isVerified,
+            isApproved: user.isApproved,
+            isSystemAdmin: user.isSystemAdmin,
           },
           accessToken: tokens.accessToken,
         },
@@ -153,8 +158,82 @@ export class AuthController {
             fullName: user.fullName,
             avatarUrl: user.avatarUrl,
             isVerified: user.isVerified,
+            isApproved: user.isApproved,
+            isSystemAdmin: user.isSystemAdmin,
           },
         },
+      });
+    } catch (error) {
+      next(error);
+    }
+  };
+
+  getAdminUsers = async (_req: Request, res: Response, next: NextFunction): Promise<void> => {
+    try {
+      const users = await UserModel.find({}, "email fullName avatarUrl isVerified isApproved isSystemAdmin createdAt");
+      res.status(200).json({
+        success: true,
+        data: { users },
+      });
+    } catch (error) {
+      next(error);
+    }
+  };
+
+  approveUser = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+    try {
+      const { userId } = req.params;
+      const user = await UserModel.findByIdAndUpdate(userId, { isApproved: true }, { new: true });
+      res.status(200).json({
+        success: true,
+        message: "User approved successfully",
+        data: { user },
+      });
+    } catch (error) {
+      next(error);
+    }
+  };
+
+  suspendUser = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+    try {
+      const { userId } = req.params;
+      const user = await UserModel.findByIdAndUpdate(userId, { isApproved: false }, { new: true });
+      res.status(200).json({
+        success: true,
+        message: "User suspended successfully",
+        data: { user },
+      });
+    } catch (error) {
+      next(error);
+    }
+  };
+
+  getAdminWorkspaces = async (_req: Request, res: Response, next: NextFunction): Promise<void> => {
+    try {
+      const workspaces = await WorkspaceModel.find({})
+        .populate("ownerId", "fullName email")
+        .exec();
+
+      const populatedWorkspaces = await Promise.all(
+        workspaces.map(async (ws) => {
+          const spaces = await mongoose.model("Space").find({ workspaceId: ws._id }, "name color");
+          const members = await mongoose.model("Membership").find({ workspaceId: ws._id })
+            .populate("userId", "fullName email avatarUrl");
+          return {
+            _id: ws._id,
+            name: ws.name,
+            slug: ws.slug,
+            owner: ws.ownerId,
+            spaces,
+            members,
+            createdAt: ws.createdAt,
+          };
+        })
+      );
+
+      res.status(200).json({
+        success: true,
+        data: { workspaces: populatedWorkspaces },
       });
     } catch (error) {
       next(error);

@@ -1,7 +1,7 @@
 import { taskRepository } from "./task.repository";
 import { listRepository } from "../list/list.repository";
 import { workspaceRepository } from "../workspace/workspace.repository";
-import { ITask } from "./task.model";
+import { ITask, TaskModel } from "./task.model";
 import { ForbiddenError, NotFoundError } from "../../utils/errors";
 import { notificationService } from "../notification/notification.service";
 import mongoose from "mongoose";
@@ -88,6 +88,20 @@ export class TaskService {
       throw new ForbiddenError("You are not a member of this workspace");
     }
 
+    // Employees (members/guests) should only see their own assigned tasks or tasks they reported
+    if (membership.role === "member" || membership.role === "guest") {
+      return TaskModel.find({
+        listId: new mongoose.Types.ObjectId(listId),
+        $or: [
+          { reporterId: new mongoose.Types.ObjectId(userId) },
+          { assignees: new mongoose.Types.ObjectId(userId) },
+        ],
+      })
+        .sort({ position: 1 })
+        .populate("assignees", "fullName email avatarUrl")
+        .exec();
+    }
+
     return taskRepository.findByList(listId);
   }
 
@@ -110,6 +124,16 @@ export class TaskService {
 
     if (updateData.assignees) {
       updateData.assignees = updateData.assignees.map((id: any) => new mongoose.Types.ObjectId(id.toString()));
+    }
+
+    if (updateData.workspaceId) {
+      updateData.workspaceId = new mongoose.Types.ObjectId(updateData.workspaceId);
+    }
+    if (updateData.spaceId) {
+      updateData.spaceId = new mongoose.Types.ObjectId(updateData.spaceId);
+    }
+    if (updateData.listId) {
+      updateData.listId = new mongoose.Types.ObjectId(updateData.listId);
     }
 
     const updatedTask = await taskRepository.updateTask(taskId, updateData);
@@ -140,7 +164,7 @@ export class TaskService {
     const listChanged = updateData.listId && updateData.listId.toString() !== oldListId;
 
     if (statusChanged || listChanged) {
-      const assigneesToNotify = updatedTask.assignees.map((id) => id.toString());
+      const assigneesToNotify = updatedTask.assignees.map((a: any) => a._id?.toString() || a.toString());
       for (const assigneeId of assigneesToNotify) {
         if (assigneeId !== userId) {
           await notificationService.createNotification(
@@ -218,6 +242,17 @@ export class TaskService {
       throw new ForbiddenError("You do not have access to this workspace");
     }
 
+    // Employees (members/guests) should only see their own assigned tasks or tasks they reported
+    if (membership.role === "member" || membership.role === "guest") {
+      return taskRepository.findTasks({
+        workspaceId: new mongoose.Types.ObjectId(workspaceId),
+        $or: [
+          { reporterId: new mongoose.Types.ObjectId(userId) },
+          { assignees: new mongoose.Types.ObjectId(userId) },
+        ],
+      });
+    }
+
     return taskRepository.findTasks({ workspaceId: new mongoose.Types.ObjectId(workspaceId) });
   }
 
@@ -233,6 +268,84 @@ export class TaskService {
     }
 
     return task;
+  }
+
+  async requestRevision(
+    taskId: string,
+    revisionData: { notes: string; assigneeId?: string; listId?: string },
+    userId: string
+  ): Promise<ITask> {
+    const task = await taskRepository.findById(taskId);
+    if (!task) {
+      throw new NotFoundError("Task not found");
+    }
+
+    const membership = await workspaceRepository.findMembership(task.workspaceId.toString(), userId);
+    if (!membership || !["owner", "admin", "manager"].includes(membership.role)) {
+      throw new ForbiddenError("Only workspace managers, admins or owners can request revisions");
+    }
+
+    const updateData: Record<string, any> = {
+      $set: {
+        needsRevision: true,
+      },
+      $push: {
+        revisionNotes: {
+          notes: revisionData.notes,
+          requestedBy: new mongoose.Types.ObjectId(userId),
+          createdAt: new Date(),
+        },
+      },
+    };
+
+    if (revisionData.assigneeId) {
+      updateData.$set.assignees = [new mongoose.Types.ObjectId(revisionData.assigneeId)];
+    }
+
+    if (revisionData.listId) {
+      updateData.$set.listId = new mongoose.Types.ObjectId(revisionData.listId);
+      const list = await listRepository.findById(revisionData.listId);
+      if (list) {
+        updateData.$set.status = list.name.toLowerCase().replace(/\s+/g, "-");
+      }
+    }
+
+    const updatedTask = await taskRepository.updateTask(taskId, updateData);
+    if (!updatedTask) {
+      throw new NotFoundError("Task could not be updated");
+    }
+
+    // Notify assignee
+    const assigneesToNotify = updatedTask.assignees.map((a: any) => a._id?.toString() || a.toString());
+    for (const assigneeId of assigneesToNotify) {
+      await notificationService.createNotification(
+        assigneeId,
+        "Client Revision Requested",
+        `A revision was requested for task: "${updatedTask.title}". Reason: ${revisionData.notes}`,
+        "task_updated",
+        userId,
+        updatedTask._id.toString(),
+        "task"
+      );
+    }
+
+    // Record Activity
+    await activityService.logActivity({
+      workspaceId: task.workspaceId,
+      userId: userId,
+      entityType: "task",
+      entityId: task._id,
+      action: "updated",
+      details: {
+        title: updatedTask.title,
+        changes: { needsRevision: true, notes: revisionData.notes },
+      },
+    });
+
+    // Broadcast WebSocket event
+    broadcastToWorkspace(task.workspaceId.toString(), "task-updated", updatedTask);
+
+    return updatedTask;
   }
 }
 

@@ -14,6 +14,7 @@ import {
   MessageSquare,
   Check,
   Loader2,
+  Shield,
 } from "lucide-react";
 import { useToastStore } from "../stores/useToastStore";
 import { useConfirmStore } from "../stores/useConfirmStore";
@@ -47,6 +48,62 @@ export const TaskDetailsModal: React.FC<TaskDetailsModalProps> = ({
   const [listId, setListId] = useState(task.listId);
   const [isUploading, setIsUploading] = useState(false);
   const [deletingAttachmentId, setDeletingAttachmentId] = useState<string | null>(null);
+
+  // Transfer states
+  const [isTransferOpen, setIsTransferOpen] = useState(false);
+  const [targetWorkspaceId, setTargetWorkspaceId] = useState(task.workspaceId.toString());
+  const [targetSpaceId, setTargetSpaceId] = useState(task.spaceId.toString());
+  const [targetListId, setTargetListId] = useState(task.listId.toString());
+
+  // Revision states
+  const [isRevisionOpen, setIsRevisionOpen] = useState(false);
+  const [revisionNotesText, setRevisionNotesText] = useState("");
+  const [revisionAssigneeId, setRevisionAssigneeId] = useState("");
+  const [revisionListId, setRevisionListId] = useState(task.listId.toString());
+
+  // Workspace role checks
+  const currentUserMemberObj = workspaceMembers.find(
+    (m) => m.userId?._id === user?.id || m.userId === user?.id
+  );
+  const currentUserRole = currentUserMemberObj?.role || "member";
+  const canModifyTask = ["owner", "admin", "manager"].includes(currentUserRole);
+
+  // Queries for Transfer dropdowns
+  const { data: workspaces = [] } = useQuery({
+    queryKey: ["adminWorkspacesList"],
+    queryFn: taskflowService.getWorkspaces,
+  });
+
+  const { data: spaces = [] } = useQuery({
+    queryKey: ["spacesList", targetWorkspaceId],
+    queryFn: () => taskflowService.getSpaces(targetWorkspaceId),
+    enabled: !!targetWorkspaceId,
+  });
+
+  const { data: lists = [] } = useQuery({
+    queryKey: ["listsList", targetSpaceId],
+    queryFn: () => taskflowService.getLists(targetSpaceId),
+    enabled: !!targetSpaceId,
+  });
+
+  // Sync space and list IDs when workspace or space changes
+  React.useEffect(() => {
+    if (spaces.length > 0) {
+      const matches = spaces.some((s: any) => s._id === targetSpaceId);
+      if (!matches) {
+        setTargetSpaceId(spaces[0]._id);
+      }
+    }
+  }, [spaces]);
+
+  React.useEffect(() => {
+    if (lists.length > 0) {
+      const matches = lists.some((l: any) => l._id === targetListId);
+      if (!matches) {
+        setTargetListId(lists[0]._id);
+      }
+    }
+  }, [lists]);
 
   // Date states
   const [startDate, setStartDate] = useState(task.startDate ? task.startDate.substring(0, 10) : "");
@@ -317,6 +374,36 @@ export const TaskDetailsModal: React.FC<TaskDetailsModalProps> = ({
     },
   });
 
+  const moveTaskMutation = useMutation({
+    mutationFn: (data: { workspaceId: string; spaceId: string; listId: string; status: string }) =>
+      taskflowService.updateTask(task._id, data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["tasks"] });
+      queryClient.invalidateQueries({ queryKey: ["workspaceTasks", task.workspaceId.toString()] });
+      useToastStore.getState().addToast("Task transferred successfully", "success");
+      onClose();
+    },
+    onError: (err: any) => {
+      useToastStore.getState().addToast(err?.response?.data?.error?.message || "Failed to transfer task", "error");
+    }
+  });
+
+  const requestRevisionMutation = useMutation({
+    mutationFn: (data: { notes: string; assigneeId?: string; listId?: string }) =>
+      taskflowService.requestTaskRevision(task._id, data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["tasks"] });
+      queryClient.invalidateQueries({ queryKey: ["workspaceTasks", task.workspaceId.toString()] });
+      useToastStore.getState().addToast("Client revision requested and assigned", "success");
+      setRevisionNotesText("");
+      setIsRevisionOpen(false);
+      onClose();
+    },
+    onError: (err: any) => {
+      useToastStore.getState().addToast(err?.response?.data?.error?.message || "Failed to request revision", "error");
+    }
+  });
+
   const createCommentMutation = useMutation({
     mutationFn: (payload: { content: string; mentions: string[] }) =>
       taskflowService.createComment(task._id, payload.content, payload.mentions),
@@ -488,6 +575,21 @@ export const TaskDetailsModal: React.FC<TaskDetailsModalProps> = ({
           </div>
 
           <div className="p-6 space-y-6">
+            {/* Revision Warning Banner */}
+            {task.needsRevision && task.revisionNotes && task.revisionNotes.length > 0 && (
+              <div className="bg-amber-500/10 border border-amber-500/30 rounded-xl p-4 text-start space-y-2">
+                <div className="flex items-center gap-2 text-amber-600 dark:text-amber-400 font-bold text-xs">
+                  <Shield className="h-4.5 w-4.5" />
+                  <span>Client Revision Requested by Manager</span>
+                </div>
+                <p className="text-xs text-zinc-700 dark:text-zinc-300 font-medium">
+                  {task.revisionNotes[task.revisionNotes.length - 1].notes}
+                </p>
+                <div className="text-[10px] text-zinc-400">
+                  Requested on {new Date(task.revisionNotes[task.revisionNotes.length - 1].createdAt).toLocaleString()}
+                </div>
+              </div>
+            )}
             {/* Task Title Input */}
             <div className="space-y-1">
               <label className="text-xs font-bold uppercase text-zinc-400 dark:text-zinc-500">{t('taskModal.taskTitleLabel')}</label>
@@ -988,6 +1090,158 @@ export const TaskDetailsModal: React.FC<TaskDetailsModalProps> = ({
 
         {/* RIGHT COLUMN: Assignees, Comments & Activity (40%) */}
         <div className="w-full md:w-80 bg-zinc-50/70 dark:bg-zinc-900/40 p-6 flex flex-col h-full overflow-y-auto">
+          
+          {/* Actions Block: Transfer and Revisions */}
+          {canModifyTask && (
+            <div className="space-y-4 shrink-0 mb-6 border-b dark:border-zinc-800 pb-6 text-start">
+              <label className="text-xs font-bold uppercase text-zinc-400 dark:text-zinc-500 block">Task Management Actions</label>
+              
+              <div className="space-y-2">
+                {/* 1. Move Task Button */}
+                <button
+                  onClick={() => {
+                    setIsTransferOpen(!isTransferOpen);
+                    setIsRevisionOpen(false);
+                  }}
+                  className="w-full text-center bg-purple-650 hover:bg-purple-700 text-white font-bold text-xs py-2 px-4 rounded-xl transition-all cursor-pointer shadow-xs"
+                >
+                  Transfer Department
+                </button>
+
+                {isTransferOpen && (
+                  <div className="p-3 bg-zinc-100 dark:bg-zinc-950 border dark:border-zinc-800 rounded-xl space-y-3 mt-2">
+                    <div className="space-y-1">
+                      <label className="text-[10px] font-bold text-zinc-450 uppercase block">Workspace</label>
+                      <select
+                        value={targetWorkspaceId}
+                        onChange={(e) => setTargetWorkspaceId(e.target.value)}
+                        className="w-full bg-white dark:bg-zinc-900 border dark:border-zinc-800 rounded-lg p-1.5 text-xs text-zinc-800 dark:text-zinc-200 focus:outline-none"
+                      >
+                        {workspaces.map((w: any) => (
+                          <option key={w._id} value={w._id}>{w.name}</option>
+                        ))}
+                      </select>
+                    </div>
+
+                    <div className="space-y-1">
+                      <label className="text-[10px] font-bold text-zinc-450 uppercase block">Space</label>
+                      <select
+                        value={targetSpaceId}
+                        onChange={(e) => setTargetSpaceId(e.target.value)}
+                        className="w-full bg-white dark:bg-zinc-900 border dark:border-zinc-800 rounded-lg p-1.5 text-xs text-zinc-800 dark:text-zinc-200 focus:outline-none"
+                      >
+                        {spaces.map((s: any) => (
+                          <option key={s._id} value={s._id}>{s.name}</option>
+                        ))}
+                      </select>
+                    </div>
+
+                    <div className="space-y-1">
+                      <label className="text-[10px] font-bold text-zinc-450 uppercase block">List/Column</label>
+                      <select
+                        value={targetListId}
+                        onChange={(e) => setTargetListId(e.target.value)}
+                        className="w-full bg-white dark:bg-zinc-900 border dark:border-zinc-800 rounded-lg p-1.5 text-xs text-zinc-800 dark:text-zinc-200 focus:outline-none"
+                      >
+                        {lists.map((l: any) => (
+                          <option key={l._id} value={l._id}>{l.name}</option>
+                        ))}
+                      </select>
+                    </div>
+
+                    <button
+                      onClick={() => {
+                        const selList = lists.find((l: any) => l._id === targetListId);
+                        const statusName = selList ? selList.name.toLowerCase().replace(/\s+/g, "-") : "to-do";
+                        moveTaskMutation.mutate({
+                          workspaceId: targetWorkspaceId,
+                          spaceId: targetSpaceId,
+                          listId: targetListId,
+                          status: statusName,
+                        });
+                      }}
+                      disabled={moveTaskMutation.isPending}
+                      className="w-full bg-purple-650 hover:bg-purple-700 text-white font-bold text-[10px] py-1.5 rounded-lg transition-all cursor-pointer"
+                    >
+                      {moveTaskMutation.isPending ? "Transferring..." : "Confirm Transfer"}
+                    </button>
+                  </div>
+                )}
+
+                {/* 2. Revision Button */}
+                <button
+                  onClick={() => {
+                    setIsRevisionOpen(!isRevisionOpen);
+                    setIsTransferOpen(false);
+                  }}
+                  className="w-full text-center bg-amber-500 hover:bg-amber-600 text-white font-bold text-xs py-2 px-4 rounded-xl transition-all cursor-pointer shadow-xs"
+                >
+                  Request Client Revision
+                </button>
+
+                {isRevisionOpen && (
+                  <div className="p-3 bg-zinc-100 dark:bg-zinc-955 border dark:border-zinc-800 rounded-xl space-y-3 mt-2">
+                    <div className="space-y-1">
+                      <label className="text-[10px] font-bold text-zinc-455 uppercase block">Revision Feedback</label>
+                      <textarea
+                        rows={3}
+                        placeholder="Write client modification request details..."
+                        value={revisionNotesText}
+                        onChange={(e) => setRevisionNotesText(e.target.value)}
+                        className="w-full bg-white dark:bg-zinc-900 border dark:border-zinc-800 rounded-lg p-1.5 text-xs text-zinc-800 dark:text-zinc-200 focus:ring-1 focus:ring-purple-500 outline-none"
+                      />
+                    </div>
+
+                    <div className="space-y-1">
+                      <label className="text-[10px] font-bold text-zinc-455 uppercase block">Reassign To</label>
+                      <select
+                        value={revisionAssigneeId}
+                        onChange={(e) => setRevisionAssigneeId(e.target.value)}
+                        className="w-full bg-white dark:bg-zinc-900 border dark:border-zinc-800 rounded-lg p-1.5 text-xs text-zinc-800 dark:text-zinc-200 focus:outline-none"
+                      >
+                        <option value="">No reassignment</option>
+                        {workspaceMembers.map((m: any) => (
+                          <option key={m._id} value={m.userId._id}>{m.userId.fullName}</option>
+                        ))}
+                      </select>
+                    </div>
+
+                    <div className="space-y-1">
+                      <label className="text-[10px] font-bold text-zinc-455 uppercase block">Target Status List</label>
+                      <select
+                        value={revisionListId}
+                        onChange={(e) => setRevisionListId(e.target.value)}
+                        className="w-full bg-white dark:bg-zinc-900 border dark:border-zinc-800 rounded-lg p-1.5 text-xs text-zinc-800 dark:text-zinc-200 focus:outline-none"
+                      >
+                        {allLists.map((l: any) => (
+                          <option key={l._id} value={l._id}>{l.name}</option>
+                        ))}
+                      </select>
+                    </div>
+
+                    <button
+                      onClick={() => {
+                        if (!revisionNotesText.trim()) {
+                          useToastStore.getState().addToast("Please provide revision feedback text", "warning");
+                          return;
+                        }
+                        requestRevisionMutation.mutate({
+                          notes: revisionNotesText.trim(),
+                          assigneeId: revisionAssigneeId || undefined,
+                          listId: revisionListId || undefined,
+                        });
+                      }}
+                      disabled={requestRevisionMutation.isPending}
+                      className="w-full bg-amber-600 hover:bg-amber-700 text-white font-bold text-[10px] py-1.5 rounded-lg transition-all cursor-pointer"
+                    >
+                      {requestRevisionMutation.isPending ? "Submitting..." : "Submit Revision Notes"}
+                    </button>
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
+
           {/* Workspace Members check assignment */}
           <div className="space-y-3 shrink-0 mb-6 border-b dark:border-zinc-800 pb-6">
             <label className="text-xs font-bold uppercase text-zinc-400 dark:text-zinc-500 block">{t('taskModal.assigneesLabel')}</label>

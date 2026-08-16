@@ -17,6 +17,7 @@ import notificationRoutes from "./modules/notification/notification.routes";
 import scratchpadRoutes from "./modules/scratchpad/scratchpad.routes";
 import goalRoutes from "./modules/goal/goal.routes";
 import activityRoutes from "./modules/activity/activity.routes";
+import clientProjectRoutes from "./modules/clientProject/clientProject.routes";
 
 const app = express();
 
@@ -88,6 +89,7 @@ app.use("/api/v1/notifications", notificationRoutes);
 app.use("/api/v1/scratchpad", scratchpadRoutes);
 app.use("/api/v1/goals", goalRoutes);
 app.use("/api/v1/activities", activityRoutes);
+app.use("/api/v1/workspaces/:workspaceId/clients", clientProjectRoutes);
 
 // Catch 404 and forward to error handler
 app.use((_req: Request, _res: Response, next: NextFunction) => {

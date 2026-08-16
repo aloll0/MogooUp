@@ -1,3 +1,4 @@
+import mongoose from "mongoose";
 import { workspaceRepository } from "./workspace.repository";
 import { userRepository } from "../user/user.repository";
 import { IWorkspace } from "./workspace.model";
@@ -28,6 +29,26 @@ export class WorkspaceService {
 
     // Automatically join owner as workspace owner
     await workspaceRepository.createMembership(workspace._id.toString(), ownerId, "owner", "active");
+
+    // Automatically create a default Space ("General Space") and the 4 default lists
+    const SpaceModel = mongoose.model("Space");
+    const ListModel = mongoose.model("List");
+    
+    const defaultSpace = await SpaceModel.create({
+      workspaceId: workspace._id,
+      name: "General Space",
+      description: "Default space for project tasks",
+      color: "#8b5cf6",
+      isPrivate: false,
+      allowedMembers: [],
+    });
+
+    await ListModel.create([
+      { spaceId: defaultSpace._id, name: "To Do", position: 1000 },
+      { spaceId: defaultSpace._id, name: "In Progress", position: 2000 },
+      { spaceId: defaultSpace._id, name: "Review", position: 3000 },
+      { spaceId: defaultSpace._id, name: "Done", position: 4000 },
+    ]);
 
     return workspace;
   }

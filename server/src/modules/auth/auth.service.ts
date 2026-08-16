@@ -48,6 +48,8 @@ export class AuthService {
       passwordHash,
       verificationToken,
       isVerified: false, // will require verification (or mock in demo)
+      isApproved: false, // requires admin approval
+      isSystemAdmin: false,
       tokenVersion: 0,
     });
   }
@@ -61,6 +63,10 @@ export class AuthService {
     const isPasswordMatch = await bcrypt.compare(password, user.passwordHash);
     if (!isPasswordMatch) {
       throw new UnauthorizedError("Invalid email or password");
+    }
+
+    if (!user.isApproved) {
+      throw new UnauthorizedError("Your account is pending admin approval.");
     }
 
     const tokens = this.generateTokens(user);

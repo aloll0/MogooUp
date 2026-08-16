@@ -97,6 +97,22 @@ export class TaskController {
       next(error);
     }
   };
+
+  requestRevision = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+    try {
+      const { taskId } = req.params;
+      const userId = req.user!.userId;
+      const task = await taskService.requestRevision(taskId, req.body, userId);
+      
+      res.status(200).json({
+        success: true,
+        message: "Revision requested successfully",
+        data: { task },
+      });
+    } catch (error) {
+      next(error);
+    }
+  };
 }
 
 export const taskController = new TaskController();

@@ -29,6 +29,7 @@ interface KanbanColumnProps {
   onDeleteTask: (taskId: string) => void;
   deletingTaskId?: string;
   onMoveTask: (taskId: string, listId: string, status: string) => void;
+  onDeleteList: (listId: string) => void;
   onTaskClick: (task: Task) => void;
   allLists: List[];
   currentUserRole: string;
@@ -40,6 +41,7 @@ export const KanbanColumn: React.FC<KanbanColumnProps> = ({
   onDeleteTask,
   deletingTaskId,
   onMoveTask,
+  onDeleteList,
   onTaskClick,
   allLists: _allLists,
   currentUserRole,
@@ -137,13 +139,34 @@ export const KanbanColumn: React.FC<KanbanColumnProps> = ({
         </div>
 
         {/* Action button */}
-        <div className="flex items-center">
+        <div className="flex items-center gap-1">
           <button
             onClick={() => onAddTaskClick(list._id)}
             className="p-1 hover:bg-zinc-200 dark:hover:bg-zinc-850 rounded-md text-zinc-500 hover:text-zinc-950 dark:hover:text-zinc-55 transition-all cursor-pointer"
+            title={t('kanban.addTask', { defaultValue: "Add Task" })}
           >
             <Plus className="h-3.5 w-3.5" />
           </button>
+          
+          {canEditColumn && (
+            <button
+              onClick={async () => {
+                const confirmed = await useConfirmStore.getState().show({
+                  title: t('kanban.deleteColumnTitle', { defaultValue: "Delete Column" }),
+                  message: t('kanban.confirmDeleteColumn', { defaultValue: "Are you sure you want to delete this column and all of its tasks?" }),
+                  confirmText: t('common.delete', { defaultValue: "Delete" }),
+                  cancelText: t('common.cancel', { defaultValue: "Cancel" }),
+                });
+                if (confirmed) {
+                  onDeleteList(list._id);
+                }
+              }}
+              className="p-1 hover:bg-zinc-200 dark:hover:bg-zinc-850 rounded-md text-zinc-500 hover:text-red-500 dark:hover:text-red-400 transition-all cursor-pointer"
+              title={t('kanban.deleteColumn', { defaultValue: "Delete Column" })}
+            >
+              <Trash2 className="h-3.5 w-3.5" />
+            </button>
+          )}
         </div>
       </div>
 
