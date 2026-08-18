@@ -36,6 +36,7 @@ export const TaskDetailsModal: React.FC<TaskDetailsModalProps> = ({
   allLists,
 }) => {
   const { t, i18n } = useTranslation();
+  const isAr = i18n.language === "ar";
   const { user } = useAuth();
   const queryClient = useQueryClient();
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -1090,11 +1091,12 @@ export const TaskDetailsModal: React.FC<TaskDetailsModalProps> = ({
 
         {/* RIGHT COLUMN: Assignees, Comments & Activity (40%) */}
         <div className="w-full md:w-80 bg-zinc-50/70 dark:bg-zinc-900/40 p-6 flex flex-col h-full overflow-y-auto">
-          
           {/* Actions Block: Transfer and Revisions */}
           {canModifyTask && (
             <div className="space-y-4 shrink-0 mb-6 border-b dark:border-zinc-800 pb-6 text-start">
-              <label className="text-xs font-bold uppercase text-zinc-400 dark:text-zinc-500 block">Task Management Actions</label>
+              <label className="text-xs font-bold uppercase text-zinc-400 dark:text-zinc-500 block">
+                {isAr ? "إجراءات إدارة المهام" : "Task Management Actions"}
+              </label>
               
               <div className="space-y-2">
                 {/* 1. Move Task Button */}
@@ -1105,13 +1107,15 @@ export const TaskDetailsModal: React.FC<TaskDetailsModalProps> = ({
                   }}
                   className="w-full text-center bg-purple-650 hover:bg-purple-700 text-white font-bold text-xs py-2 px-4 rounded-xl transition-all cursor-pointer shadow-xs"
                 >
-                  Transfer Department
+                  {isAr ? "نقل القسم" : "Transfer Department"}
                 </button>
-
+ 
                 {isTransferOpen && (
-                  <div className="p-3 bg-zinc-100 dark:bg-zinc-950 border dark:border-zinc-800 rounded-xl space-y-3 mt-2">
+                  <div className="p-3 bg-zinc-100 dark:bg-zinc-955 border dark:border-zinc-800 rounded-xl space-y-3 mt-2">
                     <div className="space-y-1">
-                      <label className="text-[10px] font-bold text-zinc-450 uppercase block">Workspace</label>
+                      <label className="text-[10px] font-bold text-zinc-450 uppercase block">
+                        {isAr ? "مساحة العمل" : "Workspace"}
+                      </label>
                       <select
                         value={targetWorkspaceId}
                         onChange={(e) => setTargetWorkspaceId(e.target.value)}
@@ -1122,9 +1126,11 @@ export const TaskDetailsModal: React.FC<TaskDetailsModalProps> = ({
                         ))}
                       </select>
                     </div>
-
+ 
                     <div className="space-y-1">
-                      <label className="text-[10px] font-bold text-zinc-450 uppercase block">Space</label>
+                      <label className="text-[10px] font-bold text-zinc-455 uppercase block">
+                        {isAr ? "القسم" : "Space"}
+                      </label>
                       <select
                         value={targetSpaceId}
                         onChange={(e) => setTargetSpaceId(e.target.value)}
@@ -1135,9 +1141,11 @@ export const TaskDetailsModal: React.FC<TaskDetailsModalProps> = ({
                         ))}
                       </select>
                     </div>
-
+ 
                     <div className="space-y-1">
-                      <label className="text-[10px] font-bold text-zinc-450 uppercase block">List/Column</label>
+                      <label className="text-[10px] font-bold text-zinc-455 uppercase block">
+                        {isAr ? "القائمة / العمود" : "List/Column"}
+                      </label>
                       <select
                         value={targetListId}
                         onChange={(e) => setTargetListId(e.target.value)}
@@ -1148,7 +1156,7 @@ export const TaskDetailsModal: React.FC<TaskDetailsModalProps> = ({
                         ))}
                       </select>
                     </div>
-
+ 
                     <button
                       onClick={() => {
                         const selList = lists.find((l: any) => l._id === targetListId);
@@ -1163,11 +1171,13 @@ export const TaskDetailsModal: React.FC<TaskDetailsModalProps> = ({
                       disabled={moveTaskMutation.isPending}
                       className="w-full bg-purple-650 hover:bg-purple-700 text-white font-bold text-[10px] py-1.5 rounded-lg transition-all cursor-pointer"
                     >
-                      {moveTaskMutation.isPending ? "Transferring..." : "Confirm Transfer"}
+                      {moveTaskMutation.isPending 
+                        ? (isAr ? "جاري النقل..." : "Transferring...") 
+                        : (isAr ? "تأكيد النقل" : "Confirm Transfer")}
                     </button>
                   </div>
                 )}
-
+ 
                 {/* 2. Revision Button */}
                 <button
                   onClick={() => {
@@ -1176,38 +1186,44 @@ export const TaskDetailsModal: React.FC<TaskDetailsModalProps> = ({
                   }}
                   className="w-full text-center bg-amber-500 hover:bg-amber-600 text-white font-bold text-xs py-2 px-4 rounded-xl transition-all cursor-pointer shadow-xs"
                 >
-                  Request Client Revision
+                  {isAr ? "طلب تعديل من العميل" : "Request Client Revision"}
                 </button>
-
+ 
                 {isRevisionOpen && (
                   <div className="p-3 bg-zinc-100 dark:bg-zinc-955 border dark:border-zinc-800 rounded-xl space-y-3 mt-2">
                     <div className="space-y-1">
-                      <label className="text-[10px] font-bold text-zinc-455 uppercase block">Revision Feedback</label>
+                      <label className="text-[10px] font-bold text-zinc-455 uppercase block">
+                        {isAr ? "ملاحظات التعديل المطلوب" : "Revision Feedback"}
+                      </label>
                       <textarea
                         rows={3}
-                        placeholder="Write client modification request details..."
+                        placeholder={isAr ? "اكتب تفاصيل طلب تعديل العميل..." : "Write client modification request details..."}
                         value={revisionNotesText}
                         onChange={(e) => setRevisionNotesText(e.target.value)}
                         className="w-full bg-white dark:bg-zinc-900 border dark:border-zinc-800 rounded-lg p-1.5 text-xs text-zinc-800 dark:text-zinc-200 focus:ring-1 focus:ring-purple-500 outline-none"
                       />
                     </div>
-
+ 
                     <div className="space-y-1">
-                      <label className="text-[10px] font-bold text-zinc-455 uppercase block">Reassign To</label>
+                      <label className="text-[10px] font-bold text-zinc-455 uppercase block">
+                        {isAr ? "إعادة تعيين إلى" : "Reassign To"}
+                      </label>
                       <select
                         value={revisionAssigneeId}
                         onChange={(e) => setRevisionAssigneeId(e.target.value)}
                         className="w-full bg-white dark:bg-zinc-900 border dark:border-zinc-800 rounded-lg p-1.5 text-xs text-zinc-800 dark:text-zinc-200 focus:outline-none"
                       >
-                        <option value="">No reassignment</option>
+                        <option value="">{isAr ? "بدون إعادة تعيين" : "No reassignment"}</option>
                         {workspaceMembers.map((m: any) => (
                           <option key={m._id} value={m.userId._id}>{m.userId.fullName}</option>
                         ))}
                       </select>
                     </div>
-
+ 
                     <div className="space-y-1">
-                      <label className="text-[10px] font-bold text-zinc-455 uppercase block">Target Status List</label>
+                      <label className="text-[10px] font-bold text-zinc-455 uppercase block">
+                        {isAr ? "قائمة الحالة المستهدفة" : "Target Status List"}
+                      </label>
                       <select
                         value={revisionListId}
                         onChange={(e) => setRevisionListId(e.target.value)}
@@ -1218,11 +1234,14 @@ export const TaskDetailsModal: React.FC<TaskDetailsModalProps> = ({
                         ))}
                       </select>
                     </div>
-
+ 
                     <button
                       onClick={() => {
                         if (!revisionNotesText.trim()) {
-                          useToastStore.getState().addToast("Please provide revision feedback text", "warning");
+                          useToastStore.getState().addToast(
+                            isAr ? "يرجى كتابة تفاصيل ملاحظات التعديل أولاً" : "Please provide revision feedback text", 
+                            "warning"
+                          );
                           return;
                         }
                         requestRevisionMutation.mutate({
@@ -1234,7 +1253,9 @@ export const TaskDetailsModal: React.FC<TaskDetailsModalProps> = ({
                       disabled={requestRevisionMutation.isPending}
                       className="w-full bg-amber-600 hover:bg-amber-700 text-white font-bold text-[10px] py-1.5 rounded-lg transition-all cursor-pointer"
                     >
-                      {requestRevisionMutation.isPending ? "Submitting..." : "Submit Revision Notes"}
+                      {requestRevisionMutation.isPending 
+                        ? (isAr ? "جاري الإرسال..." : "Submitting...") 
+                        : (isAr ? "إرسال ملاحظات التعديل" : "Submit Revision Notes")}
                     </button>
                   </div>
                 )}

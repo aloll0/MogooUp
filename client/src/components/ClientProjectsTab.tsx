@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { Plus, Trash2, Printer, Check, Loader2, Search, PlusCircle, AlertCircle } from "lucide-react";
 import { taskflowService } from "../services/taskflowService";
 import type { ClientProject, ClientProjectService } from "../services/taskflowService";
@@ -14,7 +14,9 @@ export const ClientProjectsTab: React.FC<ClientProjectsTabProps> = ({
   workspaceId,
   currentUserRole,
 }) => {
-  const { t } = useTranslation();
+  const { i18n } = useTranslation();
+  const isAr = i18n.language === "ar";
+  const printContainerRef = useRef<HTMLDivElement>(null);
   const [clients, setClients] = useState<ClientProject[]>([]);
   const [selectedClient, setSelectedClient] = useState<ClientProject | null>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -160,7 +162,10 @@ export const ClientProjectsTab: React.FC<ClientProjectsTabProps> = ({
 
   // Delete Client Profile
   const handleDeleteClient = async (clientId: string) => {
-    if (!window.confirm("Are you sure you want to delete this client profile? All checklists will be lost.")) return;
+    const confirmMessage = isAr 
+      ? "هل أنت متأكد من رغبتك في حذف ملف تعريف هذا العميل؟ ستفقد جميع قوائم المراجعة والخدمات المرتبطة به."
+      : "Are you sure you want to delete this client profile? All checklists will be lost.";
+    if (!window.confirm(confirmMessage)) return;
 
     try {
       await taskflowService.deleteClientProject(workspaceId, clientId);
@@ -178,19 +183,13 @@ export const ClientProjectsTab: React.FC<ClientProjectsTabProps> = ({
 
   // Export PDF Report using html2pdf
   const handleExportPDF = () => {
-    if (!selectedClient) return;
+    if (!printContainerRef.current || !selectedClient) return;
 
     setIsExporting(true);
-    const element = document.getElementById(`pdf-template-${selectedClient._id}`);
-    
-    if (!element) {
-      console.error("PDF element template not found in DOM");
-      setIsExporting(false);
-      return;
-    }
+    const element = printContainerRef.current;
 
     const opt = {
-      margin: 12,
+      margin: 0,
       filename: `service_delivery_report_${selectedClient.clientName.toLowerCase().replace(/\s+/g, "_")}.pdf`,
       image: { type: "jpeg" as const, quality: 0.98 },
       html2canvas: { 
@@ -201,15 +200,8 @@ export const ClientProjectsTab: React.FC<ClientProjectsTabProps> = ({
       jsPDF: { unit: "mm", format: "a4", orientation: "portrait" as const },
     };
 
-    // Temporarily apply visibility classes for rendering
-    const clone = element.cloneNode(true) as HTMLElement;
-    clone.style.position = "static";
-    clone.style.left = "auto";
-    clone.style.top = "auto";
-    clone.style.width = "100%";
-    
     html2pdf()
-      .from(clone)
+      .from(element)
       .set(opt)
       .save()
       .then(() => {
@@ -233,10 +225,12 @@ export const ClientProjectsTab: React.FC<ClientProjectsTabProps> = ({
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-6 border-b border-zinc-200 dark:border-zinc-800 bg-white dark:bg-[#120722]/30 backdrop-blur-md">
         <div>
           <h2 className="text-xl font-bold flex items-center gap-2">
-            <span>{t("clients.title", { defaultValue: "Client Projects & Services" })}</span>
+            <span>{isAr ? "مشاريع وخدمات العملاء" : "Client Projects & Services"}</span>
           </h2>
           <p className="text-xs text-zinc-500 dark:text-zinc-400 mt-1">
-            Setup stores or clients, manage their active services checklist, add custom deliverables, and print premium PDF summary sheets.
+            {isAr 
+              ? "قم بإعداد المتاجر أو العملاء، وإدارة قائمة الخدمات النشطة الخاصة بهم، وإضافة مخرجات مخصصة، وطباعة أوراق ملخص PDF مميزة."
+              : "Setup stores or clients, manage their active services checklist, add custom deliverables, and print premium PDF summary sheets."}
           </p>
         </div>
 
@@ -246,7 +240,7 @@ export const ClientProjectsTab: React.FC<ClientProjectsTabProps> = ({
             className="flex items-center gap-2 px-4 py-2 bg-purple-600 hover:bg-purple-700 text-white rounded-xl text-xs font-bold shadow-md shadow-purple-500/10 hover:shadow-purple-500/20 transition-all cursor-pointer"
           >
             <Plus className="h-4 w-4" />
-            <span>Add Client Project</span>
+            <span>{isAr ? "إضافة مشروع عميل" : "Add Client Project"}</span>
           </button>
         )}
       </div>
@@ -258,16 +252,20 @@ export const ClientProjectsTab: React.FC<ClientProjectsTabProps> = ({
       ) : clients.length === 0 ? (
         <div className="flex-1 flex flex-col items-center justify-center p-8 max-w-md mx-auto text-center">
           <AlertCircle className="h-12 w-12 text-zinc-400 mb-4" />
-          <h3 className="text-lg font-bold text-zinc-850 dark:text-zinc-200">No Client Projects Created Yet</h3>
+          <h3 className="text-lg font-bold text-zinc-850 dark:text-zinc-200">
+            {isAr ? "لم يتم إنشاء مشاريع عملاء بعد" : "No Client Projects Created Yet"}
+          </h3>
           <p className="text-xs text-zinc-500 mt-2">
-            Managers can add clients or store profiles to manage dynamic checklists representing active service contracts.
+            {isAr 
+              ? "يمكن للمديرين إضافة عملاء أو ملفات تعريف المتاجر لإدارة قوائم المراجعة الديناميكية لعقود الخدمات النشطة."
+              : "Managers can add clients or store profiles to manage dynamic checklists representing active service contracts."}
           </p>
           {isManager && (
             <button
               onClick={() => setIsAddModalOpen(true)}
               className="mt-4 px-4 py-2 bg-purple-600 text-white rounded-xl text-xs font-bold hover:bg-purple-700 cursor-pointer"
             >
-              Add Client Project
+              {isAr ? "إضافة مشروع عميل" : "Add Client Project"}
             </button>
           )}
         </div>
@@ -282,7 +280,7 @@ export const ClientProjectsTab: React.FC<ClientProjectsTabProps> = ({
                 <Search className="absolute left-3 top-2.5 h-4 w-4 text-zinc-400" />
                 <input
                   type="text"
-                  placeholder="Search store / client..."
+                  placeholder={isAr ? "البحث عن متجر / عميل..." : "Search store / client..."}
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
                   className="w-full pl-9 pr-4 py-2 text-xs bg-zinc-50 dark:bg-zinc-800/80 border border-zinc-250 dark:border-zinc-800 rounded-xl focus:outline-none focus:ring-1 focus:ring-purple-500 dark:text-zinc-200"
@@ -327,9 +325,9 @@ export const ClientProjectsTab: React.FC<ClientProjectsTabProps> = ({
                       </p>
                     )}
                     <div className="flex items-center justify-between mt-1 text-[10px] font-semibold text-zinc-400 dark:text-zinc-500 border-t dark:border-zinc-800/50 pt-2">
-                      <span>Services checklist</span>
+                      <span>{isAr ? "قائمة الخدمات" : "Services checklist"}</span>
                       <span className={`${checkedCount === totalCount ? "text-green-600 dark:text-green-450" : "text-purple-600 dark:text-purple-400"}`}>
-                        {checkedCount}/{totalCount} Completed
+                        {checkedCount}/{totalCount} {isAr ? "مكتمل" : "Completed"}
                       </span>
                     </div>
                   </button>
@@ -363,7 +361,7 @@ export const ClientProjectsTab: React.FC<ClientProjectsTabProps> = ({
                   ) : (
                     <Printer className="h-4 w-4 text-purple-400" />
                   )}
-                  <span>Export Service PDF</span>
+                  <span>{isAr ? "تصدير خدمات العميل PDF" : "Export Service PDF"}</span>
                 </button>
               </div>
 
@@ -371,10 +369,12 @@ export const ClientProjectsTab: React.FC<ClientProjectsTabProps> = ({
               <div className="space-y-4">
                 <div className="flex items-center justify-between">
                   <h4 className="text-sm font-bold text-zinc-800 dark:text-zinc-200">
-                    Services Rendered & Deliverables (الخدمات المقدمة)
+                    {isAr ? "الخدمات المقدمة والمخرجات" : "Services Rendered & Deliverables"}
                   </h4>
                   <span className="text-[10px] font-semibold text-zinc-400">
-                    {!isManager ? "Read-Only Mode" : "Auto-Saves Instantly"}
+                    {!isManager 
+                      ? (isAr ? "وضع القراءة فقط" : "Read-Only Mode") 
+                      : (isAr ? "حفظ تلقائي فوري" : "Auto-Saves Instantly")}
                   </span>
                 </div>
 
@@ -411,7 +411,7 @@ export const ClientProjectsTab: React.FC<ClientProjectsTabProps> = ({
                   <form onSubmit={handleAddCustomService} className="mt-4 flex gap-2">
                     <input
                       type="text"
-                      placeholder="Add custom service (e.g. Content writing, Logo redesign...)"
+                      placeholder={isAr ? "إضافة خدمة مخصصة (مثال: كتابة محتوى، تصميم شعار...)" : "Add custom service (e.g. Content writing, Logo redesign...)"}
                       value={customServiceName}
                       onChange={(e) => setCustomServiceName(e.target.value)}
                       className="flex-1 px-4 py-2 text-xs bg-zinc-50 dark:bg-zinc-900 border border-zinc-250 dark:border-zinc-850 rounded-xl focus:outline-none focus:ring-1 focus:ring-purple-500 dark:text-zinc-200"
@@ -422,7 +422,7 @@ export const ClientProjectsTab: React.FC<ClientProjectsTabProps> = ({
                       className="px-4 py-2 bg-purple-600 hover:bg-purple-700 disabled:opacity-50 text-white rounded-xl text-xs font-bold transition-all cursor-pointer shrink-0 flex items-center gap-1.5"
                     >
                       <PlusCircle className="h-3.5 w-3.5" />
-                      <span>Add Work</span>
+                      <span>{isAr ? "إضافة عمل" : "Add Work"}</span>
                     </button>
                   </form>
                 )}
@@ -431,125 +431,31 @@ export const ClientProjectsTab: React.FC<ClientProjectsTabProps> = ({
               {/* Remarks Textarea */}
               <div className="space-y-2 pt-2">
                 <h4 className="text-sm font-bold text-zinc-800 dark:text-zinc-200">
-                  Additional Notes & Comments (ملاحظات العمل)
+                  {isAr ? "ملاحظات وتفاصيل العمل" : "Additional Notes & Comments"}
                 </h4>
                 <textarea
-                  placeholder="Write delivery status, timeline parameters, or custom feedback remarks for the client..."
+                  placeholder={isAr ? "اكتب حالة التسليم أو الملاحظات أو التعليقات المخصصة للعميل هنا..." : "Write delivery status, timeline parameters, or custom feedback remarks for the client..."}
                   value={selectedClient.notes || ""}
                   disabled={!isManager}
                   onChange={(e) => handleUpdateNotes(e.target.value)}
-                  className="w-full h-32 px-4 py-3 text-xs bg-zinc-50 dark:bg-zinc-900 border border-zinc-250 dark:border-zinc-850 rounded-xl focus:outline-none focus:ring-1 focus:ring-purple-500 dark:text-zinc-200 resize-y"
+                  className="w-full h-32 px-4 py-3 text-xs bg-zinc-50 dark:bg-zinc-950 border border-zinc-250 dark:border-zinc-850 rounded-xl focus:outline-none focus:ring-1 focus:ring-purple-500 dark:text-zinc-200 resize-y"
                 />
                 {isManager && (
                   <span className="text-[10px] text-zinc-400 font-semibold block text-right">
-                    Draft automatically saved
+                    {isAr ? "تم حفظ المسودة تلقائياً" : "Draft automatically saved"}
                   </span>
                 )}
               </div>
 
-              {/* Hidden OFF-SCREEN PDF Template (used by html2pdf) */}
-              <div style={{ position: "absolute", left: "-9999px", top: "-9999px" }}>
-                <div
-                  id={`pdf-template-${selectedClient._id}`}
-                  className="p-12 bg-white text-zinc-850 font-sans leading-relaxed text-start"
-                  style={{ width: "800px" }}
-                >
-                  {/* PDF Cover Header */}
-                  <div className="flex justify-between items-center border-b-2 border-purple-600 pb-6 mb-8">
-                    <div>
-                      <h1 className="text-3xl font-extrabold text-purple-700 tracking-tight">Arab Pro</h1>
-                      <p className="text-[11px] font-bold text-zinc-500 uppercase tracking-widest mt-1">
-                        Professional Platform Delivery Report
-                      </p>
-                    </div>
-                    <div className="text-right">
-                      <span className="px-3.5 py-1.5 bg-purple-50 text-purple-700 rounded-lg text-xs font-extrabold select-none">
-                        TaskFlow Verified
-                      </span>
-                      <p className="text-[10px] text-zinc-400 mt-2 font-semibold">
-                        Printed on: {new Date().toLocaleDateString()}
-                      </p>
-                    </div>
-                  </div>
 
-                  {/* Summary Block */}
-                  <div className="bg-zinc-50 border border-zinc-200/80 rounded-2xl p-6 mb-8">
-                    <h2 className="text-lg font-bold text-zinc-800 mb-3">Client Overview</h2>
-                    <div className="grid grid-cols-2 gap-y-4 text-xs">
-                      <div>
-                        <span className="text-[10px] font-bold text-zinc-400 block uppercase">Client / Store Name</span>
-                        <span className="font-extrabold text-sm text-zinc-800 mt-0.5 block">{selectedClient.clientName}</span>
-                      </div>
-                      <div>
-                        <span className="text-[10px] font-bold text-zinc-400 block uppercase">Delivery Status</span>
-                        <span className="font-extrabold text-sm text-green-600 mt-0.5 block">Active Contract</span>
-                      </div>
-                      <div className="col-span-2">
-                        <span className="text-[10px] font-bold text-zinc-400 block uppercase">Project Description</span>
-                        <p className="text-zinc-650 mt-1 font-medium">{selectedClient.description || "No project description provided."}</p>
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Services List in PDF */}
-                  <div className="mb-8">
-                    <h2 className="text-base font-bold text-zinc-800 border-b border-zinc-250 pb-2 mb-4">
-                      Completed Services & Deliverables
-                    </h2>
-                    
-                    <div className="space-y-2.5">
-                      {selectedClient.services.map((srv, idx) => (
-                        <div 
-                          key={idx} 
-                          className={`flex items-center justify-between p-3.5 border rounded-xl ${
-                            srv.isChecked 
-                              ? "bg-green-50/40 border-green-200 text-zinc-800" 
-                              : "bg-zinc-50/20 border-zinc-150 text-zinc-400"
-                          }`}
-                        >
-                          <span className="text-xs font-bold">{srv.name}</span>
-                          <span className={`text-[10px] font-extrabold px-3 py-1 rounded-md ${
-                            srv.isChecked 
-                              ? "bg-green-100 text-green-700" 
-                              : "bg-zinc-100 text-zinc-400"
-                          }`}>
-                            {srv.isChecked ? "✓ Completed (تم العمل)" : "Not Active"}
-                          </span>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-
-                  {/* Notes / Remarks */}
-                  {selectedClient.notes && (
-                    <div className="border-l-4 border-purple-500 bg-purple-50/20 rounded-r-xl p-5 mb-8">
-                      <h2 className="text-xs font-bold text-purple-700 uppercase tracking-wider mb-2">Remarks & Project Notes</h2>
-                      <p className="text-xs text-zinc-700 whitespace-pre-wrap leading-relaxed font-medium">{selectedClient.notes}</p>
-                    </div>
-                  )}
-
-                  {/* PDF Signatures Footer */}
-                  <div className="mt-16 pt-8 border-t border-zinc-200 flex justify-between text-xs">
-                    <div>
-                      <p className="font-bold text-zinc-400 uppercase text-[9px] tracking-wider">Arab Pro Director</p>
-                      <div className="h-10 mt-2 border-b border-dashed border-zinc-300 w-44"></div>
-                      <p className="mt-2 text-zinc-500 font-bold">Authorized Signature</p>
-                    </div>
-                    <div className="text-right">
-                      <p className="font-bold text-zinc-400 uppercase text-[9px] tracking-wider">Client Acknowledgment</p>
-                      <div className="h-10 mt-2 border-b border-dashed border-zinc-300 w-44 ml-auto"></div>
-                      <p className="mt-2 text-zinc-500 font-bold">Store Representative</p>
-                    </div>
-                  </div>
-
-                </div>
-              </div>
 
             </div>
           ) : (
             <div className="flex-1 flex flex-col items-center justify-center p-8 bg-white dark:bg-zinc-900/40">
-              <p className="text-xs text-zinc-400 dark:text-zinc-500 font-semibold">
-                Select a client project from the sidebar list to manage active deliverables or export reports.
+              <p className="text-xs text-zinc-400 dark:text-zinc-500 font-semibold text-center">
+                {isAr 
+                  ? "اختر مشروع عميل من القائمة الجانبية لإدارة المهام والمخرجات أو طباعة التقارير."
+                  : "Select a client project from the sidebar list to manage active deliverables or export reports."}
               </p>
             </div>
           )}
@@ -561,17 +467,19 @@ export const ClientProjectsTab: React.FC<ClientProjectsTabProps> = ({
       {isAddModalOpen && (
         <div className="fixed inset-0 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4 z-50 animate-fade-in">
           <div className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-2xl w-full max-w-md shadow-2xl p-6 text-start">
-            <h3 className="text-base font-bold text-zinc-850 dark:text-zinc-200 mb-4">Add Client / Store Profile</h3>
+            <h3 className="text-base font-bold text-zinc-850 dark:text-zinc-200 mb-4">
+              {isAr ? "إضافة ملف تعريف العميل / المتجر" : "Add Client / Store Profile"}
+            </h3>
             
             <form onSubmit={handleCreateClient} className="space-y-4">
               <div>
                 <label className="block text-[10px] font-extrabold uppercase tracking-wider text-zinc-400 dark:text-zinc-500 mb-1.5">
-                  Client / Store Name (اسم العميل أو المتجر) *
+                  {isAr ? "اسم العميل أو المتجر *" : "Client / Store Name *"}
                 </label>
                 <input
                   type="text"
                   required
-                  placeholder="e.g. Loksira Store, Amazon UAE..."
+                  placeholder={isAr ? "مثال: متجر لوكسيرا، أمازون الإمارات..." : "e.g. Loksira Store, Amazon UAE..."}
                   value={newClientName}
                   onChange={(e) => setNewClientName(e.target.value)}
                   className="w-full px-4 py-2.5 text-xs bg-zinc-50 dark:bg-zinc-800 border border-zinc-250 dark:border-zinc-700 rounded-xl focus:outline-none focus:ring-1 focus:ring-purple-500 dark:text-zinc-200"
@@ -580,11 +488,11 @@ export const ClientProjectsTab: React.FC<ClientProjectsTabProps> = ({
 
               <div>
                 <label className="block text-[10px] font-extrabold uppercase tracking-wider text-zinc-400 dark:text-zinc-500 mb-1.5">
-                  Brief Overview / Description (وصف بسيط)
+                  {isAr ? "وصف بسيط للمشروع" : "Brief Overview / Description"}
                 </label>
                 <input
                   type="text"
-                  placeholder="e.g. E-commerce development and marketing contract"
+                  placeholder={isAr ? "مثال: عقد تطوير وتسويق متجر إلكتروني" : "e.g. E-commerce development and marketing contract"}
                   value={newClientDesc}
                   onChange={(e) => setNewClientDesc(e.target.value)}
                   className="w-full px-4 py-2.5 text-xs bg-zinc-50 dark:bg-zinc-800 border border-zinc-250 dark:border-zinc-700 rounded-xl focus:outline-none focus:ring-1 focus:ring-purple-500 dark:text-zinc-200"
@@ -593,10 +501,10 @@ export const ClientProjectsTab: React.FC<ClientProjectsTabProps> = ({
 
               <div>
                 <label className="block text-[10px] font-extrabold uppercase tracking-wider text-zinc-400 dark:text-zinc-500 mb-1.5">
-                  Initial Notes (ملاحظات العمل البدئية)
+                  {isAr ? "ملاحظات العمل الأولية" : "Initial Notes"}
                 </label>
                 <textarea
-                  placeholder="Type any contract conditions or client references here..."
+                  placeholder={isAr ? "اكتب شروط العقد أو مراجع العميل هنا..." : "Type any contract conditions or client references here..."}
                   value={newClientNotes}
                   onChange={(e) => setNewClientNotes(e.target.value)}
                   className="w-full h-24 px-4 py-2.5 text-xs bg-zinc-50 dark:bg-zinc-800 border border-zinc-250 dark:border-zinc-700 rounded-xl focus:outline-none focus:ring-1 focus:ring-purple-500 dark:text-zinc-200 resize-none"
@@ -609,7 +517,7 @@ export const ClientProjectsTab: React.FC<ClientProjectsTabProps> = ({
                   onClick={() => setIsAddModalOpen(false)}
                   className="px-4 py-2 text-xs font-bold text-zinc-500 hover:bg-zinc-100 dark:hover:bg-zinc-800 rounded-xl transition-all cursor-pointer"
                 >
-                  Cancel
+                  {isAr ? "إلغاء" : "Cancel"}
                 </button>
                 <button
                   type="submit"
@@ -617,10 +525,155 @@ export const ClientProjectsTab: React.FC<ClientProjectsTabProps> = ({
                   className="px-4 py-2 bg-purple-600 hover:bg-purple-700 disabled:opacity-50 text-white rounded-xl text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5"
                 >
                   {isSubmitting && <Loader2 className="h-3.5 w-3.5 animate-spin" />}
-                  <span>Save Client</span>
+                  <span>{isAr ? "حفظ العميل" : "Save Client"}</span>
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* HIDDEN CONTAINER EXCLUSIVELY FOR PDF EXPORT PRINTING */}
+      {selectedClient && (
+        <div style={{ position: "absolute", top: "-9999px", left: "-9999px", opacity: 0, pointerEvents: "none" }}>
+          <div 
+            ref={printContainerRef}
+            id="client-projects-print-content"
+            style={{
+              padding: "40px",
+              color: "#1f2937",
+              backgroundColor: "#ffffff",
+              width: "210mm",
+              minHeight: "297mm",
+              display: "flex",
+              flexDirection: "column",
+              fontFamily: "sans-serif",
+              boxSizing: "border-box"
+            }}
+          >
+            {/* PDF Cover Header */}
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", borderBottom: "3px solid #7c3aed", paddingBottom: "20px", marginBottom: "30px" }}>
+              <div>
+                <h1 style={{ fontSize: "24px", fontWeight: "900", color: "#6d28d9", margin: 0 }}>Arab Pro</h1>
+                <p style={{ fontSize: "11px", fontWeight: "700", color: "#6b7280", textTransform: "uppercase", letterSpacing: "0.05em", marginTop: "4px" }}>
+                  {isAr ? "تقرير تسليم المنصة الاحترافي" : "Professional Platform Delivery Report"}
+                </p>
+              </div>
+              <div style={{ textAlign: "right" }}>
+                <span style={{ padding: "6px 12px", backgroundColor: "#f3e8ff", color: "#6d28d9", borderRadius: "8px", fontSize: "11px", fontWeight: "800" }}>
+                  {isAr ? "تم التحقق من TaskFlow" : "TaskFlow Verified"}
+                </span>
+                <p style={{ fontSize: "10px", color: "#9ca3af", marginTop: "8px", fontWeight: "600" }}>
+                  {isAr ? "تمت الطباعة في: " : "Printed on: "}{new Date().toLocaleDateString(i18n.language)}
+                </p>
+              </div>
+            </div>
+
+            {/* Summary Block */}
+            <div style={{ border: "1px solid #e5e7eb", borderRadius: "12px", padding: "20px", backgroundColor: "#f9fafb", marginBottom: "30px" }}>
+              <h2 style={{ fontSize: "14px", fontWeight: "800", color: "#1f2937", margin: "0 0 12px 0" }}>
+                {isAr ? "نظرة عامة على العميل" : "Client Overview"}
+              </h2>
+              <div style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
+                <div style={{ display: "flex", justifyContent: "space-between" }}>
+                  <div>
+                    <span style={{ fontSize: "10px", fontWeight: "700", color: "#9ca3af", textTransform: "uppercase", display: "block" }}>
+                      {isAr ? "اسم العميل / المتجر" : "Client / Store Name"}
+                    </span>
+                    <span style={{ fontSize: "12px", fontWeight: "800", color: "#1f2937", marginTop: "2px", display: "block" }}>{selectedClient.clientName}</span>
+                  </div>
+                  <div style={{ textAlign: "right" }}>
+                    <span style={{ fontSize: "10px", fontWeight: "700", color: "#9ca3af", textTransform: "uppercase", display: "block" }}>
+                      {isAr ? "حالة التسليم" : "Delivery Status"}
+                    </span>
+                    <span style={{ fontSize: "12px", fontWeight: "800", color: "#10b981", marginTop: "2px", display: "block" }}>
+                      {isAr ? "عقد نشط" : "Active Contract"}
+                    </span>
+                  </div>
+                </div>
+                <div style={{ borderTop: "1px solid #f3f4f6", paddingTop: "8px" }}>
+                  <span style={{ fontSize: "10px", fontWeight: "700", color: "#9ca3af", textTransform: "uppercase", display: "block" }}>
+                    {isAr ? "وصف المشروع" : "Project Description"}
+                  </span>
+                  <p style={{ fontSize: "11.5px", color: "#4b5563", margin: "4px 0 0 0", lineHeight: "1.5" }}>
+                    {selectedClient.description || (isAr ? "لم يتم تقديم وصف للمشروع." : "No project description provided.")}
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            {/* Services List in PDF */}
+            <div style={{ marginBottom: "30px" }}>
+              <h2 style={{ fontSize: "13px", fontWeight: "800", color: "#374151", textTransform: "uppercase", borderBottom: "1px solid #e5e7eb", paddingBottom: "6px", marginBottom: "16px" }}>
+                {isAr ? "الخدمات المكتملة والمخرجات" : "Completed Services & Deliverables"}
+              </h2>
+              
+              <div style={{ display: "flex", flexDirection: "column", gap: "10px" }}>
+                {selectedClient.services.map((srv, idx) => (
+                  <div 
+                    key={idx} 
+                    style={{ 
+                      display: "flex", 
+                      justifyContent: "space-between", 
+                      alignItems: "center", 
+                      padding: "12px", 
+                      border: "1px solid #e5e7eb", 
+                      borderRadius: "10px",
+                      backgroundColor: srv.isChecked ? "#f0fdf4" : "#f9fafb" 
+                    }}
+                  >
+                    <span style={{ fontSize: "11.5px", fontWeight: "700", color: srv.isChecked ? "#1f2937" : "#9ca3af" }}>
+                      {srv.name}
+                    </span>
+                    <span style={{ 
+                      fontSize: "10px", 
+                      fontWeight: "800", 
+                      padding: "4px 10px", 
+                      borderRadius: "6px", 
+                      backgroundColor: srv.isChecked ? "#d1fae5" : "#f3f4f6", 
+                      color: srv.isChecked ? "#065f46" : "#9ca3af" 
+                    }}>
+                      {srv.isChecked 
+                        ? (isAr ? "✓ مكتمل" : "✓ Completed") 
+                        : (isAr ? "غير نشط" : "Not Active")}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* Notes / Remarks */}
+            {selectedClient.notes && (
+              <div style={{ borderLeft: "4px solid #7c3aed", backgroundColor: "#faf5ff", borderRadius: "0 8px 8px 0", padding: "16px", marginBottom: "30px" }}>
+                <h2 style={{ fontSize: "11px", fontWeight: "800", color: "#7c3aed", textTransform: "uppercase", letterSpacing: "0.05em", margin: "0 0 6px 0" }}>
+                  {isAr ? "ملاحظات وتفاصيل العمل" : "Remarks & Project Notes"}
+                </h2>
+                <p style={{ fontSize: "11.5px", color: "#4b5563", whiteSpace: "pre-wrap", lineHeight: "1.6", margin: 0 }}>{selectedClient.notes}</p>
+              </div>
+            )}
+
+            {/* PDF Signatures Footer */}
+            <div style={{ marginTop: "auto", borderTop: "1px solid #e5e7eb", paddingTop: "20px", display: "flex", justifyContent: "space-between" }}>
+              <div>
+                <p style={{ fontSize: "9px", fontWeight: "800", color: "#9ca3af", textTransform: "uppercase", letterSpacing: "0.05em", margin: 0 }}>
+                  {isAr ? "مدير Arab Pro" : "Arab Pro Director"}
+                </p>
+                <div style={{ height: "40px", marginTop: "8px", borderBottom: "1px dashed #d1d5db", width: "160px" }}></div>
+                <p style={{ marginTop: "8px", fontSize: "11px", fontWeight: "700", color: "#6b7280", margin: "8px 0 0 0" }}>
+                  {isAr ? "توقيع معتمد" : "Authorized Signature"}
+                </p>
+              </div>
+              <div style={{ textAlign: "right" }}>
+                <p style={{ fontSize: "9px", fontWeight: "800", color: "#9ca3af", textTransform: "uppercase", letterSpacing: "0.05em", margin: 0 }}>
+                  {isAr ? "إقرار العميل" : "Client Acknowledgment"}
+                </p>
+                <div style={{ height: "40px", marginTop: "8px", borderBottom: "1px dashed #d1d5db", width: "160px", marginLeft: "auto" }}></div>
+                <p style={{ marginTop: "8px", fontSize: "11px", fontWeight: "700", color: "#6b7280", margin: "8px 0 0 0" }}>
+                  {isAr ? "ممثل المتجر" : "Store Representative"}
+                </p>
+              </div>
+            </div>
+
           </div>
         </div>
       )}
