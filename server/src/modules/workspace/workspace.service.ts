@@ -7,12 +7,17 @@ import { ConflictError, NotFoundError, ForbiddenError } from "../../utils/errors
 
 export class WorkspaceService {
   private generateSlug(name: string): string {
-    return name
+    let slug = name
       .toLowerCase()
       .trim()
       .replace(/[^\w\s-]/g, "")
       .replace(/[\s_]+/g, "-")
       .replace(/^-+|-+$/g, "");
+
+    if (!slug) {
+      slug = `workspace-${Math.random().toString(36).substring(2, 8)}`;
+    }
+    return slug;
   }
 
   async createWorkspace(name: string, customSlug: string | undefined, ownerId: string): Promise<IWorkspace> {

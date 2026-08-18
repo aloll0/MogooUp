@@ -14,7 +14,7 @@ export const ClientProjectsTab: React.FC<ClientProjectsTabProps> = ({
   workspaceId,
   currentUserRole,
 }) => {
-  const { t, i18n } = useTranslation();
+  const { i18n } = useTranslation();
   const isAr = i18n.language === "ar";
   const printContainerRef = useRef<HTMLDivElement>(null);
   const [clients, setClients] = useState<ClientProject[]>([]);
