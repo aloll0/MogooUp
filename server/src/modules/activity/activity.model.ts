@@ -1,7 +1,7 @@
 import { Schema, model, Document, Types } from "mongoose";
 
 export interface IActivityLog extends Document {
-  workspaceId: Types.ObjectId;
+  workspaceId?: Types.ObjectId;
   userId: Types.ObjectId;
   entityType: "task" | "workspace" | "list" | "space" | "folder";
   entityId: Types.ObjectId;
@@ -15,7 +15,7 @@ const activityLogSchema = new Schema<IActivityLog>(
     workspaceId: {
       type: Schema.Types.ObjectId,
       ref: "Workspace",
-      required: true,
+      required: false,
       index: true,
     },
     userId: {

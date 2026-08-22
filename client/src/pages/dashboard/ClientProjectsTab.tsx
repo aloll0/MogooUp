@@ -4,7 +4,6 @@ import { taskflowService } from "../services/taskflowService";
 import type { ClientProject, ClientProjectService } from "../services/taskflowService";
 import html2pdf from "html2pdf.js";
 import { useTranslation } from "react-i18next";
-import { useConfirmStore } from "../stores/useConfirmStore";
 
 interface ClientProjectsTabProps {
   workspaceId: string;
@@ -119,7 +118,6 @@ export const ClientProjectsTab: React.FC<ClientProjectsTabProps> = ({
     const newService: ClientProjectService = {
       name: customServiceName.trim(),
       isChecked: true, // check automatically on add
-      note: "",
     };
 
     const updatedServices = [...selectedClient.services, newService];
@@ -162,83 +160,12 @@ export const ClientProjectsTab: React.FC<ClientProjectsTabProps> = ({
     }
   };
 
-  // Update service note handler
-  const handleUpdateServiceNote = async (serviceIndex: number, noteText: string) => {
-    if (!selectedClient || !isManager) return;
-
-    const updatedServices = [...selectedClient.services];
-    updatedServices[serviceIndex] = {
-      ...updatedServices[serviceIndex],
-      note: noteText,
-    };
-
-    const updatedClient = {
-      ...selectedClient,
-      services: updatedServices,
-    };
-
-    setSelectedClient(updatedClient);
-    setClients(clients.map((c) => (c._id === selectedClient._id ? updatedClient : c)));
-
-    try {
-      await taskflowService.updateClientProject(workspaceId, selectedClient._id, {
-        services: updatedServices,
-      });
-    } catch (error) {
-      console.error("Failed to update service note:", error);
-    }
-  };
-
-  // Delete service deliverable handler
-  const handleDeleteService = async (serviceIndex: number) => {
-    if (!selectedClient || !isManager) return;
-
-    const confirmed = await useConfirmStore.getState().show({
-      title: isAr ? "حذف الخدمة" : "Delete Service",
-      message: isAr 
-        ? `هل أنت متأكد من رغبتك في حذف خدمة "${selectedClient.services[serviceIndex].name}"؟`
-        : `Are you sure you want to delete the service "${selectedClient.services[serviceIndex].name}"?`,
-      confirmText: isAr ? "حذف" : "Delete",
-      cancelText: isAr ? "إلغاء" : "Cancel",
-    });
-
-    if (!confirmed) return;
-
-    const updatedServices = selectedClient.services.filter((_, idx) => idx !== serviceIndex);
-
-    const updatedClient = {
-      ...selectedClient,
-      services: updatedServices,
-    };
-
-    setSelectedClient(updatedClient);
-    setClients(clients.map((c) => (c._id === selectedClient._id ? updatedClient : c)));
-
-    try {
-      await taskflowService.updateClientProject(workspaceId, selectedClient._id, {
-        services: updatedServices,
-      });
-    } catch (error) {
-      console.error("Failed to delete service:", error);
-    }
-  };
-
-
   // Delete Client Profile
   const handleDeleteClient = async (clientId: string) => {
-    const targetClient = clients.find((c) => c._id === clientId);
-    const clientName = targetClient ? targetClient.clientName : "";
-
-    const confirmed = await useConfirmStore.getState().show({
-      title: isAr ? "حذف ملف تعريف العميل" : "Delete Client Profile",
-      message: isAr 
-        ? `هل أنت متأكد من رغبتك في حذف ملف تعريف العميل "${clientName}"؟ ستفقد جميع قوائم المراجعة والخدمات المرتبطة به.`
-        : `Are you sure you want to delete the client profile "${clientName}"? All checklists will be lost.`,
-      confirmText: isAr ? "حذف" : "Delete",
-      cancelText: isAr ? "إلغاء" : "Cancel",
-    });
-
-    if (!confirmed) return;
+    const confirmMessage = isAr
+      ? "هل أنت متأكد من رغبتك في حذف ملف تعريف هذا العميل؟ ستفقد جميع قوائم المراجعة والخدمات المرتبطة به."
+      : "Are you sure you want to delete this client profile? All checklists will be lost.";
+    if (!window.confirm(confirmMessage)) return;
 
     try {
       await taskflowService.deleteClientProject(workspaceId, clientId);
@@ -265,8 +192,8 @@ export const ClientProjectsTab: React.FC<ClientProjectsTabProps> = ({
       margin: 0,
       filename: `service_delivery_report_${selectedClient.clientName.toLowerCase().replace(/\s+/g, "_")}.pdf`,
       image: { type: "jpeg" as const, quality: 0.98 },
-      html2canvas: { 
-        scale: 2, 
+      html2canvas: {
+        scale: 2,
         useCORS: true,
         backgroundColor: "#ffffff"
       },
@@ -293,7 +220,7 @@ export const ClientProjectsTab: React.FC<ClientProjectsTabProps> = ({
 
   return (
     <div className="flex-1 flex flex-col min-h-0 bg-zinc-50/50 dark:bg-zinc-950/20 text-start animate-fade-in">
-      
+
       {/* Top Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-6 border-b border-zinc-200 dark:border-zinc-800 bg-white dark:bg-[#120722]/30 backdrop-blur-md">
         <div>
@@ -301,7 +228,7 @@ export const ClientProjectsTab: React.FC<ClientProjectsTabProps> = ({
             <span>{isAr ? "مشاريع وخدمات العملاء" : "Client Projects & Services"}</span>
           </h2>
           <p className="text-xs text-zinc-500 dark:text-zinc-400 mt-1">
-            {isAr 
+            {isAr
               ? "قم بإعداد المتاجر أو العملاء، وإدارة قائمة الخدمات النشطة الخاصة بهم، وإضافة مخرجات مخصصة، وطباعة أوراق ملخص PDF مميزة."
               : "Setup stores or clients, manage their active services checklist, add custom deliverables, and print premium PDF summary sheets."}
           </p>
@@ -329,7 +256,7 @@ export const ClientProjectsTab: React.FC<ClientProjectsTabProps> = ({
             {isAr ? "لم يتم إنشاء مشاريع عملاء بعد" : "No Client Projects Created Yet"}
           </h3>
           <p className="text-xs text-zinc-500 mt-2">
-            {isAr 
+            {isAr
               ? "يمكن للمديرين إضافة عملاء أو ملفات تعريف المتاجر لإدارة قوائم المراجعة الديناميكية لعقود الخدمات النشطة."
               : "Managers can add clients or store profiles to manage dynamic checklists representing active service contracts."}
           </p>
@@ -344,7 +271,7 @@ export const ClientProjectsTab: React.FC<ClientProjectsTabProps> = ({
         </div>
       ) : (
         <div className="flex-1 flex flex-col lg:flex-row min-h-0 overflow-hidden">
-          
+
           {/* Left panel: Clients list */}
           <div className="w-full lg:w-80 border-r border-zinc-200 dark:border-zinc-800 flex flex-col bg-white dark:bg-[#120722]/10 overflow-hidden">
             {/* Search Input */}
@@ -372,11 +299,10 @@ export const ClientProjectsTab: React.FC<ClientProjectsTabProps> = ({
                   <button
                     key={client._id}
                     onClick={() => setSelectedClient(client)}
-                    className={`w-full text-start p-3.5 rounded-xl border transition-all cursor-pointer flex flex-col gap-2 ${
-                      isSelected
+                    className={`w-full text-start p-3.5 rounded-xl border transition-all cursor-pointer flex flex-col gap-2 ${isSelected
                         ? "bg-purple-600/5 dark:bg-purple-500/5 border-purple-500/40 shadow-xs"
                         : "bg-white dark:bg-zinc-900 border-zinc-200 dark:border-zinc-800 hover:border-zinc-350 dark:hover:border-zinc-700"
-                    }`}
+                      }`}
                   >
                     <div className="flex items-start justify-between gap-2">
                       <span className="font-bold text-sm text-zinc-800 dark:text-zinc-200 line-clamp-1">
@@ -412,7 +338,7 @@ export const ClientProjectsTab: React.FC<ClientProjectsTabProps> = ({
           {/* Right panel: Details & Checklist */}
           {selectedClient ? (
             <div className="flex-1 flex flex-col overflow-y-auto bg-white dark:bg-zinc-900/40 p-6 space-y-6">
-              
+
               {/* Header Info */}
               <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b dark:border-zinc-850 pb-5">
                 <div>
@@ -445,73 +371,34 @@ export const ClientProjectsTab: React.FC<ClientProjectsTabProps> = ({
                     {isAr ? "الخدمات المقدمة والمخرجات" : "Services Rendered & Deliverables"}
                   </h4>
                   <span className="text-[10px] font-semibold text-zinc-400">
-                    {!isManager 
-                      ? (isAr ? "وضع القراءة فقط" : "Read-Only Mode") 
+                    {!isManager
+                      ? (isAr ? "وضع القراءة فقط" : "Read-Only Mode")
                       : (isAr ? "حفظ تلقائي فوري" : "Auto-Saves Instantly")}
                   </span>
                 </div>
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                   {selectedClient.services.map((service, idx) => (
-                    <div
+                    <button
                       key={idx}
-                      className={`flex flex-col gap-2 p-3.5 rounded-xl border transition-all ${
-                        service.isChecked
-                          ? "bg-green-500/[0.03] dark:bg-green-500/[0.02] border-green-500/30"
-                          : "bg-zinc-50 dark:bg-zinc-900 border-zinc-200 dark:border-zinc-800 hover:border-zinc-300 dark:hover:border-zinc-700"
-                      }`}
+                      onClick={() => handleToggleService(idx)}
+                      disabled={!isManager}
+                      className={`flex items-center gap-3 p-3.5 rounded-xl border text-start transition-all ${!isManager ? "cursor-default" : "cursor-pointer"
+                        } ${service.isChecked
+                          ? "bg-green-500/[0.03] dark:bg-green-500/[0.02] border-green-500/30 text-green-700 dark:text-green-450"
+                          : "bg-zinc-50 dark:bg-zinc-900 border-zinc-200 dark:border-zinc-800 hover:border-zinc-300 dark:hover:border-zinc-700 text-zinc-650 dark:text-zinc-300"
+                        }`}
                     >
-                      {/* Header containing checkable title and delete button */}
-                      <div className="flex items-center justify-between gap-2">
-                        {/* Checkable title container */}
-                        <div
-                          onClick={() => handleToggleService(idx)}
-                          className={`flex items-center gap-3 min-w-0 ${
-                            !isManager ? "cursor-default" : "cursor-pointer select-none"
+                      <div
+                        className={`h-4.5 w-4.5 rounded-md border flex items-center justify-center transition-all ${service.isChecked
+                            ? "bg-green-500 border-green-500 text-white"
+                            : "border-zinc-300 dark:border-zinc-700"
                           }`}
-                        >
-                          <div
-                            className={`h-4.5 w-4.5 rounded-md border flex items-center justify-center shrink-0 transition-all ${
-                              service.isChecked
-                                ? "bg-green-500 border-green-500 text-white"
-                                : "border-zinc-300 dark:border-zinc-700"
-                            }`}
-                          >
-                            {service.isChecked && <Check className="h-3 w-3 stroke-[3]" />}
-                          </div>
-                          <span className={`text-xs font-bold truncate ${service.isChecked ? "text-green-700 dark:text-green-450" : "text-zinc-650 dark:text-zinc-300"}`}>
-                            {service.name}
-                          </span>
-                        </div>
-
-                        {/* Delete Button */}
-                        {isManager && (
-                          <button
-                            type="button"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              handleDeleteService(idx);
-                            }}
-                            className="p-1 hover:bg-red-500/10 text-zinc-400 hover:text-red-500 rounded-md transition-all cursor-pointer shrink-0"
-                            title={isAr ? "حذف الخدمة" : "Delete Service"}
-                          >
-                            <Trash2 className="h-3.5 w-3.5" />
-                          </button>
-                        )}
+                      >
+                        {service.isChecked && <Check className="h-3 w-3 stroke-[3]" />}
                       </div>
-
-                      {/* Note text input */}
-                      <div className="mt-1">
-                        <input
-                          type="text"
-                          placeholder={isAr ? "أضف ملاحظة أو تفصيل للخدمة..." : "Add note or service detail..."}
-                          value={service.note || ""}
-                          disabled={!isManager}
-                          onChange={(e) => handleUpdateServiceNote(idx, e.target.value)}
-                          className="w-full px-3 py-1.5 text-[11px] bg-white dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-lg focus:outline-none focus:ring-1 focus:ring-purple-500 dark:text-zinc-200 transition-theme"
-                        />
-                      </div>
-                    </div>
+                      <span className="text-xs font-bold">{service.name}</span>
+                    </button>
                   ))}
                 </div>
 
@@ -562,7 +449,7 @@ export const ClientProjectsTab: React.FC<ClientProjectsTabProps> = ({
           ) : (
             <div className="flex-1 flex flex-col items-center justify-center p-8 bg-white dark:bg-zinc-900/40">
               <p className="text-xs text-zinc-400 dark:text-zinc-500 font-semibold text-center">
-                {isAr 
+                {isAr
                   ? "اختر مشروع عميل من القائمة الجانبية لإدارة المهام والمخرجات أو طباعة التقارير."
                   : "Select a client project from the sidebar list to manage active deliverables or export reports."}
               </p>
@@ -579,7 +466,7 @@ export const ClientProjectsTab: React.FC<ClientProjectsTabProps> = ({
             <h3 className="text-base font-bold text-zinc-850 dark:text-zinc-200 mb-4">
               {isAr ? "إضافة ملف تعريف العميل / المتجر" : "Add Client / Store Profile"}
             </h3>
-            
+
             <form onSubmit={handleCreateClient} className="space-y-4">
               <div>
                 <label className="block text-[10px] font-extrabold uppercase tracking-wider text-zinc-400 dark:text-zinc-500 mb-1.5">
@@ -645,7 +532,7 @@ export const ClientProjectsTab: React.FC<ClientProjectsTabProps> = ({
       {/* HIDDEN CONTAINER EXCLUSIVELY FOR PDF EXPORT PRINTING */}
       {selectedClient && (
         <div style={{ position: "absolute", top: "-9999px", left: "-9999px", opacity: 0, pointerEvents: "none" }}>
-          <div 
+          <div
             ref={printContainerRef}
             id="client-projects-print-content"
             style={{
@@ -653,12 +540,10 @@ export const ClientProjectsTab: React.FC<ClientProjectsTabProps> = ({
               color: "#1f2937",
               backgroundColor: "#ffffff",
               width: "210mm",
-              minHeight: "280mm",
+              minHeight: "297mm",
               display: "flex",
               flexDirection: "column",
-              fontFamily: isAr ? "'Cairo', 'Segoe UI', Tahoma, Geneva, sans-serif" : "'Inter', sans-serif",
-              direction: isAr ? "rtl" : "ltr",
-              textAlign: isAr ? "right" : "left",
+              fontFamily: "sans-serif",
               boxSizing: "border-box"
             }}
           >
@@ -666,18 +551,11 @@ export const ClientProjectsTab: React.FC<ClientProjectsTabProps> = ({
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", borderBottom: "3px solid #7c3aed", paddingBottom: "20px", marginBottom: "30px" }}>
               <div>
                 <h1 style={{ fontSize: "24px", fontWeight: "900", color: "#6d28d9", margin: 0 }}>Arab Pro</h1>
-                <p style={{ 
-                  fontSize: "11px", 
-                  fontWeight: "700", 
-                  color: "#6b7280", 
-                  textTransform: isAr ? "none" : "uppercase", 
-                  letterSpacing: isAr ? "normal" : "0.05em", 
-                  marginTop: "4px" 
-                }}>
+                <p style={{ fontSize: "11px", fontWeight: "700", color: "#6b7280", textTransform: "uppercase", letterSpacing: "0.05em", marginTop: "4px" }}>
                   {isAr ? "تقرير تسليم المنصة الاحترافي" : "Professional Platform Delivery Report"}
                 </p>
               </div>
-              <div style={{ textAlign: isAr ? "left" : "right" }}>
+              <div style={{ textAlign: "right" }}>
                 <span style={{ padding: "6px 12px", backgroundColor: "#f3e8ff", color: "#6d28d9", borderRadius: "8px", fontSize: "11px", fontWeight: "800" }}>
                   {isAr ? "تم التحقق من TaskFlow" : "TaskFlow Verified"}
                 </span>
@@ -700,7 +578,7 @@ export const ClientProjectsTab: React.FC<ClientProjectsTabProps> = ({
                     </span>
                     <span style={{ fontSize: "12px", fontWeight: "800", color: "#1f2937", marginTop: "2px", display: "block" }}>{selectedClient.clientName}</span>
                   </div>
-                  <div style={{ textAlign: isAr ? "left" : "right" }}>
+                  <div style={{ textAlign: "right" }}>
                     <span style={{ fontSize: "10px", fontWeight: "700", color: "#9ca3af", textTransform: "uppercase", display: "block" }}>
                       {isAr ? "حالة التسليم" : "Delivery Status"}
                     </span>
@@ -725,50 +603,36 @@ export const ClientProjectsTab: React.FC<ClientProjectsTabProps> = ({
               <h2 style={{ fontSize: "13px", fontWeight: "800", color: "#374151", textTransform: "uppercase", borderBottom: "1px solid #e5e7eb", paddingBottom: "6px", marginBottom: "16px" }}>
                 {isAr ? "الخدمات المكتملة والمخرجات" : "Completed Services & Deliverables"}
               </h2>
-              
+
               <div style={{ display: "flex", flexDirection: "column", gap: "10px" }}>
                 {selectedClient.services.map((srv, idx) => (
-                  <div 
-                    key={idx} 
-                    style={{ 
-                      display: "flex", 
-                      flexDirection: "column",
-                      gap: "8px", 
-                      padding: "12px", 
-                      border: "1px solid #e5e7eb", 
+                  <div
+                    key={idx}
+                    style={{
+                      display: "flex",
+                      justifyContent: "space-between",
+                      alignItems: "center",
+                      padding: "12px",
+                      border: "1px solid #e5e7eb",
                       borderRadius: "10px",
-                      backgroundColor: srv.isChecked ? "#f0fdf4" : "#f9fafb" 
+                      backgroundColor: srv.isChecked ? "#f0fdf4" : "#f9fafb"
                     }}
                   >
-                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                      <span style={{ fontSize: "11.5px", fontWeight: "700", color: srv.isChecked ? "#1f2937" : "#9ca3af" }}>
-                        {srv.name}
-                      </span>
-                      <span style={{ 
-                        fontSize: "10px", 
-                        fontWeight: "800", 
-                        padding: "4px 10px", 
-                        borderRadius: "6px", 
-                        backgroundColor: srv.isChecked ? "#d1fae5" : "#f3f4f6", 
-                        color: srv.isChecked ? "#065f46" : "#9ca3af" 
-                      }}>
-                        {srv.isChecked 
-                          ? (isAr ? "✓ مكتمل" : "✓ Completed") 
-                          : (isAr ? "غير نشط" : "Not Active")}
-                      </span>
-                    </div>
-                    {srv.note && (
-                      <div style={{ 
-                        fontSize: "10.5px", 
-                        color: "#4b5563", 
-                        paddingTop: "6px", 
-                        borderTop: "1px dashed #e5e7eb",
-                        fontStyle: "italic",
-                        lineHeight: "1.4"
-                      }}>
-                        {isAr ? `ملاحظة: ${srv.note}` : `Note: ${srv.note}`}
-                      </div>
-                    )}
+                    <span style={{ fontSize: "11.5px", fontWeight: "700", color: srv.isChecked ? "#1f2937" : "#9ca3af" }}>
+                      {srv.name}
+                    </span>
+                    <span style={{
+                      fontSize: "10px",
+                      fontWeight: "800",
+                      padding: "4px 10px",
+                      borderRadius: "6px",
+                      backgroundColor: srv.isChecked ? "#d1fae5" : "#f3f4f6",
+                      color: srv.isChecked ? "#065f46" : "#9ca3af"
+                    }}>
+                      {srv.isChecked
+                        ? (isAr ? "✓ مكتمل" : "✓ Completed")
+                        : (isAr ? "غير نشط" : "Not Active")}
+                    </span>
                   </div>
                 ))}
               </div>
@@ -776,22 +640,8 @@ export const ClientProjectsTab: React.FC<ClientProjectsTabProps> = ({
 
             {/* Notes / Remarks */}
             {selectedClient.notes && (
-              <div style={{ 
-                borderLeft: isAr ? "none" : "4px solid #7c3aed", 
-                borderRight: isAr ? "4px solid #7c3aed" : "none", 
-                backgroundColor: "#faf5ff", 
-                borderRadius: isAr ? "8px 0 0 8px" : "0 8px 8px 0", 
-                padding: "16px", 
-                marginBottom: "30px" 
-              }}>
-                <h2 style={{ 
-                  fontSize: "11px", 
-                  fontWeight: "800", 
-                  color: "#7c3aed", 
-                  textTransform: isAr ? "none" : "uppercase", 
-                  letterSpacing: isAr ? "normal" : "0.05em", 
-                  margin: "0 0 6px 0" 
-                }}>
+              <div style={{ borderLeft: "4px solid #7c3aed", backgroundColor: "#faf5ff", borderRadius: "0 8px 8px 0", padding: "16px", marginBottom: "30px" }}>
+                <h2 style={{ fontSize: "11px", fontWeight: "800", color: "#7c3aed", textTransform: "uppercase", letterSpacing: "0.05em", margin: "0 0 6px 0" }}>
                   {isAr ? "ملاحظات وتفاصيل العمل" : "Remarks & Project Notes"}
                 </h2>
                 <p style={{ fontSize: "11.5px", color: "#4b5563", whiteSpace: "pre-wrap", lineHeight: "1.6", margin: 0 }}>{selectedClient.notes}</p>
@@ -801,14 +651,7 @@ export const ClientProjectsTab: React.FC<ClientProjectsTabProps> = ({
             {/* PDF Signatures Footer */}
             <div style={{ marginTop: "auto", borderTop: "1px solid #e5e7eb", paddingTop: "20px", display: "flex", justifyContent: "space-between" }}>
               <div>
-                <p style={{ 
-                  fontSize: "9px", 
-                  fontWeight: "800", 
-                  color: "#9ca3af", 
-                  textTransform: isAr ? "none" : "uppercase", 
-                  letterSpacing: isAr ? "normal" : "0.05em", 
-                  margin: 0 
-                }}>
+                <p style={{ fontSize: "9px", fontWeight: "800", color: "#9ca3af", textTransform: "uppercase", letterSpacing: "0.05em", margin: 0 }}>
                   {isAr ? "مدير Arab Pro" : "Arab Pro Director"}
                 </p>
                 <div style={{ height: "40px", marginTop: "8px", borderBottom: "1px dashed #d1d5db", width: "160px" }}></div>
@@ -816,25 +659,11 @@ export const ClientProjectsTab: React.FC<ClientProjectsTabProps> = ({
                   {isAr ? "توقيع معتمد" : "Authorized Signature"}
                 </p>
               </div>
-              <div style={{ textAlign: isAr ? "left" : "right" }}>
-                <p style={{ 
-                  fontSize: "9px", 
-                  fontWeight: "800", 
-                  color: "#9ca3af", 
-                  textTransform: isAr ? "none" : "uppercase", 
-                  letterSpacing: isAr ? "normal" : "0.05em", 
-                  margin: 0 
-                }}>
+              <div style={{ textAlign: "right" }}>
+                <p style={{ fontSize: "9px", fontWeight: "800", color: "#9ca3af", textTransform: "uppercase", letterSpacing: "0.05em", margin: 0 }}>
                   {isAr ? "إقرار العميل" : "Client Acknowledgment"}
                 </p>
-                <div style={{ 
-                  height: "40px", 
-                  marginTop: "8px", 
-                  borderBottom: "1px dashed #d1d5db", 
-                  width: "160px", 
-                  marginLeft: isAr ? "0" : "auto",
-                  marginRight: isAr ? "auto" : "0"
-                }}></div>
+                <div style={{ height: "40px", marginTop: "8px", borderBottom: "1px dashed #d1d5db", width: "160px", marginLeft: "auto" }}></div>
                 <p style={{ marginTop: "8px", fontSize: "11px", fontWeight: "700", color: "#6b7280", margin: "8px 0 0 0" }}>
                   {isAr ? "ممثل المتجر" : "Store Representative"}
                 </p>

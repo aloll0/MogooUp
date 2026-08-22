@@ -6,7 +6,7 @@ export class ActivityService {
    * Logs a new activity in the database.
    */
   async logActivity(activityData: {
-    workspaceId: string | mongoose.Types.ObjectId;
+    workspaceId?: string | mongoose.Types.ObjectId;
     userId: string | mongoose.Types.ObjectId;
     entityType: "task" | "workspace" | "list" | "space" | "folder";
     entityId: string | mongoose.Types.ObjectId;
@@ -14,7 +14,7 @@ export class ActivityService {
     details?: Record<string, any>;
   }): Promise<IActivityLog> {
     const log = await ActivityLogModel.create({
-      workspaceId: new mongoose.Types.ObjectId(activityData.workspaceId.toString()),
+      workspaceId: activityData.workspaceId ? new mongoose.Types.ObjectId(activityData.workspaceId.toString()) : undefined,
       userId: new mongoose.Types.ObjectId(activityData.userId.toString()),
       entityType: activityData.entityType,
       entityId: new mongoose.Types.ObjectId(activityData.entityId.toString()),
@@ -22,6 +22,17 @@ export class ActivityService {
       details: activityData.details || {},
     });
     return log;
+  }
+
+  /**
+   * Retrieves all populated activity logs across the entire system.
+   */
+  async getGlobalActivities(limit: number = 100): Promise<IActivityLog[]> {
+    return ActivityLogModel.find({})
+      .populate("userId", "fullName avatarUrl")
+      .sort({ createdAt: -1 })
+      .limit(limit)
+      .exec();
   }
 
   /**

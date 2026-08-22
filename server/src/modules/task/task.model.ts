@@ -29,11 +29,20 @@ export interface IRevisionNote {
   createdAt: Date;
 }
 
+export interface IStatusHistory {
+  status: string;
+  enteredAt: Date;
+  leftAt?: Date;
+  durationMs?: number;
+}
+
 export interface ITask extends Document {
   workspaceId: Types.ObjectId;
   spaceId: Types.ObjectId;
   listId: Types.ObjectId;
   parentTaskId?: Types.ObjectId;
+  clientProjectId?: Types.ObjectId;
+  projectName?: string;
   title: string;
   description: string;
   status: string; // e.g., 'to-do', 'in-progress', 'done'
@@ -50,6 +59,20 @@ export interface ITask extends Document {
   loggedTime?: ILoggedTime[];
   needsRevision?: boolean;
   revisionNotes?: IRevisionNote[];
+  statusHistory: IStatusHistory[];
+  timeInQueueMs?: number;
+  timeInProgressMs?: number;
+  timeInReviewMs?: number;
+  totalCycleTimeMs?: number;
+  notes?: string;
+  delayReason?: string;
+  cancellationReason?: string;
+  blockedReason?: string;
+  rejectedReason?: string;
+  revisionReason?: string;
+  deleted?: boolean;
+  deletedAt?: Date;
+  deletedBy?: Types.ObjectId;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -174,6 +197,54 @@ const taskSchema = new Schema<ITask>(
         },
       ],
       default: [],
+    },
+    clientProjectId: {
+      type: Schema.Types.ObjectId,
+      ref: "ClientProject",
+      default: null,
+      index: true,
+    },
+    projectName: {
+      type: String,
+      default: "",
+    },
+    notes: {
+      type: String,
+      default: "",
+    },
+    statusHistory: {
+      type: [
+        {
+          status: { type: String, required: true },
+          enteredAt: { type: Date, default: Date.now },
+          leftAt: { type: Date },
+          durationMs: { type: Number },
+        }
+      ],
+      default: [],
+    },
+    timeInQueueMs: { type: Number, default: 0 },
+    timeInProgressMs: { type: Number, default: 0 },
+    timeInReviewMs: { type: Number, default: 0 },
+    totalCycleTimeMs: { type: Number, default: 0 },
+    delayReason: { type: String, default: "" },
+    cancellationReason: { type: String, default: "" },
+    blockedReason: { type: String, default: "" },
+    rejectedReason: { type: String, default: "" },
+    revisionReason: { type: String, default: "" },
+    deleted: {
+      type: Boolean,
+      default: false,
+      index: true,
+    },
+    deletedAt: {
+      type: Date,
+      default: null,
+    },
+    deletedBy: {
+      type: Schema.Types.ObjectId,
+      ref: "User",
+      default: null,
     },
   },
   {

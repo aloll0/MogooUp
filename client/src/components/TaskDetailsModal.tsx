@@ -62,6 +62,47 @@ export const TaskDetailsModal: React.FC<TaskDetailsModalProps> = ({
   const [revisionAssigneeId, setRevisionAssigneeId] = useState("");
   const [revisionListId, setRevisionListId] = useState(task.listId.toString());
 
+  // Status Overrides Reason states
+  const [showReasonPromptFor, setShowReasonPromptFor] = useState<string | null>(null);
+  const [reasonText, setReasonText] = useState("");
+
+  const formatMsToHoursMinutes = (ms: number) => {
+    if (!ms || ms <= 0) return "0h 0m";
+    const minutes = Math.floor((ms / (1000 * 60)) % 60);
+    const hours = Math.floor(ms / (1000 * 60 * 60));
+    return `${hours}h ${minutes}m`;
+  };
+
+  const handleStatusOverrideChange = (overrideStatus: string) => {
+    if (!overrideStatus) {
+      const matchedList = allLists.find((l) => l._id === listId);
+      const normalStatus = matchedList ? matchedList.name.toLowerCase().replace(/\s+/g, "-") : "to-do";
+      updateTaskMutation.mutate({ status: normalStatus });
+      return;
+    }
+
+    if (["cancelled", "delayed", "blocked", "rejected"].includes(overrideStatus)) {
+      setShowReasonPromptFor(overrideStatus);
+      setReasonText("");
+    } else {
+      updateTaskMutation.mutate({ status: overrideStatus });
+    }
+  };
+
+  const submitStatusOverride = () => {
+    if (!showReasonPromptFor || !reasonText.trim()) return;
+
+    const updateData: Record<string, any> = { status: showReasonPromptFor };
+    if (showReasonPromptFor === "delayed") updateData.delayReason = reasonText.trim();
+    if (showReasonPromptFor === "cancelled") updateData.cancellationReason = reasonText.trim();
+    if (showReasonPromptFor === "blocked") updateData.blockedReason = reasonText.trim();
+    if (showReasonPromptFor === "rejected") updateData.rejectedReason = reasonText.trim();
+
+    updateTaskMutation.mutate(updateData);
+    setShowReasonPromptFor(null);
+    setReasonText("");
+  };
+
   // Workspace role checks
   const currentUserMemberObj = workspaceMembers.find(
     (m) => m.userId?._id === user?.id || m.userId === user?.id
@@ -262,23 +303,46 @@ export const TaskDetailsModal: React.FC<TaskDetailsModalProps> = ({
     if (act.action === "moved") {
       return isAr ? `نقل هذه المهمة` : `moved this task`;
     }
+    if (act.action === "deleted") {
+      return isAr ? `حذف هذه المهمة` : `deleted this task`;
+    }
     
     const changes = act.details?.changes || {};
     const changeKeys = Object.keys(changes);
     if (changeKeys.length > 0) {
       const descriptions = changeKeys.map((key) => {
-        const val = changes[key];
+        const change = changes[key];
+        const oldVal = change.old;
+        const newVal = change.new;
+        
         if (key === "status") {
-          return isAr ? `غير الحالة إلى "${val}"` : `changed status to "${val}"`;
+          return isAr 
+            ? `غيّر الحالة من "${oldVal || '-'}" إلى "${newVal}"` 
+            : `changed status from "${oldVal || '-'}" to "${newVal}"`;
         }
         if (key === "priority") {
-          return isAr ? `غير الأولوية إلى "${val}"` : `changed priority to "${val}"`;
+          return isAr 
+            ? `غيّر الأولوية من "${oldVal || '-'}" إلى "${newVal}"` 
+            : `changed priority from "${oldVal || '-'}" to "${newVal}"`;
         }
         if (key === "dueDate") {
-          const dateStr = val ? new Date(val).toLocaleDateString() : "";
-          return isAr ? `غير تاريخ الاستحقاق إلى ${dateStr}` : `changed due date to ${dateStr}`;
+          const oldDate = oldVal ? new Date(oldVal).toLocaleDateString() : "-";
+          const newDate = newVal ? new Date(newVal).toLocaleDateString() : "-";
+          return isAr 
+            ? `غيّر تاريخ الاستحقاق من ${oldDate} إلى ${newDate}` 
+            : `changed due date from ${oldDate} to ${newDate}`;
         }
-        return isAr ? `عدّل ${key}` : `updated ${key}`;
+        if (key === "assignees") {
+          return isAr 
+            ? `غيّر المسؤولين عن المهمة` 
+            : `updated task assignees`;
+        }
+        if (key === "description") {
+          return isAr ? `عدّل وصف المهمة` : `updated description`;
+        }
+        return isAr 
+          ? `غيّر ${key} من "${oldVal || '-'}" إلى "${newVal}"` 
+          : `changed ${key} from "${oldVal || '-'}" to "${newVal}"`;
       });
       return descriptions.join(", ");
     }
@@ -656,6 +720,164 @@ export const TaskDetailsModal: React.FC<TaskDetailsModalProps> = ({
                   className="w-full bg-zinc-55 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-750 rounded-xl py-2 px-3 text-sm focus:ring-2 focus:ring-purple-500/50"
                 />
               </div>
+            </div>
+
+            {/* Time Timing Analytics & Overrides */}
+            <div className="bg-zinc-50 dark:bg-zinc-950/40 p-4 rounded-2xl border border-zinc-150 dark:border-zinc-800 space-y-4 text-start">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b dark:border-zinc-800 pb-2">
+                <span className="text-xs font-black uppercase text-zinc-450 dark:text-zinc-550 block">
+                  {isAr ? "تحليل الوقت ومؤشرات الأداء" : "Time Tracking & Timing Indicators"}
+                </span>
+                <span className="text-[10px] text-zinc-400 font-medium">
+                  {isAr ? "يتم التحديث تلقائياً" : "Auto-calculated on transitions"}
+                </span>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="space-y-1">
+                  <label className="text-[10px] font-bold text-zinc-400 dark:text-zinc-500 uppercase block">
+                    {isAr ? "حالة خاصة / تجميد المهمة" : "Task State Flag Override"}
+                  </label>
+                  <select
+                    value={
+                      ["blocked", "delayed", "cancelled", "rejected", "revision-requested"].includes(task.status)
+                        ? task.status
+                        : ""
+                    }
+                    onChange={(e) => handleStatusOverrideChange(e.target.value)}
+                    className="w-full bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-xl py-1.5 px-3 text-xs text-zinc-900 dark:text-zinc-100"
+                  >
+                    <option value="">{isAr ? "حالة طبيعية (تبعاً للعمود)" : "Normal State (Column-based)"}</option>
+                    <option value="delayed">{isAr ? "متأخرة (Delayed)" : "Delayed"}</option>
+                    <option value="blocked">{isAr ? "معطلة (Blocked)" : "Blocked"}</option>
+                    <option value="cancelled">{isAr ? "ملغاة (Cancelled)" : "Cancelled"}</option>
+                    <option value="rejected">{isAr ? "مرفوضة (Rejected)" : "Rejected"}</option>
+                    <option value="revision-requested">{isAr ? "طلب مراجعة (Revision)" : "Revision Requested"}</option>
+                  </select>
+                </div>
+
+                <div className="space-y-1 flex flex-col justify-end">
+                  {task.statusHistory && task.statusHistory.length > 0 && (
+                    <div className="text-[11px] text-zinc-500 dark:text-zinc-455 font-semibold">
+                      <span>{isAr ? "الحالة الحالية بدأت في: " : "Current stage entered: "}</span>
+                      <span className="text-purple-650 dark:text-purple-400">
+                        {new Date(task.statusHistory[task.statusHistory.length - 1].enteredAt).toLocaleString()}
+                      </span>
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              {showReasonPromptFor && (
+                <div className="bg-purple-500/5 border border-purple-500/10 p-3 rounded-xl space-y-2 animate-fade-in">
+                  <span className="text-xs font-bold text-purple-600 dark:text-purple-400 uppercase block">
+                    {isAr 
+                      ? `سبب تغيير الحالة إلى ${showReasonPromptFor.toUpperCase()} *`
+                      : `Reason for changing status to ${showReasonPromptFor.toUpperCase()} *`}
+                  </span>
+                  <div className="flex gap-2">
+                    <input
+                      type="text"
+                      placeholder={
+                        showReasonPromptFor === "cancelled"
+                          ? (isAr ? "مثال: ألغى العميل الحملة الإعلانية..." : "e.g. Client cancelled the campaign...")
+                          : showReasonPromptFor === "delayed"
+                          ? (isAr ? "مثال: بانتظار الملفات والمواد من العميل..." : "e.g. Waiting for client assets...")
+                          : (isAr ? "اكتب السبب بالتفصيل هنا..." : "Type the explanation here...")
+                      }
+                      value={reasonText}
+                      onChange={(e) => setReasonText(e.target.value)}
+                      className="flex-1 px-3 py-1.5 text-xs bg-white dark:bg-zinc-900 border dark:border-zinc-800 rounded-lg focus:outline-none focus:ring-1 focus:ring-purple-500 text-zinc-900 dark:text-zinc-100"
+                      required
+                    />
+                    <button
+                      type="button"
+                      onClick={submitStatusOverride}
+                      disabled={!reasonText.trim()}
+                      className="px-3 py-1.5 bg-purple-600 hover:bg-purple-700 text-white rounded-lg text-xs font-bold transition-all cursor-pointer shrink-0"
+                    >
+                      {isAr ? "تأكيد" : "Confirm"}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setShowReasonPromptFor(null);
+                        setReasonText("");
+                      }}
+                      className="px-3 py-1.5 bg-zinc-200 dark:bg-zinc-800 hover:bg-zinc-300 text-zinc-700 dark:text-zinc-200 rounded-lg text-xs font-bold transition-all cursor-pointer shrink-0"
+                    >
+                      {isAr ? "إلغاء" : "Cancel"}
+                    </button>
+                  </div>
+                </div>
+              )}
+
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-2.5">
+                <div className="bg-white dark:bg-zinc-900 p-3 rounded-xl border dark:border-zinc-850 shadow-2xs">
+                  <span className="text-[9px] font-bold text-zinc-450 dark:text-zinc-500 uppercase block tracking-wider">
+                    {isAr ? "الوقت في الانتظار" : "Time in Queue"}
+                  </span>
+                  <span className="text-xs font-black text-zinc-900 dark:text-zinc-50 block mt-1 tracking-tight">
+                    {formatMsToHoursMinutes(task.timeInQueueMs || 0)}
+                  </span>
+                </div>
+
+                <div className="bg-white dark:bg-zinc-900 p-3 rounded-xl border dark:border-zinc-850 shadow-2xs">
+                  <span className="text-[9px] font-bold text-zinc-450 dark:text-zinc-500 uppercase block tracking-wider">
+                    {isAr ? "الوقت قيد العمل" : "Time in Progress"}
+                  </span>
+                  <span className="text-xs font-black text-zinc-900 dark:text-zinc-50 block mt-1 tracking-tight">
+                    {formatMsToHoursMinutes(task.timeInProgressMs || 0)}
+                  </span>
+                </div>
+
+                <div className="bg-white dark:bg-zinc-900 p-3 rounded-xl border dark:border-zinc-850 shadow-2xs">
+                  <span className="text-[9px] font-bold text-zinc-450 dark:text-zinc-500 uppercase block tracking-wider">
+                    {isAr ? "الوقت في المراجعة" : "Time in Review"}
+                  </span>
+                  <span className="text-xs font-black text-zinc-900 dark:text-zinc-50 block mt-1 tracking-tight">
+                    {formatMsToHoursMinutes(task.timeInReviewMs || 0)}
+                  </span>
+                </div>
+
+                <div className="bg-white dark:bg-zinc-900 p-3 rounded-xl border dark:border-zinc-850 shadow-2xs">
+                  <span className="text-[9px] font-bold text-zinc-450 dark:text-zinc-500 uppercase block tracking-wider">
+                    {isAr ? "إجمالي دورة المهمة" : "Total Cycle Time"}
+                  </span>
+                  <span className="text-xs font-black text-purple-650 dark:text-purple-400 block mt-1 tracking-tight">
+                    {formatMsToHoursMinutes(task.totalCycleTimeMs || 0)}
+                  </span>
+                </div>
+              </div>
+
+              {(task.delayReason || task.cancellationReason || task.blockedReason || task.rejectedReason) && (
+                <div className="bg-zinc-100 dark:bg-zinc-900 p-3 rounded-xl space-y-1.5 border dark:border-zinc-850 text-xs">
+                  {task.delayReason && (
+                    <div>
+                      <span className="font-bold text-amber-500">{isAr ? "سبب التأخير: " : "Delay Reason: "}</span>
+                      <span className="text-zinc-700 dark:text-zinc-300 font-medium">{task.delayReason}</span>
+                    </div>
+                  )}
+                  {task.cancellationReason && (
+                    <div>
+                      <span className="font-bold text-red-500">{isAr ? "سبب الإلغاء: " : "Cancellation Reason: "}</span>
+                      <span className="text-zinc-700 dark:text-zinc-300 font-medium">{task.cancellationReason}</span>
+                    </div>
+                  )}
+                  {task.blockedReason && (
+                    <div>
+                      <span className="font-bold text-zinc-400">{isAr ? "سبب التجميد: " : "Blocked Reason: "}</span>
+                      <span className="text-zinc-700 dark:text-zinc-300 font-medium">{task.blockedReason}</span>
+                    </div>
+                  )}
+                  {task.rejectedReason && (
+                    <div>
+                      <span className="font-bold text-red-400">{isAr ? "سبب الرفض: " : "Rejection Reason: "}</span>
+                      <span className="text-zinc-700 dark:text-zinc-300 font-medium">{task.rejectedReason}</span>
+                    </div>
+                  )}
+                </div>
+              )}
             </div>
 
             {/* Tags / Labels Row */}
@@ -1111,7 +1333,7 @@ export const TaskDetailsModal: React.FC<TaskDetailsModalProps> = ({
                 </button>
  
                 {isTransferOpen && (
-                  <div className="p-3 bg-zinc-100 dark:bg-zinc-955 border dark:border-zinc-800 rounded-xl space-y-3 mt-2">
+                  <div className="p-3 bg-zinc-100 dark:bg-zinc-850 border dark:border-zinc-800 rounded-xl space-y-3 mt-2">
                     <div className="space-y-1">
                       <label className="text-[10px] font-bold text-zinc-450 uppercase block">
                         {isAr ? "مساحة العمل" : "Workspace"}
@@ -1190,7 +1412,7 @@ export const TaskDetailsModal: React.FC<TaskDetailsModalProps> = ({
                 </button>
  
                 {isRevisionOpen && (
-                  <div className="p-3 bg-zinc-100 dark:bg-zinc-955 border dark:border-zinc-800 rounded-xl space-y-3 mt-2">
+                  <div className="p-3 bg-zinc-100 dark:bg-zinc-850 border dark:border-zinc-800 rounded-xl space-y-3 mt-2">
                     <div className="space-y-1">
                       <label className="text-[10px] font-bold text-zinc-455 uppercase block">
                         {isAr ? "ملاحظات التعديل المطلوب" : "Revision Feedback"}

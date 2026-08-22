@@ -52,7 +52,10 @@ function App() {
               {/* Protected Routes */}
               <Route element={<ProtectedRoute />}>
                 <Route path="/" element={<Dashboard />} />
-                <Route path="/w/:workspaceSlug" element={<Dashboard />} />
+                <Route path="/w/:workspaceId" element={<Dashboard />} />
+                <Route path="/w/:workspaceId/space/:spaceId" element={<Dashboard />} />
+                <Route path="/w/:workspaceId/:tab" element={<Dashboard />} />
+                <Route path="/admin" element={<Dashboard />} />
               </Route>
 
               {/* Fallback Catch-all Route */}

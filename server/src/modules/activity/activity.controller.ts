@@ -57,6 +57,29 @@ export class ActivityController {
       next(error);
     }
   };
+
+  /**
+   * Retrieves global system-wide activity logs.
+   */
+  getSystemActivities = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+    try {
+      const userModel = require("../user/user.model").UserModel;
+      const user = await userModel.findById(req.user!.userId);
+      if (!user || !user.isSystemAdmin) {
+        throw new ForbiddenError("Only system administrators can view global system logs");
+      }
+
+      const limit = req.query.limit ? Number(req.query.limit) : 100;
+      const activities = await activityService.getGlobalActivities(limit);
+
+      res.status(200).json({
+        success: true,
+        data: { activities },
+      });
+    } catch (error) {
+      next(error);
+    }
+  };
 }
 
 export const activityController = new ActivityController();

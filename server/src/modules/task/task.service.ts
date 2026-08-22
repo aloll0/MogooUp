@@ -28,28 +28,38 @@ export class TaskService {
     }
 
     // Set defaults
+    const status = taskData.status || "to-do";
     const completeTaskData = {
       ...taskData,
       workspaceId: space.workspaceId,
       spaceId: space._id,
       reporterId: new mongoose.Types.ObjectId(userId),
       assignees: taskData.assignees?.map((id) => new mongoose.Types.ObjectId(id.toString())) || [],
+      clientProjectId: taskData.clientProjectId ? new mongoose.Types.ObjectId(taskData.clientProjectId.toString()) : undefined,
+      projectName: taskData.projectName || "",
+      notes: taskData.notes || "",
+      status,
+      statusHistory: [{
+        status,
+        enteredAt: new Date(),
+      }],
     };
 
     const newTask = await taskRepository.createTask(completeTaskData);
 
     // Trigger Notifications for assignees
     if (newTask.assignees && newTask.assignees.length > 0) {
-      for (const assigneeId of newTask.assignees) {
-        if (assigneeId.toString() !== userId) {
+      const assigneesToNotify = newTask.assignees.map((a: any) => a._id?.toString() || a.toString());
+      for (const assigneeId of assigneesToNotify) {
+        if (assigneeId !== userId) {
           await notificationService.createNotification(
-            assigneeId.toString(),
-            "New Task Assigned",
-            `You have been assigned to task: "${newTask.title}"`,
-            "task_assigned",
-            userId,
-            newTask._id.toString(),
-            "task"
+              assigneeId,
+              "New Task Assigned",
+              `You have been assigned to task: "${newTask.title}"`,
+              "task_assigned",
+              userId,
+              newTask._id.toString(),
+              "task"
           );
         }
       }
@@ -62,7 +72,15 @@ export class TaskService {
       entityType: "task",
       entityId: newTask._id,
       action: "created",
-      details: { title: newTask.title },
+      details: {
+        title: newTask.title,
+        changes: {
+          title: { new: newTask.title },
+          status: { new: newTask.status },
+          priority: { new: newTask.priority },
+          dueDate: { new: newTask.dueDate },
+        }
+      },
     });
 
     // Broadcast WebSocket event
@@ -92,6 +110,7 @@ export class TaskService {
     if (membership.role === "member" || membership.role === "guest") {
       return TaskModel.find({
         listId: new mongoose.Types.ObjectId(listId),
+        deleted: { $ne: true },
         $or: [
           { reporterId: new mongoose.Types.ObjectId(userId) },
           { assignees: new mongoose.Types.ObjectId(userId) },
@@ -135,6 +154,87 @@ export class TaskService {
     if (updateData.listId) {
       updateData.listId = new mongoose.Types.ObjectId(updateData.listId);
     }
+    if (updateData.clientProjectId) {
+      updateData.clientProjectId = new mongoose.Types.ObjectId(updateData.clientProjectId);
+    }
+
+    // Status timing tracking
+    const statusChanged = updateData.status && updateData.status !== oldStatus;
+    if (statusChanged) {
+      const now = new Date();
+      const statusHistory = [...(task.statusHistory || [])];
+      
+      // Close active history entry
+      if (statusHistory.length > 0) {
+        const lastEntry = statusHistory[statusHistory.length - 1];
+        if (!lastEntry.leftAt) {
+          lastEntry.leftAt = now;
+          lastEntry.durationMs = now.getTime() - new Date(lastEntry.enteredAt).getTime();
+        }
+      }
+
+      // Add new entry
+      statusHistory.push({
+        status: updateData.status,
+        enteredAt: now,
+      });
+      updateData.statusHistory = statusHistory;
+
+      // Recalculate totals
+      let queueSum = 0;
+      let progressSum = 0;
+      let reviewSum = 0;
+
+      statusHistory.forEach((h) => {
+        const dur = h.durationMs || (h.leftAt ? (new Date(h.leftAt).getTime() - new Date(h.enteredAt).getTime()) : (now.getTime() - new Date(h.enteredAt).getTime()));
+        if (h.status === "to-do") {
+          queueSum += dur;
+        } else if (h.status === "in-progress") {
+          progressSum += dur;
+        } else if (h.status === "review" || h.status === "revision-requested") {
+          reviewSum += dur;
+        }
+      });
+
+      updateData.timeInQueueMs = queueSum;
+      updateData.timeInProgressMs = progressSum;
+      updateData.timeInReviewMs = reviewSum;
+
+      if (updateData.status === "in-progress" && !task.startDate) {
+        updateData.startDate = now;
+      }
+
+      if (updateData.status === "done") {
+        updateData.completedAt = now;
+        const firstEntry = statusHistory[0];
+        if (firstEntry) {
+          updateData.totalCycleTimeMs = now.getTime() - new Date(firstEntry.enteredAt).getTime();
+        }
+      } else if (oldStatus === "done") {
+        updateData.completedAt = null;
+      }
+    }
+
+    const changes: Record<string, { old: any; new: any }> = {};
+    const trackFields = ["title", "description", "status", "priority", "dueDate", "projectName", "notes", "delayReason", "cancellationReason", "blockedReason", "rejectedReason", "revisionReason"];
+    trackFields.forEach((field) => {
+      if (updateData[field] !== undefined && String(updateData[field]) !== String((task as any)[field] || "")) {
+        changes[field] = {
+          old: (task as any)[field] || "",
+          new: updateData[field],
+        };
+      }
+    });
+
+    if (updateData.assignees) {
+      const newAssigneeStrings = updateData.assignees.map((id: any) => id.toString());
+      if (JSON.stringify(oldAssignees.sort()) !== JSON.stringify(newAssigneeStrings.sort())) {
+        changes.assignees = {
+          old: oldAssignees,
+          new: newAssigneeStrings,
+        };
+      }
+    }
 
     const updatedTask = await taskRepository.updateTask(taskId, updateData);
     if (!updatedTask) {
@@ -160,7 +260,6 @@ export class TaskService {
     }
 
     // Trigger notification if status/list changed
-    const statusChanged = updateData.status && updateData.status !== oldStatus;
     const listChanged = updateData.listId && updateData.listId.toString() !== oldListId;
 
     if (statusChanged || listChanged) {
@@ -183,12 +282,6 @@ export class TaskService {
     // Determine action and detail updates
     const isMoved = updateData.listId && updateData.listId.toString() !== oldListId;
     const action = isMoved ? "moved" : "updated";
-
-    const changes: Record<string, any> = {};
-    if (updateData.title && updateData.title !== task.title) changes.title = updateData.title;
-    if (updateData.status && updateData.status !== task.status) changes.status = updateData.status;
-    if (updateData.priority && updateData.priority !== task.priority) changes.priority = updateData.priority;
-    if (updateData.dueDate) changes.dueDate = updateData.dueDate;
 
     // Record Activity
     await activityService.logActivity({
@@ -220,7 +313,8 @@ export class TaskService {
       throw new ForbiddenError("Only workspace managers, admins or owners can delete tasks");
     }
 
-    await taskRepository.deleteTask(taskId);
+    // Soft delete
+    await taskRepository.deleteTask(taskId, userId);
 
     // Record Activity
     await activityService.logActivity({

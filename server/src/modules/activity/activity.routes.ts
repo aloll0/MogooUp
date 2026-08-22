@@ -9,5 +9,6 @@ router.use(authMiddleware);
 
 router.get("/task/:taskId", activityController.getTaskActivities);
 router.get("/workspace/:workspaceId", activityController.getWorkspaceActivities);
+router.get("/system", activityController.getSystemActivities);
 
 export default router;

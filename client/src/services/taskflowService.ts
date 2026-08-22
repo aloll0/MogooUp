@@ -27,6 +27,7 @@ export interface WorkspaceMember {
 export interface ClientProjectService {
   name: string;
   isChecked: boolean;
+  note?: string;
 }
 
 export interface ClientProject {
@@ -119,6 +120,26 @@ export interface Task {
     } | string;
     createdAt: string;
   }>;
+  clientProjectId?: string;
+  projectName?: string;
+  notes?: string;
+  statusHistory?: Array<{ status: string; enteredAt: string; leftAt?: string; durationMs?: number }>;
+  timeInQueueMs?: number;
+  timeInProgressMs?: number;
+  timeInReviewMs?: number;
+  totalCycleTimeMs?: number;
+  delayReason?: string;
+  cancellationReason?: string;
+  blockedReason?: string;
+  rejectedReason?: string;
+  revisionReason?: string;
+  deleted?: boolean;
+  deletedAt?: string;
+  deletedBy?: {
+    _id: string;
+    fullName: string;
+    avatarUrl?: string;
+  } | string;
 }
 
 export interface Comment {
@@ -170,7 +191,7 @@ export interface Scratchpad {
 // Activity Log interfaces
 export interface ActivityLog {
   _id: string;
-  workspaceId: string;
+  workspaceId?: string;
   userId: {
     _id: string;
     fullName: string;
@@ -181,7 +202,7 @@ export interface ActivityLog {
   action: "created" | "updated" | "deleted" | "moved";
   details?: {
     title?: string;
-    changes?: Record<string, any>;
+    changes?: Record<string, { old: any; new: any }>;
   };
   createdAt: string;
 }
@@ -411,5 +432,36 @@ export const taskflowService = {
 
   deleteClientProject: async (workspaceId: string, clientId: string): Promise<void> => {
     await api.delete(`/workspaces/${workspaceId}/clients/${clientId}`);
+  },
+
+  // Admin Console Endpoints
+  getAdminStats: async (): Promise<any> => {
+    const response = await api.get("/admin/stats");
+    return response.data.data;
+  },
+
+  getAdminPerformance: async (): Promise<any[]> => {
+    const response = await api.get("/admin/performance");
+    return response.data.data.performance;
+  },
+
+  getAdminDeletedTasks: async (): Promise<Task[]> => {
+    const response = await api.get("/admin/deleted-tasks");
+    return response.data.data.tasks;
+  },
+
+  restoreDeletedTask: async (taskId: string): Promise<Task> => {
+    const response = await api.put(`/admin/deleted-tasks/${taskId}/restore`);
+    return response.data.data.task;
+  },
+
+  getGlobalActivities: async (): Promise<ActivityLog[]> => {
+    const response = await api.get("/activities/system");
+    return response.data.data.activities;
+  },
+
+  getAdminCompanies: async (): Promise<any[]> => {
+    const response = await api.get("/admin/companies");
+    return response.data.data.companies;
   },
 };
