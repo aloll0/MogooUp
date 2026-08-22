@@ -13,9 +13,18 @@ export const createTaskSchema = z.object({
       .max(100, "Task title must be less than 100 characters"),
     description: z.string().default(""),
     priority: z.enum(["low", "medium", "high", "urgent"]).optional(),
-    assignees: z.array(z.string().regex(objectIdRegex, "Invalid User ID in assignees")).optional(),
+    assignees: z
+      .array(z.string().regex(objectIdRegex, "Invalid User ID in assignees"))
+      .min(1, "Assigned employee is required"),
     startDate: z.string().datetime().nullable().optional(),
-    dueDate: z.string().datetime().nullable().optional(),
+    dueDate: z.string({ required_error: "Due date is required" }).datetime(),
+    clientProjectId: z
+      .string({ required_error: "Company/Client is required" })
+      .regex(objectIdRegex, "Invalid Company/Client ID"),
+    projectName: z
+      .string({ required_error: "Project/Service is required" })
+      .min(2, "Project name must be at least 2 characters long"),
+    notes: z.string().optional(),
     attachments: z
       .array(
         z.object({
@@ -65,6 +74,14 @@ export const updateTaskSchema = z.object({
     position: z.number().optional(),
     startDate: z.string().datetime().nullable().optional(),
     dueDate: z.string().datetime().nullable().optional(),
+    clientProjectId: z.string().regex(objectIdRegex, "Invalid Company/Client ID").optional(),
+    projectName: z.string().min(2).optional(),
+    notes: z.string().optional(),
+    delayReason: z.string().optional(),
+    cancellationReason: z.string().optional(),
+    blockedReason: z.string().optional(),
+    rejectedReason: z.string().optional(),
+    revisionReason: z.string().optional(),
     attachments: z
       .array(
         z.object({

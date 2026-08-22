@@ -5,8 +5,9 @@ import { useTheme } from "../contexts/ThemeContext";
 import { useTranslation } from "react-i18next";
 import { motion, AnimatePresence } from "framer-motion";
 import { taskflowService } from "../services/taskflowService";
-import type { Workspace, Space, Task } from "../services/taskflowService";
+import type { Task } from "../services/taskflowService";
 import { useToastStore } from "../stores/useToastStore";
+import { useParams, useNavigate, useLocation, useSearchParams } from "react-router-dom";
 
 const DashboardTab = lazy(() => import("../components/DashboardTab").then(m => ({ default: m.DashboardTab })));
 const ReportsTab = lazy(() => import("../components/ReportsTab").then(m => ({ default: m.ReportsTab })));
@@ -52,6 +53,10 @@ import {
   Clock,
   Target,
   Shield,
+  Building,
+  UserCheck,
+  Trash2,
+  Activity,
 } from "lucide-react";
 
 // Static reference to prevent empty array literals from re-allocating memory and triggering render loops
@@ -76,19 +81,13 @@ export const Dashboard: React.FC = () => {
   const { user, logout } = useAuth();
   const { theme, toggleTheme } = useTheme();
   const queryClient = useQueryClient();
+  const isAr = i18n.language === "ar";
 
-  // Active selections
-  const [activeWorkspace, setActiveWorkspace] = useState<Workspace | null>(null);
-  const [activeSpace, setActiveSpace] = useState<Space | null>(null);
-  const [activeTab, setActiveTab] = useState<"kanban" | "team" | "dashboard" | "reports" | "gantt" | "calendar" | "goals" | "admin" | "clients">("kanban");
+  const { workspaceId, tab, spaceId } = useParams();
+  const navigate = useNavigate();
+  const location = useLocation();
+
   const [selectedTeamMember, setSelectedTeamMember] = useState<any>(null);
-
-  // Auto-switch to admin tab if user is system admin
-  React.useEffect(() => {
-    if (user?.isSystemAdmin) {
-      setActiveTab("admin");
-    }
-  }, [user]);
 
   // Selected task detail view modal state
   const [selectedTask, setSelectedTask] = useState<Task | null>(null);
@@ -115,11 +114,21 @@ export const Dashboard: React.FC = () => {
   });
   const workspaces = workspacesData || EMPTY_ARRAY;
 
+  const activeWorkspace = workspaces.find((w) => w._id === workspaceId) || workspaces[0] || null;
+  const isAdminPath = location.pathname.startsWith("/admin");
+
   useEffect(() => {
-    if (workspaces.length > 0 && !activeWorkspace) {
-      setActiveWorkspace(workspaces[0]);
+    if (!isLoadingWorkspaces && workspaces.length > 0) {
+      if (!workspaceId && !isAdminPath) {
+        navigate(`/w/${workspaces[0]._id}`, { replace: true });
+      } else if (workspaceId && !isAdminPath) {
+        const exists = workspaces.some((w) => w._id === workspaceId);
+        if (!exists && !user?.isSystemAdmin) {
+          navigate(`/w/${workspaces[0]._id}`, { replace: true });
+        }
+      }
     }
-  }, [workspaces, activeWorkspace]);
+  }, [isLoadingWorkspaces, workspaces, workspaceId, isAdminPath, navigate, user]);
 
   // WebSocket room setup & query invalidation
   useEffect(() => {
@@ -175,13 +184,39 @@ export const Dashboard: React.FC = () => {
   });
   const spaces = spacesData || EMPTY_ARRAY;
 
+  const activeSpace = spaceId ? spaces.find((s) => s._id === spaceId) || null : null;
+
+  const activeTab = isAdminPath
+    ? "admin"
+    : spaceId
+    ? "kanban"
+    : (tab as "kanban" | "team" | "dashboard" | "reports" | "gantt" | "calendar" | "goals" | "admin" | "clients") ||
+      (user?.isSystemAdmin ? "admin" : "kanban");
+
+  const [searchParams] = useSearchParams();
+  const adminSubTab = searchParams.get("sub") || "dashboard";
+
   useEffect(() => {
-    if (spaces.length > 0) {
-      setActiveSpace(spaces[0]);
-    } else {
-      setActiveSpace(null);
+    if (!isLoadingSpaces && spaces.length > 0 && activeWorkspace?._id === workspaceId) {
+      const isBoardTab = !tab || tab === "kanban" || spaceId;
+      if (isBoardTab) {
+        if (!spaceId) {
+          navigate(`/w/${workspaceId}/space/${spaces[0]._id}`, { replace: true });
+        } else {
+          const exists = spaces.some((s) => s._id === spaceId);
+          if (!exists) {
+            navigate(`/w/${workspaceId}/space/${spaces[0]._id}`, { replace: true });
+          }
+        }
+      }
     }
-  }, [spaces, activeWorkspace]);
+  }, [isLoadingSpaces, spaces, workspaceId, tab, spaceId, navigate, activeWorkspace]);
+
+  useEffect(() => {
+    if (user?.isSystemAdmin && !workspaceId && !isAdminPath) {
+      navigate("/admin", { replace: true });
+    }
+  }, [user, workspaceId, isAdminPath, navigate]);
 
   const { data: listsData } = useQuery({
     queryKey: ["lists", activeSpace?._id],
@@ -240,7 +275,7 @@ export const Dashboard: React.FC = () => {
     mutationFn: (name: string) => taskflowService.createWorkspace(name),
     onSuccess: (newWs) => {
       queryClient.invalidateQueries({ queryKey: ["workspaces"] });
-      setActiveWorkspace(newWs);
+      navigate(`/w/${newWs._id}`);
       setIsWorkspaceModalOpen(false);
     },
   });
@@ -250,7 +285,7 @@ export const Dashboard: React.FC = () => {
       taskflowService.createSpace(spaceData),
     onSuccess: (newSp) => {
       queryClient.invalidateQueries({ queryKey: ["spaces", activeWorkspace?._id] });
-      setActiveSpace(newSp);
+      navigate(`/w/${workspaceId}/space/${newSp._id}`);
       setIsSpaceModalOpen(false);
     },
   });
@@ -265,8 +300,17 @@ export const Dashboard: React.FC = () => {
   });
 
   const createTaskMutation = useMutation({
-    mutationFn: (data: { listId: string; title: string; description: string; priority: string }) =>
-      taskflowService.createTask(data),
+    mutationFn: (data: {
+      listId: string;
+      title: string;
+      description?: string;
+      priority?: string;
+      clientProjectId: string;
+      projectName: string;
+      assignees: string[];
+      dueDate: string;
+      notes?: string;
+    }) => taskflowService.createTask(data),
     onSuccess: (_, variables) => {
       queryClient.invalidateQueries({ queryKey: ["tasks", variables.listId] });
       queryClient.invalidateQueries({ queryKey: ["workspaceTasks", activeWorkspace?._id] });
@@ -506,7 +550,7 @@ export const Dashboard: React.FC = () => {
                   value={activeWorkspace?._id || ""}
                   onChange={(e) => {
                     const ws = workspaces.find((w) => w._id === e.target.value);
-                    if (ws) setActiveWorkspace(ws);
+                    if (ws) navigate(`/w/${ws._id}`);
                   }}
                   className="w-full bg-[#1b0d32] border border-[#2b174d] rounded-lg py-2 px-3 text-sm text-zinc-100 appearance-none focus:outline-hidden focus:ring-1 focus:ring-purple-500 cursor-pointer"
                 >
@@ -534,31 +578,51 @@ export const Dashboard: React.FC = () => {
             {[
               ...(!user?.isSystemAdmin
                 ? [
+                  { id: "kanban", icon: Layers, label: t('sidebar.board', { defaultValue: "Kanban Board" }) },
                     { id: "dashboard", icon: LayoutDashboard, label: t('sidebar.dashboard', { defaultValue: "Widgets Dashboard" }) },
                     { id: "reports", icon: BarChart2, label: t('sidebar.reports', { defaultValue: "Reports & Analytics" }) },
                     { id: "clients", icon: Briefcase, label: t('sidebar.clients', { defaultValue: "Client Projects" }) },
                     { id: "gantt", icon: Clock, label: t('sidebar.gantt', { defaultValue: "Gantt Chart" }) },
                     { id: "calendar", icon: Calendar, label: t('sidebar.calendar', { defaultValue: "Calendar View" }) },
-                    { id: "kanban", icon: Layers, label: t('sidebar.board', { defaultValue: "Kanban Board" }) },
                     { id: "team", icon: Users, label: t('sidebar.team', { defaultValue: "Workspace Team" }) },
                     { id: "goals", icon: Target, label: t('sidebar.goals', { defaultValue: "Strategic Goals & OKRs" }) },
                   ]
                 : []),
               ...(user?.isSystemAdmin
-                ? [{ id: "admin", icon: Shield, label: t('sidebar.adminConsole', { defaultValue: "Admin Console" }) }]
+                ? [
+                    { id: "admin-dashboard", icon: LayoutDashboard, label: t('sidebar.adminDashboard', { defaultValue: "Admin Dashboard" }) },
+                    { id: "admin-companies", icon: Building, label: t('sidebar.companiesDrilldown', { defaultValue: "Company Inspector" }) },
+                    { id: "admin-users", icon: UserCheck, label: t('sidebar.approvals', { defaultValue: "User Approvals" }) },
+                    { id: "admin-deleted", icon: Trash2, label: t('sidebar.deletedItems', { defaultValue: "Deleted Items" }) },
+                    { id: "admin-audit", icon: Activity, label: t('sidebar.auditLogs', { defaultValue: "System Audit Logs" }) },
+                  ]
                 : []),
             ].map((tab) => {
               const Icon = tab.icon;
-              const isActive = activeTab === tab.id;
+              const sub = tab.id.startsWith("admin-") ? tab.id.substring(6) : null;
+              const isActive = sub 
+                ? (activeTab === "admin" && adminSubTab === sub)
+                : (activeTab === tab.id);
               
               return (
                 <button
                   key={tab.id}
                   onClick={() => {
-                    if (tab.id === "kanban" && spaces.length > 0 && !activeSpace) {
-                      setActiveSpace(spaces[0]);
+                    if (tab.id.startsWith("admin-")) {
+                      const targetSub = tab.id.substring(6);
+                      navigate(`/admin?sub=${targetSub}`);
+                    } else if (tab.id === "admin") {
+                      navigate("/admin");
+                    } else if (tab.id === "kanban") {
+                      if (spaces.length > 0) {
+                        const targetSpaceId = activeSpace?._id || spaces[0]._id;
+                        navigate(`/w/${activeWorkspace?._id}/space/${targetSpaceId}`);
+                      } else {
+                        navigate(`/w/${activeWorkspace?._id}/kanban`);
+                      }
+                    } else {
+                      navigate(`/w/${activeWorkspace?._id}/${tab.id}`);
                     }
-                    setActiveTab(tab.id as any);
                   }}
                   className={`w-full flex items-center rounded-lg transition-all cursor-pointer ${
                     isSidebarCollapsed ? "justify-center p-2.5" : "gap-2.5 py-2 px-3 text-start"
@@ -608,8 +672,7 @@ export const Dashboard: React.FC = () => {
                     <button
                       key={sp._id}
                       onClick={() => {
-                        setActiveSpace(sp);
-                        setActiveTab("kanban");
+                        navigate(`/w/${activeWorkspace?._id}/space/${sp._id}`);
                       }}
                       className={`w-full flex items-center rounded-lg transition-all cursor-pointer ${
                         isSidebarCollapsed ? "justify-center p-2.5" : "gap-2.5 py-2 px-3 text-start"
@@ -678,10 +741,63 @@ export const Dashboard: React.FC = () => {
             <header className="h-16 border-b border-zinc-200 dark:border-white/5 bg-white dark:bg-[#120722]/30 backdrop-blur-md p-4 flex items-center justify-between shrink-0 transition-theme relative z-20">
               <div className="flex items-center gap-3">
                 <Shield className="h-5 w-5 text-purple-500" />
-                <h1 className="text-xl font-bold tracking-tight">{t('sidebar.adminConsole', { defaultValue: "Admin Console" })}</h1>
+                <h1 className="text-xl font-bold tracking-tight">
+                  {adminSubTab === "dashboard" ? (isAr ? "تحليلات عامة للمنصة" : "Admin Analytics Overview") :
+                   adminSubTab === "companies" ? (isAr ? "فحص مساحات عمل الشركات" : "Workspace & Company Inspector") :
+                   adminSubTab === "users" ? (isAr ? "مراجعة واعتماد الحسابات" : "User Access Verification") :
+                   adminSubTab === "deleted" ? (isAr ? "استعادة المهام المحذوفة" : "Soft-Deleted Task Recovery") :
+                   (isAr ? "سجل الأحداث والتدقيق للنظام" : "Immutable System Audit Logs")}
+                </h1>
                 <span className="text-xs font-semibold px-2 py-0.5 bg-zinc-100 dark:bg-zinc-800/80 rounded-md text-zinc-500 dark:text-zinc-400 select-none">
-                  Arab Pro Platform Admin
+                  {isAr ? "مشرف نظام عرب برو" : "Arab Pro Platform Admin"}
                 </span>
+              </div>
+
+              {/* Actions on the right side of header for Admin */}
+              <div className="flex items-center gap-4">
+                {/* Language Switcher */}
+                <div dir="ltr" className="flex items-center bg-zinc-100 dark:bg-zinc-800/60 p-0.5 rounded-lg border border-zinc-200 dark:border-zinc-850 relative h-8 shrink-0 select-none">
+                  <motion.div
+                    className="absolute top-0.5 bottom-0.5 bg-white dark:bg-zinc-900 rounded-md shadow-xs"
+                    initial={false}
+                    animate={{
+                      left: i18n.language === 'en' ? '2px' : '34px',
+                      width: '32px'
+                    }}
+                    transition={{ type: "spring", stiffness: 400, damping: 30 }}
+                  />
+                  
+                  <button
+                    onClick={() => i18n.changeLanguage('en')}
+                    className={`relative z-10 w-8 h-full text-center text-[10px] font-extrabold transition-colors cursor-pointer ${
+                      i18n.language === 'en'
+                        ? 'text-purple-650 dark:text-purple-400'
+                        : 'text-zinc-450 hover:text-zinc-650 dark:hover:text-zinc-200'
+                    }`}
+                  >
+                    EN
+                  </button>
+                  
+                  <button
+                    onClick={() => i18n.changeLanguage('ar')}
+                    className={`relative z-10 w-8 h-full text-center text-[10px] font-extrabold transition-colors cursor-pointer ${
+                      i18n.language === 'ar'
+                        ? 'text-purple-650 dark:text-purple-400'
+                        : 'text-zinc-450 hover:text-zinc-650 dark:hover:text-zinc-200'
+                    }`}
+                  >
+                    AR
+                  </button>
+                </div>
+
+                {/* Theme Switcher */}
+                <button
+                  onClick={toggleTheme}
+                  title={t('header.toggleTheme')}
+                  className="p-2 text-zinc-555 hover:text-zinc-950 dark:text-zinc-400 dark:hover:text-zinc-55 hover:bg-zinc-100 dark:hover:bg-zinc-800 rounded-lg transition-all cursor-pointer"
+                >
+                  {theme === "light" ? <Moon className="h-4 w-4" /> : <Sun className="h-4 w-4" />}
+                </button>
               </div>
             </header>
             
@@ -691,7 +807,7 @@ export const Dashboard: React.FC = () => {
                   <Loader2 className="h-8 w-8 animate-spin text-purple-500" />
                 </div>
               }>
-                <AdminPanel />
+                <AdminPanel activeSubTab={adminSubTab as any} />
               </Suspense>
             </div>
           </div>
@@ -730,7 +846,13 @@ export const Dashboard: React.FC = () => {
               {activeTab === "admin" ? (
                 <div className="flex items-center gap-3">
                   <Shield className="h-5 w-5 text-purple-500" />
-                  <h1 className="text-xl font-bold tracking-tight">{t('sidebar.adminConsole', { defaultValue: "Admin Console" })}</h1>
+                  <h1 className="text-xl font-bold tracking-tight">
+                    {adminSubTab === "dashboard" ? "Admin Analytics Overview" :
+                     adminSubTab === "companies" ? "Workspace & Company Inspector" :
+                     adminSubTab === "users" ? "User Access Verification" :
+                     adminSubTab === "deleted" ? "Soft-Deleted Task Recovery" :
+                     "Immutable System Audit Logs"}
+                  </h1>
                   <span className="text-xs font-semibold px-2 py-0.5 bg-zinc-100 dark:bg-zinc-800/80 rounded-md text-zinc-500 dark:text-zinc-400 select-none">
                     Arab Pro Platform Admin
                   </span>
@@ -940,32 +1062,37 @@ export const Dashboard: React.FC = () => {
                   {theme === "light" ? <Moon className="h-4 w-4" /> : <Sun className="h-4 w-4" />}
                 </button>
 
-                {/* Scratchpad Trigger Button */}
-                <button
-                  onClick={() => setIsScratchpadOpen(true)}
-                  title={t('scratchpad.scratchpadTitle')}
-                  className="p-2 text-zinc-555 hover:text-zinc-950 dark:text-zinc-400 dark:hover:text-zinc-55 hover:bg-zinc-100 dark:hover:bg-zinc-800 rounded-lg transition-all cursor-pointer"
-                >
-                  <Edit3 className="h-4 w-4" />
-                </button>
+                {/* Hide workspace-specific items for Super Admin */}
+                {!user?.isSystemAdmin && (
+                  <>
+                    {/* Scratchpad Trigger Button */}
+                    <button
+                      onClick={() => setIsScratchpadOpen(true)}
+                      title={t('scratchpad.scratchpadTitle')}
+                      className="p-2 text-zinc-555 hover:text-zinc-950 dark:text-zinc-400 dark:hover:text-zinc-55 hover:bg-zinc-100 dark:hover:bg-zinc-800 rounded-lg transition-all cursor-pointer"
+                    >
+                      <Edit3 className="h-4 w-4" />
+                    </button>
 
-                <div className="flex items-center -space-x-2 overflow-hidden rtl:space-x-reverse">
-                  {members.map((m: any) => (
-                    <img
-                      key={m._id}
-                      title={`${m.userId?.fullName} (${t(`roles.${m.role}`)})`}
-                      src={m.userId?.avatarUrl || "https://api.dicebear.com/7.x/bottts/svg"}
-                      alt="member"
-                      className="h-7 w-7 rounded-full border border-white dark:border-zinc-900 bg-zinc-800"
-                    />
-                  ))}
-                  <button
-                    onClick={handleOpenInviteModal}
-                    className="h-7 w-7 rounded-full border border-dashed border-zinc-400 bg-zinc-100 dark:bg-zinc-855 flex items-center justify-center text-zinc-500 hover:text-zinc-950 dark:hover:text-zinc-100 hover:border-zinc-800 hover:bg-white transition-all cursor-pointer"
-                  >
-                    <UserPlus className="h-3.5 w-3.5" />
-                  </button>
-                </div>
+                    <div className="flex items-center -space-x-2 overflow-hidden rtl:space-x-reverse">
+                      {members.map((m: any) => (
+                        <img
+                          key={m._id}
+                          title={`${m.userId?.fullName} (${t(`roles.${m.role}`)})`}
+                          src={m.userId?.avatarUrl || "https://api.dicebear.com/7.x/bottts/svg"}
+                          alt="member"
+                          className="h-7 w-7 rounded-full border border-white dark:border-zinc-900 bg-zinc-800"
+                        />
+                      ))}
+                      <button
+                        onClick={handleOpenInviteModal}
+                        className="h-7 w-7 rounded-full border border-dashed border-zinc-400 bg-zinc-100 dark:bg-zinc-855 flex items-center justify-center text-zinc-500 hover:text-zinc-950 dark:hover:text-zinc-100 hover:border-zinc-800 hover:bg-white transition-all cursor-pointer"
+                      >
+                        <UserPlus className="h-3.5 w-3.5" />
+                      </button>
+                    </div>
+                  </>
+                )}
               </div>
             </header>
 
@@ -1173,7 +1300,7 @@ export const Dashboard: React.FC = () => {
                   <Loader2 className="h-8 w-8 animate-spin text-purple-500" />
                 </div>
               }>
-                <AdminPanel />
+                <AdminPanel activeSubTab={adminSubTab as any} />
               </Suspense>
             ) : activeTab === "clients" ? (
               <Suspense fallback={
@@ -1320,9 +1447,16 @@ export const Dashboard: React.FC = () => {
             title: data.title,
             description: data.description,
             priority: data.priority,
+            clientProjectId: data.clientProjectId,
+            projectName: data.projectName,
+            assignees: data.assignees,
+            dueDate: data.dueDate,
+            notes: data.notes,
           })
         }
         isPending={createTaskMutation.isPending}
+        workspaceId={activeWorkspace?._id || ""}
+        workspaceMembers={members}
       />
 
       {/* 5. Invite/Manage Members Modal */}

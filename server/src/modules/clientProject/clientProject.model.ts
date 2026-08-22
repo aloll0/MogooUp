@@ -3,6 +3,7 @@ import mongoose, { Schema, Document } from "mongoose";
 export interface IClientService {
   name: string;
   isChecked: boolean;
+  note?: string;
 }
 
 export interface IClientProject extends Document {
@@ -36,6 +37,7 @@ const ClientProjectSchema = new Schema<IClientProject>(
       {
         name: { type: String, required: true },
         isChecked: { type: Boolean, default: false },
+        note: { type: String, default: "" },
       }
     ],
     notes: {
