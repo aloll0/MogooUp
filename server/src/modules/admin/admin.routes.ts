@@ -14,5 +14,6 @@ router.get("/performance", adminController.getPerformance);
 router.get("/deleted-tasks", adminController.getDeletedTasks);
 router.put("/deleted-tasks/:taskId/restore", adminController.restoreTask);
 router.get("/companies", adminController.getCompanies);
+router.get("/employees/:userId/report", adminController.getEmployeeReport);
 
 export default router;

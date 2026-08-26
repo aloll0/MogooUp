@@ -19,7 +19,7 @@ export class AuthController {
     try {
       const { email, fullName, password } = req.body;
       const user = await authService.register(email, fullName, password);
-      
+
       res.status(201).json({
         success: true,
         message: "Registration successful. Please verify your email.",
@@ -38,9 +38,9 @@ export class AuthController {
     try {
       const { email, password } = req.body;
       const { user, tokens } = await authService.login(email, password);
-      
+
       this.setRefreshTokenCookie(res, tokens.refreshToken);
-      
+
       res.status(200).json({
         success: true,
         message: "Login successful",
@@ -50,6 +50,7 @@ export class AuthController {
             email: user.email,
             fullName: user.fullName,
             avatarUrl: user.avatarUrl,
+            phoneNumber: user.phoneNumber,
             isVerified: user.isVerified,
             isApproved: user.isApproved,
             isSystemAdmin: user.isSystemAdmin,
@@ -72,10 +73,10 @@ export class AuthController {
         });
         return;
       }
-      
+
       const tokens = await authService.refresh(refreshToken);
       this.setRefreshTokenCookie(res, tokens.refreshToken);
-      
+
       res.status(200).json({
         success: true,
         data: {
@@ -95,13 +96,13 @@ export class AuthController {
       if (req.user?.userId) {
         await authService.logout(req.user.userId);
       }
-      
+
       res.clearCookie("refreshToken", {
         httpOnly: true,
         secure: config.env === "production",
         sameSite: "lax",
       });
-      
+
       res.status(200).json({
         success: true,
         message: "Logged out successfully",
@@ -115,7 +116,7 @@ export class AuthController {
     try {
       const { email } = req.body;
       const resetToken = await authService.forgotPassword(email);
-      
+
       // In production, send email with resetToken. For dev, we send token back in response
       res.status(200).json({
         success: true,
@@ -131,7 +132,7 @@ export class AuthController {
     try {
       const { token, password } = req.body;
       await authService.resetPassword(token, password);
-      
+
       res.status(200).json({
         success: true,
         message: "Password updated successfully. You can now log in.",
@@ -157,6 +158,7 @@ export class AuthController {
             email: user.email,
             fullName: user.fullName,
             avatarUrl: user.avatarUrl,
+            phoneNumber: user.phoneNumber,
             isVerified: user.isVerified,
             isApproved: user.isApproved,
             isSystemAdmin: user.isSystemAdmin,
@@ -170,7 +172,7 @@ export class AuthController {
 
   getAdminUsers = async (_req: Request, res: Response, next: NextFunction): Promise<void> => {
     try {
-      const users = await UserModel.find({}, "email fullName avatarUrl isVerified isApproved isSystemAdmin createdAt");
+      const users = await UserModel.find({}, "email fullName avatarUrl phoneNumber isVerified isApproved isSystemAdmin createdAt");
       res.status(200).json({
         success: true,
         data: { users },
@@ -234,6 +236,71 @@ export class AuthController {
       res.status(200).json({
         success: true,
         data: { workspaces: populatedWorkspaces },
+      });
+    } catch (error) {
+      next(error);
+    }
+  };
+
+  updateProfile = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+    try {
+      const userId = req.user?.userId;
+      if (!userId) {
+        res.status(401).json({ success: false, error: { message: "Unauthorized access" } });
+        return;
+      }
+      const { fullName, phoneNumber, avatarUrl } = req.body;
+      const user = await authService.updateProfile(userId, { fullName, phoneNumber, avatarUrl });
+
+      res.status(200).json({
+        success: true,
+        message: "Profile updated successfully",
+        data: {
+          user: {
+            id: user._id,
+            email: user.email,
+            fullName: user.fullName,
+            avatarUrl: user.avatarUrl,
+            phoneNumber: user.phoneNumber,
+            isVerified: user.isVerified,
+            isApproved: user.isApproved,
+            isSystemAdmin: user.isSystemAdmin,
+          },
+        },
+      });
+    } catch (error) {
+      next(error);
+    }
+  };
+
+  changePassword = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+    try {
+      const userId = req.user?.userId;
+      if (!userId) {
+        res.status(401).json({ success: false, error: { message: "Unauthorized access" } });
+        return;
+      }
+      const { currentPassword, newPassword } = req.body;
+      await authService.changePassword(userId, currentPassword, newPassword);
+
+      res.status(200).json({
+        success: true,
+        message: "Password changed successfully",
+      });
+    } catch (error) {
+      next(error);
+    }
+  };
+
+  adminChangePassword = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+    try {
+      const { userId } = req.params;
+      const { newPassword } = req.body;
+      await authService.adminChangePassword(userId, newPassword);
+
+      res.status(200).json({
+        success: true,
+        message: "User password reset successfully by administrator",
       });
     } catch (error) {
       next(error);

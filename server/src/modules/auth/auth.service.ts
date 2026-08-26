@@ -168,6 +168,56 @@ export class AuthService {
     }
     return user;
   }
+
+  async updateProfile(userId: string, data: { fullName: string; phoneNumber?: string; avatarUrl?: string }): Promise<IUser> {
+    const user = await userRepository.findById(userId);
+    if (!user) {
+      throw new NotFoundError("User not found");
+    }
+
+    const updatedUser = await userRepository.update(userId, {
+      fullName: data.fullName,
+      phoneNumber: data.phoneNumber || "",
+      avatarUrl: data.avatarUrl || "",
+    });
+
+    if (!updatedUser) {
+      throw new NotFoundError("User update failed");
+    }
+
+    return updatedUser;
+  }
+
+  async changePassword(userId: string, currentPassword: string, newPassword: string): Promise<void> {
+    const user = await userRepository.findById(userId);
+    if (!user) {
+      throw new NotFoundError("User not found");
+    }
+
+    const isPasswordMatch = await bcrypt.compare(currentPassword, user.passwordHash);
+    if (!isPasswordMatch) {
+      throw new BadRequestError("Current password is incorrect");
+    }
+
+    const passwordHash = await bcrypt.hash(newPassword, 12);
+    await userRepository.update(userId, {
+      passwordHash,
+      $inc: { tokenVersion: 1 },
+    });
+  }
+
+  async adminChangePassword(userId: string, newPassword: string): Promise<void> {
+    const user = await userRepository.findById(userId);
+    if (!user) {
+      throw new NotFoundError("User not found");
+    }
+
+    const passwordHash = await bcrypt.hash(newPassword, 12);
+    await userRepository.update(userId, {
+      passwordHash,
+      $inc: { tokenVersion: 1 },
+    });
+  }
 }
 
 export const authService = new AuthService();

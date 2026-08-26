@@ -262,5 +262,25 @@
     "passwordLower": "Must include at least one lowercase letter",
     "passwordUpper": "Must include at least one uppercase letter",
     "passwordNumber": "Must include at least one number"
+  },
+  "profile": {
+    "title": "Profile Settings",
+    "fullName": "Full Name",
+    "phoneNumber": "Phone Number",
+    "avatarUrl": "Avatar Image",
+    "uploadAvatar": "Upload Photo",
+    "currentPassword": "Current Password",
+    "newPassword": "New Password",
+    "confirmPassword": "Confirm New Password",
+    "changePasswordTitle": "Change Password (Optional)",
+    "saveChanges": "Save Profile Changes",
+    "cancel": "Cancel",
+    "successUpdate": "Profile updated successfully!",
+    "successPassword": "Password changed successfully!",
+    "passwordMismatch": "New passwords do not match",
+    "resetUserPassword": "Reset User Password",
+    "enterNewPasswordFor": "Enter a new password for {{name}}:",
+    "resetBtn": "Reset Password",
+    "placeholderPhone": "Enter phone number"
   }
 }
