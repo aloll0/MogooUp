@@ -262,5 +262,25 @@
     "passwordLower": "يجب أن تحتوي على حرف صغير واحد على الأقل",
     "passwordUpper": "يجب أن تحتوي على حرف كبير واحد على الأقل",
     "passwordNumber": "يجب أن تحتوي على رقم واحد على الأقل"
+  },
+  "profile": {
+    "title": "إعدادات الملف الشخصي",
+    "fullName": "الاسم الكامل",
+    "phoneNumber": "رقم الهاتف",
+    "avatarUrl": "صورة الملف الشخصي",
+    "uploadAvatar": "رفع صورة",
+    "currentPassword": "كلمة المرور الحالية",
+    "newPassword": "كلمة المرور الجديدة",
+    "confirmPassword": "تأكيد كلمة المرور الجديدة",
+    "changePasswordTitle": "تغيير كلمة المرور (اختياري)",
+    "saveChanges": "حفظ تعديلات الملف الشخصي",
+    "cancel": "إلغاء",
+    "successUpdate": "تم تحديث الملف الشخصي بنجاح!",
+    "successPassword": "تم تغيير كلمة المرور بنجاح!",
+    "passwordMismatch": "كلمات المرور الجديدة غير متطابقة",
+    "resetUserPassword": "إعادة تعيين كلمة مرور المستخدم",
+    "enterNewPasswordFor": "أدخل كلمة المرور الجديدة لـ {{name}}:",
+    "resetBtn": "إعادة تعيين كلمة المرور",
+    "placeholderPhone": "أدخل رقم الهاتف"
   }
 }

@@ -6,6 +6,9 @@ import {
   loginSchema,
   forgotPasswordSchema,
   resetPasswordSchema,
+  updateProfileSchema,
+  changePasswordSchema,
+  adminChangePasswordSchema,
 } from "./auth.validation";
 import { authMiddleware } from "../../middlewares/auth";
 import { adminMiddleware } from "../../middlewares/admin";
@@ -20,10 +23,15 @@ router.get("/me", authMiddleware, authController.me);
 router.post("/forgot-password", validateRequest(forgotPasswordSchema), authController.forgotPassword);
 router.post("/reset-password", validateRequest(resetPasswordSchema), authController.resetPassword);
 
+// Profile and Password Management
+router.put("/profile", authMiddleware, validateRequest(updateProfileSchema), authController.updateProfile);
+router.put("/change-password", authMiddleware, validateRequest(changePasswordSchema), authController.changePassword);
+
 // System Administration Endpoints
 router.get("/admin/users", authMiddleware, adminMiddleware, authController.getAdminUsers);
 router.put("/admin/users/:userId/approve", authMiddleware, adminMiddleware, authController.approveUser);
 router.put("/admin/users/:userId/suspend", authMiddleware, adminMiddleware, authController.suspendUser);
+router.put("/admin/users/:userId/change-password", authMiddleware, adminMiddleware, validateRequest(adminChangePasswordSchema), authController.adminChangePassword);
 router.get("/admin/workspaces", authMiddleware, adminMiddleware, authController.getAdminWorkspaces);
 
 export default router;

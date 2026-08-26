@@ -464,4 +464,26 @@ export const taskflowService = {
     const response = await api.get("/admin/companies");
     return response.data.data.companies;
   },
+
+  getEmployeeReport: async (userId: string, timeframe: string): Promise<any> => {
+    const response = await api.get(`/admin/employees/${userId}/report`, {
+      params: { timeframe }
+    });
+    return response.data.data;
+  },
+
+  updateProfile: async (data: { fullName: string; phoneNumber?: string; avatarUrl?: string }): Promise<any> => {
+    const response = await api.put("/auth/profile", data);
+    return response.data.data.user;
+  },
+
+  changePassword: async (data: { currentPassword?: string; newPassword?: string }): Promise<any> => {
+    const response = await api.put("/auth/change-password", data);
+    return response.data;
+  },
+
+  adminChangeUserPassword: async (userId: string, data: { newPassword?: string }): Promise<any> => {
+    const response = await api.put(`/auth/admin/users/${userId}/change-password`, data);
+    return response.data;
+  },
 };

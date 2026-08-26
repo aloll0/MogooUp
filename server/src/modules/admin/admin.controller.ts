@@ -77,6 +77,21 @@ export class AdminController {
       next(error);
     }
   };
+
+  getEmployeeReport = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+    try {
+      await this.verifyAdmin(req.user!.userId);
+      const { userId } = req.params;
+      const { timeframe } = req.query;
+      const report = await adminService.getEmployeeActivityReport(userId, timeframe as string);
+      res.status(200).json({
+        success: true,
+        data: report
+      });
+    } catch (error) {
+      next(error);
+    }
+  };
 }
 
 export const adminController = new AdminController();

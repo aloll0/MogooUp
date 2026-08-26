@@ -26,6 +26,7 @@ import { CreateSpaceModal } from "../components/CreateSpaceModal";
 import { CreateListModal } from "../components/CreateListModal";
 import { CreateTaskModal } from "../components/CreateTaskModal";
 import { InviteMembersModal } from "../components/InviteMembersModal";
+import { ProfileModal } from "../components/ProfileModal";
 import taskflowLogo from "../assets/taskflow_logo.png";
 import arabProLogo from "../assets/arab_pro_logo.png";
 import {
@@ -98,6 +99,7 @@ export const Dashboard: React.FC = () => {
   const [isListModalOpen, setIsListModalOpen] = useState(false);
   const [isTaskModalOpen, setIsTaskModalOpen] = useState(false);
   const [isInviteModalOpen, setIsInviteModalOpen] = useState(false);
+  const [isProfileModalOpen, setIsProfileModalOpen] = useState(false);
   const [isNotificationsOpen, setIsNotificationsOpen] = useState(false);
   const [isScratchpadOpen, setIsScratchpadOpen] = useState(false);
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
@@ -516,7 +518,7 @@ export const Dashboard: React.FC = () => {
   return (
     <div className="flex h-screen w-screen bg-zinc-50 dark:bg-[#070111] font-sans text-zinc-950 dark:text-zinc-50 overflow-hidden transition-theme">
       {/* 1. SIDEBAR */}
-      <aside className={`bg-[#120722] text-zinc-100 flex flex-col justify-between border-e border-[#1f1035] shrink-0 transition-all duration-300 ${isSidebarCollapsed ? "w-16" : "w-64"}`}>
+      <aside className={`bg-[#120722] text-zinc-100 flex flex-col justify-between border-e border-[#1f1035] shrink-0 transition-all duration-300 no-print ${isSidebarCollapsed ? "w-16" : "w-64"}`}>
         <div className="flex flex-col overflow-y-auto flex-1">
           {/* Header Branding */}
           <div className={`p-4 flex items-center border-b border-[#1f1035] ${isSidebarCollapsed ? "flex-col gap-3 justify-center" : "justify-between"}`}>
@@ -593,6 +595,7 @@ export const Dashboard: React.FC = () => {
                     { id: "admin-dashboard", icon: LayoutDashboard, label: t('sidebar.adminDashboard', { defaultValue: "Admin Dashboard" }) },
                     { id: "admin-companies", icon: Building, label: t('sidebar.companiesDrilldown', { defaultValue: "Company Inspector" }) },
                     { id: "admin-users", icon: UserCheck, label: t('sidebar.approvals', { defaultValue: "User Approvals" }) },
+                    { id: "admin-employee-reports", icon: Users, label: i18n.language === "ar" ? "تقارير الموظفين" : "Employee Reports" },
                     { id: "admin-deleted", icon: Trash2, label: t('sidebar.deletedItems', { defaultValue: "Deleted Items" }) },
                     { id: "admin-audit", icon: Activity, label: t('sidebar.auditLogs', { defaultValue: "System Audit Logs" }) },
                   ]
@@ -709,7 +712,11 @@ export const Dashboard: React.FC = () => {
 
           {/* Profile bar */}
           <div className={`p-3 border-t border-[#1f1035] bg-[#0c0318] flex items-center justify-between ${isSidebarCollapsed ? "flex-col gap-3 justify-center" : ""}`}>
-            <div className="flex items-center gap-2.5 overflow-hidden">
+            <div 
+              onClick={() => setIsProfileModalOpen(true)}
+              className="flex items-center gap-2.5 overflow-hidden cursor-pointer hover:bg-white/5 p-1 rounded-lg transition-all"
+              title={i18n.language === "ar" ? "إعدادات الملف الشخصي" : "Profile Settings"}
+            >
               <img
                 src={user?.avatarUrl || "https://api.dicebear.com/7.x/bottts/svg?seed=Demo"}
                 alt="Avatar"
@@ -738,13 +745,14 @@ export const Dashboard: React.FC = () => {
         {user?.isSystemAdmin ? (
           <div className="flex-1 flex flex-col overflow-hidden animate-fade-in text-start">
             {/* Header Toolbar */}
-            <header className="h-16 border-b border-zinc-200 dark:border-white/5 bg-white dark:bg-[#120722]/30 backdrop-blur-md p-4 flex items-center justify-between shrink-0 transition-theme relative z-20">
+            <header className="h-16 border-b border-zinc-200 dark:border-white/5 bg-white dark:bg-[#120722]/30 backdrop-blur-md p-4 flex items-center justify-between shrink-0 transition-theme relative z-20 no-print">
               <div className="flex items-center gap-3">
                 <Shield className="h-5 w-5 text-purple-500" />
                 <h1 className="text-xl font-bold tracking-tight">
                   {adminSubTab === "dashboard" ? (isAr ? "تحليلات عامة للمنصة" : "Admin Analytics Overview") :
                    adminSubTab === "companies" ? (isAr ? "فحص مساحات عمل الشركات" : "Workspace & Company Inspector") :
                    adminSubTab === "users" ? (isAr ? "مراجعة واعتماد الحسابات" : "User Access Verification") :
+                   adminSubTab === "employee-reports" ? (isAr ? "تقارير أنشطة الموظفين" : "Employee Activity Reports") :
                    adminSubTab === "deleted" ? (isAr ? "استعادة المهام المحذوفة" : "Soft-Deleted Task Recovery") :
                    (isAr ? "سجل الأحداث والتدقيق للنظام" : "Immutable System Audit Logs")}
                 </h1>
@@ -1480,6 +1488,12 @@ export const Dashboard: React.FC = () => {
       {activeWorkspace && !user?.isSystemAdmin && (
         <TimeTrackerWidget tasks={workspaceTasks} />
       )}
+
+      {/* Account Settings / Profile Modal */}
+      <ProfileModal
+        isOpen={isProfileModalOpen}
+        onClose={() => setIsProfileModalOpen(false)}
+      />
 
     </div>
   );

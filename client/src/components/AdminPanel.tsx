@@ -16,12 +16,15 @@ import {
   Briefcase,
   Activity,
   ChevronRight,
-  ChevronLeft
+  ChevronLeft,
+  X,
+  Printer,
+  FileText
 } from "lucide-react";
 import { useToastStore } from "../stores/useToastStore";
 
 interface AdminPanelProps {
-  activeSubTab?: "dashboard" | "companies" | "users" | "deleted" | "audit";
+  activeSubTab?: "dashboard" | "companies" | "users" | "deleted" | "audit" | "employee-reports";
 }
 
 export const AdminPanel: React.FC<AdminPanelProps> = ({ activeSubTab }) => {
@@ -33,6 +36,10 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ activeSubTab }) => {
   const activeTab = activeSubTab || "dashboard";
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedCompanyId, setSelectedCompanyId] = useState<string | null>(null);
+  const [selectedEmployeeId, setSelectedEmployeeId] = useState<string | null>(null);
+  const [selectedTimeframe, setSelectedTimeframe] = useState<"today" | "week" | "month">("month");
+  const [selectedUserForReset, setSelectedUserForReset] = useState<any | null>(null);
+  const [adminNewPassword, setAdminNewPassword] = useState("");
 
   // Queries
   const { data: stats = { totalCompanies: 0, totalEmployees: 0, activeTasks: 0, completedToday: 0, delayedTasks: 0 } } = useQuery({
@@ -50,7 +57,13 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ activeSubTab }) => {
   const { data: users = [], isLoading: isLoadingUsers } = useQuery({
     queryKey: ["adminUsers"],
     queryFn: taskflowService.getAdminUsers,
-    enabled: activeTab === "users",
+    enabled: activeTab === "users" || activeTab === "employee-reports",
+  });
+
+  const { data: employeeReport = null, isLoading: isLoadingReport } = useQuery({
+    queryKey: ["adminEmployeeReport", selectedEmployeeId, selectedTimeframe],
+    queryFn: () => taskflowService.getEmployeeReport(selectedEmployeeId!, selectedTimeframe),
+    enabled: activeTab === "employee-reports" && !!selectedEmployeeId,
   });
 
   const { data: deletedTasks = [], isLoading: isLoadingDeleted } = useQuery({
@@ -99,6 +112,23 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ activeSubTab }) => {
     },
     onError: (err: any) => {
       useToastStore.getState().addToast(err?.response?.data?.error?.message || "Failed to suspend user", "error");
+    }
+  });
+
+  const adminChangeUserPasswordMutation = useMutation({
+    mutationFn: ({ userId, newPassword }: { userId: string; newPassword: string }) =>
+      taskflowService.adminChangeUserPassword(userId, { newPassword }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["adminUsers"] });
+      useToastStore.getState().addToast(
+        isAr ? "تمت إعادة تعيين كلمة مرور المستخدم بنجاح" : "User password reset successfully",
+        "success"
+      );
+      setSelectedUserForReset(null);
+      setAdminNewPassword("");
+    },
+    onError: (err: any) => {
+      useToastStore.getState().addToast(err?.response?.data?.error?.message || "Failed to reset password", "error");
     }
   });
 
@@ -173,7 +203,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ activeSubTab }) => {
             {isAr ? "تفاصيل الشركات" : "Companies Drill-down"}
           </button>
           <button
-            onClick={() => { navigate("/admin?sub=users"); setSelectedCompanyId(null); setSearchQuery(""); }}
+            onClick={() => { navigate("/admin?sub=users"); setSelectedCompanyId(null); setSearchQuery(""); setSelectedEmployeeId(null); }}
             className={`px-3 py-1.5 rounded-lg transition-all cursor-pointer ${
               activeTab === "users" ? "bg-purple-600 text-white shadow-xs" : "text-zinc-500 hover:text-zinc-700 dark:hover:text-zinc-200"
             }`}
@@ -181,7 +211,15 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ activeSubTab }) => {
             {isAr ? "موافقات التسجيل" : "Approvals"}
           </button>
           <button
-            onClick={() => { navigate("/admin?sub=deleted"); setSelectedCompanyId(null); setSearchQuery(""); }}
+            onClick={() => { navigate("/admin?sub=employee-reports"); setSelectedCompanyId(null); setSearchQuery(""); setSelectedEmployeeId(null); }}
+            className={`px-3 py-1.5 rounded-lg transition-all cursor-pointer ${
+              activeTab === "employee-reports" ? "bg-purple-600 text-white shadow-xs" : "text-zinc-500 hover:text-zinc-700 dark:hover:text-zinc-200"
+            }`}
+          >
+            {isAr ? "تقارير الموظفين" : "Employee Reports"}
+          </button>
+          <button
+            onClick={() => { navigate("/admin?sub=deleted"); setSelectedCompanyId(null); setSearchQuery(""); setSelectedEmployeeId(null); }}
             className={`px-3 py-1.5 rounded-lg transition-all cursor-pointer ${
               activeTab === "deleted" ? "bg-purple-600 text-white shadow-xs" : "text-zinc-500 hover:text-zinc-700 dark:hover:text-zinc-200"
             }`}
@@ -189,7 +227,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ activeSubTab }) => {
             {isAr ? "سلة المحذوفات" : "Deleted Items"}
           </button>
           <button
-            onClick={() => { navigate("/admin?sub=audit"); setSelectedCompanyId(null); setSearchQuery(""); }}
+            onClick={() => { navigate("/admin?sub=audit"); setSelectedCompanyId(null); setSearchQuery(""); setSelectedEmployeeId(null); }}
             className={`px-3 py-1.5 rounded-lg transition-all cursor-pointer ${
               activeTab === "audit" ? "bg-purple-600 text-white shadow-xs" : "text-zinc-500 hover:text-zinc-700 dark:hover:text-zinc-200"
             }`}
@@ -200,13 +238,14 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ activeSubTab }) => {
       </div>
 
       {/* SEARCH / FILTERS OVERLAY FOR SUBLISTS */}
-      {activeTab !== "dashboard" && !selectedCompanyId && (
+      {activeTab !== "dashboard" && !selectedCompanyId && !selectedEmployeeId && (
         <div className="relative max-w-sm">
           <input
             type="text"
             placeholder={
               activeTab === "companies" ? (isAr ? "البحث عن الشركات والملاك..." : "Search companies / owners...") :
               activeTab === "users" ? (isAr ? "البحث عن مستخدمي المنصة..." : "Search platform users...") :
+              activeTab === "employee-reports" ? (isAr ? "البحث عن الموظفين..." : "Search employees...") :
               activeTab === "deleted" ? (isAr ? "البحث عن المهام المحذوفة..." : "Search deleted tasks...") : (isAr ? "البحث في السجلات التاريخية..." : "Search log history...")
             }
             value={searchQuery}
@@ -652,7 +691,15 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ activeSubTab }) => {
                       <td className="p-4 text-zinc-400 font-medium">
                         {new Date(u.createdAt).toLocaleDateString()}
                       </td>
-                      <td className="p-4 text-right">
+                      <td className="p-4 text-right flex items-center justify-end gap-2">
+                        {/* Reset Password Button */}
+                        <button
+                          onClick={() => setSelectedUserForReset(u)}
+                          className="px-2.5 py-1.5 rounded-lg border border-purple-200/50 hover:bg-purple-600 hover:text-white dark:border-purple-800/40 text-purple-600 dark:text-purple-400 font-bold transition-all text-[11px] cursor-pointer"
+                        >
+                          {isAr ? "تعيين كلمة المرور" : "Reset Password"}
+                        </button>
+
                         {u.isSystemAdmin ? (
                           <span className="text-[10px] font-bold text-purple-650 bg-purple-500/10 px-2 py-0.5 rounded-md">
                             {isAr ? "مدير النظام" : "Super Admin"}
@@ -819,6 +866,473 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ activeSubTab }) => {
               })}
             </div>
           )}
+        </div>
+      )}
+
+      {activeTab === "employee-reports" && (
+        <div className="space-y-6">
+          <style dangerouslySetInnerHTML={{ __html: `
+            @media print {
+              body {
+                background: white !important;
+                color: black !important;
+              }
+              /* Hide all components except the print section */
+              .no-print,
+              button,
+              input,
+              select,
+              aside,
+              header,
+              .tab-switchers {
+                display: none !important;
+              }
+              /* Make print section full width and visible */
+              .print-section {
+                display: block !important;
+                position: absolute !important;
+                left: 0 !important;
+                top: 0 !important;
+                width: 100% !important;
+                background: white !important;
+                color: black !important;
+                padding: 10px !important;
+                margin: 0 !important;
+              }
+              .print-grid {
+                display: grid !important;
+                grid-template-cols: 1fr 1fr !important;
+                gap: 20px !important;
+              }
+              .print-card {
+                border: 1px solid #e4e4e7 !important;
+                background: white !important;
+                color: black !important;
+                box-shadow: none !important;
+              }
+              .text-white {
+                color: black !important;
+              }
+              .bg-zinc-900, .dark\\:bg-zinc-900 {
+                background: white !important;
+              }
+              .border-zinc-800, .dark\\:border-zinc-800 {
+                border-color: #e4e4e7 !important;
+              }
+              .text-zinc-400, .text-zinc-500 {
+                color: #71717a !important;
+              }
+              .text-zinc-900, .dark\\:text-white {
+                color: black !important;
+              }
+            }
+          `}} />
+
+          {!selectedEmployeeId ? (
+            /* 1. List of Employees */
+            <div className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-2xl shadow-xs overflow-hidden">
+              {isLoadingUsers ? (
+                <div className="flex justify-center items-center py-16">
+                  <Loader2 className="h-8 w-8 animate-spin text-purple-650" />
+                </div>
+              ) : filteredUsers.length === 0 ? (
+                <div className="text-center py-16 text-zinc-500 text-xs">
+                  {isAr ? "لم يتم العثور على موظفين." : "No employees found."}
+                </div>
+              ) : (
+                <div className="overflow-x-auto">
+                  <table className="w-full border-collapse text-left text-xs">
+                    <thead>
+                      <tr className="border-b border-zinc-150 dark:border-zinc-800 text-zinc-400 font-bold">
+                        <th className="p-4">{isAr ? "الموظف" : "Employee"}</th>
+                        <th className="p-4">{isAr ? "تاريخ التسجيل" : "Registered On"}</th>
+                        <th className="p-4">{isAr ? "حالة الحساب" : "Account Status"}</th>
+                        <th className="p-4 text-right">{isAr ? "تقرير الأنشطة" : "Activity Report"}</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-zinc-100 dark:divide-zinc-800/40 text-zinc-700 dark:text-zinc-300">
+                      {filteredUsers.map((u: any) => (
+                        <tr key={u._id} className="hover:bg-zinc-50/50 dark:hover:bg-zinc-850/15">
+                          <td className="p-4">
+                            <div className="flex items-center gap-3">
+                              <img
+                                src={u.avatarUrl || "https://api.dicebear.com/7.x/bottts/svg"}
+                                alt={u.fullName}
+                                className="h-8 w-8 rounded-full border bg-zinc-800"
+                              />
+                              <div>
+                                <p className="font-bold text-zinc-900 dark:text-white">{u.fullName}</p>
+                                <p className="text-[10px] text-zinc-455">{u.email}</p>
+                              </div>
+                            </div>
+                          </td>
+                          <td className="p-4 text-zinc-400 font-medium">
+                            {new Date(u.createdAt).toLocaleDateString()}
+                          </td>
+                          <td className="p-4">
+                            {u.isApproved ? (
+                              <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-green-500/10 text-green-600 dark:text-green-400 border border-green-200/20">
+                                <CheckCircle className="h-3 w-3" />
+                                {isAr ? "نشط" : "Active"}
+                              </span>
+                            ) : (
+                              <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-amber-500/10 text-amber-500 border border-amber-500/20">
+                                <Loader2 className="h-3 w-3 animate-spin" />
+                                {isAr ? "قيد الانتظار" : "Pending"}
+                              </span>
+                            )}
+                          </td>
+                          <td className="p-4 text-right">
+                            <button
+                              onClick={() => setSelectedEmployeeId(u._id)}
+                              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-purple-600 hover:bg-purple-700 text-white font-bold text-[11px] transition-all shadow-xs cursor-pointer"
+                            >
+                              <FileText className="h-3.5 w-3.5" />
+                              <span>{isAr ? "عرض التقرير" : "View Report"}</span>
+                            </button>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+            </div>
+          ) : (
+            /* 2. Employee Report Drill-down */
+            <div className="space-y-6 print-section">
+              {/* Report Header */}
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b dark:border-zinc-800 pb-4 no-print text-start">
+                <div className="flex items-center gap-3">
+                  <button
+                    onClick={() => setSelectedEmployeeId(null)}
+                    className="p-2 hover:bg-zinc-150 dark:hover:bg-zinc-800 rounded-xl transition-all cursor-pointer text-zinc-400 hover:text-zinc-800 dark:hover:text-white"
+                  >
+                    {isAr ? <ChevronRight className="h-5 w-5" /> : <ChevronLeft className="h-5 w-5" />}
+                  </button>
+                  <div>
+                    <h3 className="text-base font-extrabold text-zinc-900 dark:text-white">
+                      {isAr ? "تقرير متابعة الموظف" : "Employee Tracking Sheet"}
+                    </h3>
+                    <p className="text-xs text-zinc-400 mt-0.5">
+                      {isAr ? "مراقبة وتحليل أداء وأنشطة الموظف في النظام" : "Analyze employee performance & logs"}
+                    </p>
+                  </div>
+                </div>
+
+                <div className="flex items-center gap-3">
+                  {/* Timeframe switcher */}
+                  <div className="flex bg-zinc-100 dark:bg-zinc-800 p-1 rounded-xl text-xs font-bold border dark:border-zinc-800 shrink-0">
+                    <button
+                      onClick={() => setSelectedTimeframe("today")}
+                      className={`px-3 py-1.5 rounded-lg transition-all cursor-pointer ${
+                        selectedTimeframe === "today" ? "bg-purple-600 text-white shadow-xs" : "text-zinc-500 hover:text-zinc-700 dark:hover:text-zinc-200"
+                      }`}
+                    >
+                      {isAr ? "اليوم" : "Today"}
+                    </button>
+                    <button
+                      onClick={() => setSelectedTimeframe("week")}
+                      className={`px-3 py-1.5 rounded-lg transition-all cursor-pointer ${
+                        selectedTimeframe === "week" ? "bg-purple-600 text-white shadow-xs" : "text-zinc-500 hover:text-zinc-700 dark:hover:text-zinc-200"
+                      }`}
+                    >
+                      {isAr ? "الأسبوع" : "Week"}
+                    </button>
+                    <button
+                      onClick={() => setSelectedTimeframe("month")}
+                      className={`px-3 py-1.5 rounded-lg transition-all cursor-pointer ${
+                        selectedTimeframe === "month" ? "bg-purple-600 text-white shadow-xs" : "text-zinc-500 hover:text-zinc-700 dark:hover:text-zinc-200"
+                      }`}
+                    >
+                      {isAr ? "الشهر" : "Month"}
+                    </button>
+                  </div>
+
+                  {/* Print Button */}
+                  <button
+                    onClick={() => window.print()}
+                    className="inline-flex items-center gap-2 px-4 py-2 bg-green-600 hover:bg-green-700 text-white font-bold text-xs rounded-xl shadow-md transition-all cursor-pointer"
+                  >
+                    <Printer className="h-4 w-4" />
+                    <span>{isAr ? "تصدير PDF / طباعة" : "Export PDF / Print"}</span>
+                  </button>
+                </div>
+              </div>
+
+              {/* Printable Header (Visible only in print) */}
+              <div className="hidden print:block border-b-2 border-zinc-200 pb-4 mb-6 text-start">
+                <div className="flex justify-between items-center">
+                  <div>
+                    <h1 className="text-xl font-extrabold text-black">
+                      {isAr ? "تقرير نشاط الموظف" : "Employee Activity Report"}
+                    </h1>
+                    <p className="text-xs text-zinc-500 mt-1">
+                      {isAr ? "منصة إدارة العمل والإنتاجية - عرب برو" : "Taskflow Productivity Platform"}
+                    </p>
+                  </div>
+                  <div className="text-right text-xs text-zinc-500">
+                    <p>{isAr ? "تاريخ إصدار التقرير: " : "Report Date: "} {new Date().toLocaleString()}</p>
+                    <p className="capitalize">{isAr ? "الفترة المحددة: " : "Selected Period: "} {isAr ? (selectedTimeframe === "today" ? "اليوم" : selectedTimeframe === "week" ? "هذا الأسبوع" : "هذا الشهر") : selectedTimeframe}</p>
+                  </div>
+                </div>
+              </div>
+
+              {isLoadingReport ? (
+                <div className="flex justify-center items-center py-16">
+                  <Loader2 className="h-8 w-8 animate-spin text-purple-650" />
+                </div>
+              ) : !employeeReport ? (
+                <div className="text-center py-16 text-zinc-500 text-xs">
+                  {isAr ? "فشل تحميل تقرير الموظف." : "Failed to load employee report."}
+                </div>
+              ) : (
+                <div className="space-y-6 text-start">
+                  
+                  {/* User details card */}
+                  <div className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-2xl p-5 shadow-xs flex items-center gap-4 print-card">
+                    <img
+                      src={employeeReport.user.avatarUrl || "https://api.dicebear.com/7.x/bottts/svg"}
+                      alt={employeeReport.user.fullName}
+                      className="h-14 w-14 rounded-full border bg-zinc-800"
+                    />
+                    <div>
+                      <h4 className="font-extrabold text-base text-zinc-900 dark:text-white">
+                        {employeeReport.user.fullName}
+                      </h4>
+                      <p className="text-xs text-zinc-500 dark:text-zinc-400 mt-0.5">{employeeReport.user.email}</p>
+                      <p className="text-[10px] text-zinc-400 mt-1">
+                        {isAr ? "تاريخ الانضمام: " : "Joined On: "} {new Date(employeeReport.user.createdAt).toLocaleDateString()}
+                      </p>
+                    </div>
+                  </div>
+
+                  {/* KPIs Stats Scorecard */}
+                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+                    <div className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-2xl p-4 shadow-xs print-card">
+                      <span className="text-[9px] font-bold text-zinc-400 dark:text-zinc-500 uppercase tracking-wider block">
+                        {isAr ? "المهام المسندة في الفترة" : "Tasks Assigned in Period"}
+                      </span>
+                      <span className="text-2xl font-black text-zinc-900 dark:text-white block mt-1 tracking-tight">
+                        {employeeReport.stats.assignedTasksCount}
+                      </span>
+                    </div>
+
+                    <div className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-2xl p-4 shadow-xs print-card">
+                      <span className="text-[9px] font-bold text-zinc-400 dark:text-zinc-500 uppercase tracking-wider block">
+                        {isAr ? "المهام المكتملة في الفترة" : "Tasks Completed in Period"}
+                      </span>
+                      <span className="text-2xl font-black text-green-600 dark:text-green-400 block mt-1 tracking-tight">
+                        {employeeReport.stats.completedTasksCount}
+                      </span>
+                    </div>
+
+                    <div className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-2xl p-4 shadow-xs print-card">
+                      <span className="text-[9px] font-bold text-zinc-400 dark:text-zinc-500 uppercase tracking-wider block">
+                        {isAr ? "نسبة إنجاز المهام" : "Completion Rate"}
+                      </span>
+                      <span className="text-2xl font-black text-purple-600 dark:text-purple-400 block mt-1 tracking-tight">
+                        {employeeReport.stats.assignedTasksCount > 0 
+                          ? `${Math.round((employeeReport.stats.completedTasksCount / employeeReport.stats.assignedTasksCount) * 100)}%`
+                          : "0%"}
+                      </span>
+                    </div>
+
+                    <div className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-2xl p-4 shadow-xs print-card">
+                      <span className="text-[9px] font-bold text-zinc-400 dark:text-zinc-500 uppercase tracking-wider block">
+                        {isAr ? "العمليات المسجلة بالنظام" : "System Actions Recorded"}
+                      </span>
+                      <span className="text-2xl font-black text-blue-600 dark:text-blue-400 block mt-1 tracking-tight">
+                        {employeeReport.stats.activitiesCount}
+                      </span>
+                    </div>
+                  </div>
+
+                  {/* Main Details grid */}
+                  <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 print-grid">
+                    
+                    {/* Left Column: Activity Timeline */}
+                    <div className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-2xl p-5 shadow-xs flex flex-col print-card">
+                      <h3 className="text-xs font-black uppercase text-zinc-450 dark:text-zinc-500 tracking-wider mb-4 flex items-center gap-2 border-b dark:border-zinc-800 pb-2">
+                        <Activity className="h-4 w-4 text-purple-500" />
+                        <span>{isAr ? "سجل العمليات التاريخي خلال الفترة" : "Activity Timeline"}</span>
+                      </h3>
+
+                      {employeeReport.activities.length === 0 ? (
+                        <div className="text-center py-12 text-zinc-400 text-xs italic">
+                          {isAr ? "لا توجد عمليات مسجلة للموظف في هذه الفترة." : "No operations recorded during this timeframe."}
+                        </div>
+                      ) : (
+                        <div className="space-y-4 max-h-[480px] overflow-y-auto pr-1 custom-scrollbar">
+                          {employeeReport.activities.map((act: any) => {
+                            const dateStr = new Date(act.createdAt).toLocaleDateString();
+                            const timeStr = new Date(act.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+                            
+                            // Humanize operations
+                            let actionLabel = act.action;
+                            let actionColor = "bg-zinc-100 text-zinc-650";
+                            if (act.action === "created") {
+                              actionLabel = isAr ? "إنشاء" : "Create";
+                              actionColor = "bg-green-500/10 text-green-600";
+                            } else if (act.action === "updated") {
+                              actionLabel = isAr ? "تعديل" : "Update";
+                              actionColor = "bg-blue-500/10 text-blue-600";
+                            } else if (act.action === "deleted") {
+                              actionLabel = isAr ? "حذف" : "Delete";
+                              actionColor = "bg-red-500/10 text-red-600";
+                            } else if (act.action === "moved") {
+                              actionLabel = isAr ? "نقل" : "Move";
+                              actionColor = "bg-amber-500/10 text-amber-600";
+                            }
+
+                            let titleText = act.details?.title || act.entityType;
+
+                            return (
+                              <div key={act._id} className="flex gap-3 text-xs items-start border-b dark:border-zinc-800/40 pb-3 last:border-b-0">
+                                <span className={`px-2 py-0.5 rounded font-bold text-[9px] uppercase ${actionColor}`}>
+                                  {actionLabel}
+                                </span>
+                                <div className="flex-1 min-w-0">
+                                  <p className="text-zinc-800 dark:text-zinc-200 font-semibold truncate">
+                                    {isAr ? `تعديل على ${act.entityType}:` : `Action on ${act.entityType}:`} <span className="font-bold text-zinc-950 dark:text-white">"{titleText}"</span>
+                                  </p>
+                                  {act.workspaceId?.name && (
+                                    <p className="text-[10px] text-zinc-455 font-bold mt-0.5">
+                                      {isAr ? "مساحة العمل: " : "Workspace: "} {act.workspaceId.name}
+                                    </p>
+                                  )}
+                                </div>
+                                <div className="text-right text-[9px] text-zinc-400 shrink-0 font-medium font-semibold">
+                                  <p>{dateStr}</p>
+                                  <p>{timeStr}</p>
+                                </div>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Right Column: Assigned Tasks */}
+                    <div className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-2xl p-5 shadow-xs flex flex-col print-card">
+                      <h3 className="text-xs font-black uppercase text-zinc-455 dark:text-zinc-500 tracking-wider mb-4 flex items-center gap-2 border-b dark:border-zinc-800 pb-2">
+                        <Layers className="h-4 w-4 text-blue-500" />
+                        <span>{isAr ? "المهام المكلف بها حالياً أو المنجزة" : "Assigned Task List"}</span>
+                      </h3>
+
+                      {employeeReport.tasks.length === 0 ? (
+                        <div className="text-center py-12 text-zinc-400 text-xs italic">
+                          {isAr ? "لا توجد مهام مكلف بها الموظف حالياً." : "No tasks assigned to this employee."}
+                        </div>
+                      ) : (
+                        <div className="space-y-3 max-h-[480px] overflow-y-auto pr-1 custom-scrollbar">
+                          {employeeReport.tasks.map((task: any) => {
+                            let priorityColor = "bg-zinc-100 text-zinc-700 dark:bg-zinc-800 dark:text-zinc-300";
+                            if (task.priority === "urgent") priorityColor = "bg-red-500/10 text-red-600";
+                            else if (task.priority === "high") priorityColor = "bg-amber-500/10 text-amber-600";
+                            else if (task.priority === "medium") priorityColor = "bg-purple-500/10 text-purple-600";
+
+                            return (
+                              <div key={task._id} className="p-3 bg-zinc-50/50 dark:bg-zinc-850/20 border border-zinc-150/40 dark:border-zinc-800/80 rounded-xl space-y-2 text-xs">
+                                <div className="flex justify-between items-start gap-3">
+                                  <span className="font-extrabold text-zinc-900 dark:text-zinc-100 text-xs block truncate flex-1 text-start">
+                                    {task.title}
+                                  </span>
+                                  <span className="px-2 py-0.5 rounded-full text-[9px] font-bold capitalize bg-zinc-200 dark:bg-zinc-800 text-zinc-800 dark:text-zinc-200">
+                                    {task.status}
+                                  </span>
+                                </div>
+
+                                <div className="flex justify-between items-center text-[10px] text-zinc-455 font-bold border-t dark:border-zinc-800 pt-2">
+                                  <div className="flex gap-2 items-center">
+                                    <span className="text-zinc-400">{isAr ? "الشركة:" : "Workspace:"}</span>
+                                    <span className="text-zinc-700 dark:text-zinc-300 font-mono">{task.workspaceName}</span>
+                                  </div>
+                                  <span className={`px-2 py-0.5 rounded font-bold text-[9px] uppercase ${priorityColor}`}>
+                                    {task.priority}
+                                  </span>
+                                </div>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      )}
+                    </div>
+
+                  </div>
+
+                </div>
+              )}
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Admin Reset Password Modal */}
+      {selectedUserForReset && (
+        <div className="fixed inset-0 bg-black/70 backdrop-blur-xs flex items-center justify-center p-4 z-50 animate-fade-in animate-duration-200">
+          <div className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 w-full max-w-md rounded-2xl p-6 shadow-2xl space-y-4 text-start relative">
+            <div className="flex items-center justify-between border-b dark:border-zinc-800 pb-3">
+              <h2 className="text-base font-bold text-zinc-900 dark:text-white">
+                {isAr ? "إعادة تعيين كلمة مرور المستخدم" : "Reset User Password"}
+              </h2>
+              <button
+                onClick={() => setSelectedUserForReset(null)}
+                className="text-zinc-400 hover:text-zinc-700 dark:hover:text-zinc-150 p-1 rounded-md hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-all cursor-pointer"
+              >
+                <X className="h-4 w-4" />
+              </button>
+            </div>
+            
+            <form
+              onSubmit={(e) => {
+                e.preventDefault();
+                if (!adminNewPassword.trim()) return;
+                adminChangeUserPasswordMutation.mutate({
+                  userId: selectedUserForReset._id,
+                  newPassword: adminNewPassword,
+                });
+              }}
+              className="space-y-4"
+            >
+              <div className="space-y-1.5">
+                <p className="text-xs text-zinc-500 dark:text-zinc-400">
+                  {isAr 
+                    ? `أدخل كلمة المرور الجديدة للمستخدم: ${selectedUserForReset.fullName} (${selectedUserForReset.email})` 
+                    : `Enter a new password for: ${selectedUserForReset.fullName} (${selectedUserForReset.email})`}
+                </p>
+                <input
+                  type="password"
+                  required
+                  placeholder={isAr ? "كلمة المرور الجديدة" : "New password"}
+                  value={adminNewPassword}
+                  onChange={(e) => setAdminNewPassword(e.target.value)}
+                  className="w-full rounded-xl border border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-black/30 py-2.5 px-3 text-sm focus:outline-hidden focus:ring-1 focus:ring-purple-500 text-zinc-900 dark:text-zinc-100 font-semibold"
+                />
+              </div>
+              
+              <div className="flex gap-2 justify-end border-t dark:border-zinc-800 pt-3.5">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setSelectedUserForReset(null);
+                    setAdminNewPassword("");
+                  }}
+                  className="px-4 py-2 bg-zinc-100 dark:bg-zinc-800 hover:bg-zinc-200 dark:hover:bg-zinc-700 text-zinc-700 dark:text-zinc-300 font-bold text-xs rounded-xl transition-all cursor-pointer"
+                >
+                  {isAr ? "إلغاء" : "Cancel"}
+                </button>
+                <button
+                  type="submit"
+                  disabled={adminChangeUserPasswordMutation.isPending}
+                  className="px-4 py-2 bg-purple-600 hover:bg-purple-700 text-white font-semibold text-xs rounded-xl shadow-md flex items-center gap-1.5 transition-all cursor-pointer disabled:opacity-50"
+                >
+                  {adminChangeUserPasswordMutation.isPending && <Loader2 className="h-3.5 w-3.5 animate-spin" />}
+                  <span>{isAr ? "إعادة تعيين" : "Reset Password"}</span>
+                </button>
+              </div>
+            </form>
+          </div>
         </div>
       )}
 

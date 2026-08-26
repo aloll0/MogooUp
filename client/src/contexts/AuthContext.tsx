@@ -7,6 +7,7 @@ export interface User {
   email: string;
   fullName: string;
   avatarUrl?: string;
+  phoneNumber?: string;
   isVerified: boolean;
   isApproved?: boolean;
   isSystemAdmin?: boolean;
@@ -19,6 +20,7 @@ interface AuthContextType {
   login: (email: string, password: string) => Promise<void>;
   register: (email: string, fullName: string, password: string) => Promise<void>;
   logout: () => Promise<void>;
+  setUser: React.Dispatch<React.SetStateAction<User | null>>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -93,6 +95,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         login,
         register,
         logout,
+        setUser,
       }}
     >
       {children}

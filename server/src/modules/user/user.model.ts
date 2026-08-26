@@ -5,6 +5,7 @@ export interface IUser extends Document {
   passwordHash: string;
   fullName: string;
   avatarUrl?: string;
+  phoneNumber?: string;
   isVerified: boolean;
   isApproved: boolean;
   isSystemAdmin: boolean;
@@ -36,6 +37,10 @@ const userSchema = new Schema<IUser>(
       trim: true,
     },
     avatarUrl: {
+      type: String,
+      default: "",
+    },
+    phoneNumber: {
       type: String,
       default: "",
     },

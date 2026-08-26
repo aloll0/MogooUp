@@ -4,6 +4,7 @@ import { WorkspaceModel } from "../workspace/workspace.model";
 import { ClientProjectModel } from "../clientProject/clientProject.model";
 import { MembershipModel } from "../workspace/membership.model";
 import { SpaceModel } from "../space/space.model";
+import { ActivityLogModel } from "../activity/activity.model";
 import { NotFoundError } from "../../utils/errors";
 
 export class AdminService {
@@ -201,6 +202,90 @@ export class AdminService {
     }
 
     return result;
+  }
+
+  /**
+   * Retrieves a report of activities and tasks for a given employee inside a specific timeframe.
+   */
+  async getEmployeeActivityReport(userId: string, timeframe: string = "month"): Promise<any> {
+    const user = await UserModel.findById(userId, "fullName email avatarUrl createdAt");
+    if (!user) {
+      throw new NotFoundError("Employee not found");
+    }
+
+    const now = new Date();
+    let startDate = new Date();
+    
+    if (timeframe === "today") {
+      startDate.setHours(0, 0, 0, 0);
+    } else if (timeframe === "week") {
+      startDate.setDate(now.getDate() - 7);
+      startDate.setHours(0, 0, 0, 0);
+    } else {
+      // default: month (30 days)
+      startDate.setDate(now.getDate() - 30);
+      startDate.setHours(0, 0, 0, 0);
+    }
+
+    // 1. Fetch activities for the user during the timeframe
+    const activities = await ActivityLogModel.find({
+      userId: user._id,
+      createdAt: { $gte: startDate, $lte: now }
+    })
+    .populate("workspaceId", "name slug")
+    .sort({ createdAt: -1 })
+    .exec();
+
+    // 2. Fetch tasks where the user is an assignee
+    const tasks = await TaskModel.find({
+      assignees: user._id,
+      deleted: { $ne: true }
+    })
+    .populate("workspaceId", "name slug")
+    .populate("clientProjectId", "clientName")
+    .sort({ updatedAt: -1 })
+    .exec();
+
+    // 3. Calculate stats
+    const assignedTasksCount = await TaskModel.countDocuments({
+      assignees: user._id,
+      deleted: { $ne: true },
+      createdAt: { $gte: startDate, $lte: now }
+    });
+
+    const completedTasksCount = await TaskModel.countDocuments({
+      assignees: user._id,
+      status: "done",
+      deleted: { $ne: true },
+      updatedAt: { $gte: startDate, $lte: now }
+    });
+
+    const activitiesCount = activities.length;
+
+    return {
+      user: {
+        _id: user._id,
+        fullName: user.fullName,
+        email: user.email,
+        avatarUrl: user.avatarUrl,
+        createdAt: user.createdAt
+      },
+      stats: {
+        assignedTasksCount,
+        completedTasksCount,
+        activitiesCount
+      },
+      activities,
+      tasks: tasks.map(t => ({
+        _id: t._id,
+        title: t.title,
+        status: t.status,
+        priority: t.priority,
+        dueDate: t.dueDate,
+        workspaceName: (t.workspaceId as any)?.name || "",
+        clientName: (t.clientProjectId as any)?.clientName || t.projectName || ""
+      }))
+    };
   }
 }
 
