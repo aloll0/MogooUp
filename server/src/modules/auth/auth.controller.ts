@@ -7,10 +7,11 @@ import mongoose from "mongoose";
 
 export class AuthController {
   private setRefreshTokenCookie(res: Response, refreshToken: string): void {
+    const isProduction = config.env === "production";
     res.cookie("refreshToken", refreshToken, {
       httpOnly: true,
-      secure: config.env === "production",
-      sameSite: "lax",
+      secure: isProduction,
+      sameSite: isProduction ? "none" : "lax",
       maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days matching token lifespan
     });
   }
@@ -85,7 +86,12 @@ export class AuthController {
       });
     } catch (error) {
       // Clear cookie if session is invalid or revoked
-      res.clearCookie("refreshToken");
+      const isProduction = config.env === "production";
+      res.clearCookie("refreshToken", {
+        httpOnly: true,
+        secure: isProduction,
+        sameSite: isProduction ? "none" : "lax",
+      });
       next(error);
     }
   };
@@ -97,10 +103,11 @@ export class AuthController {
         await authService.logout(req.user.userId);
       }
 
+      const isProduction = config.env === "production";
       res.clearCookie("refreshToken", {
         httpOnly: true,
-        secure: config.env === "production",
-        sameSite: "lax",
+        secure: isProduction,
+        sameSite: isProduction ? "none" : "lax",
       });
 
       res.status(200).json({

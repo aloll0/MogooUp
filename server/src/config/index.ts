@@ -15,7 +15,7 @@ export const config = {
     refreshExpiration: process.env.JWT_REFRESH_EXPIRATION || "7d",
   },
   cors: {
-    origin: process.env.CORS_ORIGIN || "http://localhost:5173",
+    origin: process.env.CORS_ORIGIN || "http://localhost:5173,https://mogoo-up.vercel.app",
   },
   cloudinary: {
     cloudName: process.env.CLOUDINARY_CLOUD_NAME || "",
