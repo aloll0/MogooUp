@@ -7,7 +7,7 @@ import mongoose from "mongoose";
 
 export class AuthController {
   private setRefreshTokenCookie(res: Response, refreshToken: string): void {
-    const isProduction = config.env === "production";
+    const isProduction = config.env === "production" || process.env.NODE_ENV === "production";
     res.cookie("refreshToken", refreshToken, {
       httpOnly: true,
       secure: isProduction,
@@ -57,6 +57,7 @@ export class AuthController {
             isSystemAdmin: user.isSystemAdmin,
           },
           accessToken: tokens.accessToken,
+          refreshToken: tokens.refreshToken,
         },
       });
     } catch (error) {
@@ -66,8 +67,12 @@ export class AuthController {
 
   refresh = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     try {
-      const refreshToken = req.cookies.refreshToken;
-      if (!refreshToken) {
+      const refreshToken =
+        req.cookies?.refreshToken ||
+        req.body?.refreshToken ||
+        (req.headers["x-refresh-token"] as string);
+
+      if (!refreshToken || typeof refreshToken !== "string") {
         res.status(401).json({
           success: false,
           error: { message: "Access denied. Refresh token missing." },
@@ -82,11 +87,12 @@ export class AuthController {
         success: true,
         data: {
           accessToken: tokens.accessToken,
+          refreshToken: tokens.refreshToken,
         },
       });
     } catch (error) {
       // Clear cookie if session is invalid or revoked
-      const isProduction = config.env === "production";
+      const isProduction = config.env === "production" || process.env.NODE_ENV === "production";
       res.clearCookie("refreshToken", {
         httpOnly: true,
         secure: isProduction,

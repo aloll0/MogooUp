@@ -1,15 +1,40 @@
 import axios, { AxiosError } from "axios";
 import type { InternalAxiosRequestConfig } from "axios";
 
-// Standard in-memory access token storage to avoid XSS token theft
-let inMemoryAccessToken: string | null = null;
+// Storage Keys
+const ACCESS_TOKEN_KEY = "mogoo_access_token";
+const REFRESH_TOKEN_KEY = "mogoo_refresh_token";
+
+let inMemoryAccessToken: string | null =
+  typeof window !== "undefined" ? localStorage.getItem(ACCESS_TOKEN_KEY) : null;
 
 export const setAccessToken = (token: string | null) => {
   inMemoryAccessToken = token;
+  if (typeof window !== "undefined") {
+    if (token) {
+      localStorage.setItem(ACCESS_TOKEN_KEY, token);
+    } else {
+      localStorage.removeItem(ACCESS_TOKEN_KEY);
+    }
+  }
 };
 
 export const getAccessToken = () => {
-  return inMemoryAccessToken;
+  return inMemoryAccessToken || (typeof window !== "undefined" ? localStorage.getItem(ACCESS_TOKEN_KEY) : null);
+};
+
+export const setRefreshToken = (token: string | null) => {
+  if (typeof window !== "undefined") {
+    if (token) {
+      localStorage.setItem(REFRESH_TOKEN_KEY, token);
+    } else {
+      localStorage.removeItem(REFRESH_TOKEN_KEY);
+    }
+  }
+};
+
+export const getRefreshToken = () => {
+  return typeof window !== "undefined" ? localStorage.getItem(REFRESH_TOKEN_KEY) : null;
 };
 
 // Create configured Axios instance
@@ -24,8 +49,9 @@ export const api = axios.create({
 // Request Interceptor: Inject Access Token
 api.interceptors.request.use(
   (config: InternalAxiosRequestConfig) => {
-    if (inMemoryAccessToken && config.headers) {
-      config.headers.Authorization = `Bearer ${inMemoryAccessToken}`;
+    const token = inMemoryAccessToken || (typeof window !== "undefined" ? localStorage.getItem(ACCESS_TOKEN_KEY) : null);
+    if (token && config.headers) {
+      config.headers.Authorization = `Bearer ${token}`;
     }
     return config;
   },
@@ -79,15 +105,22 @@ api.interceptors.response.use(
       isRefreshing = true;
 
       try {
-        // Post request to refresh token endpoint
+        const storedRefreshToken = getRefreshToken();
+        // Post request to refresh token endpoint with cookie + body/header fallback
         const response = await axios.post(
           `${api.defaults.baseURL}/auth/refresh`,
-          {},
-          { withCredentials: true }
+          { refreshToken: storedRefreshToken },
+          {
+            withCredentials: true,
+            headers: storedRefreshToken ? { "x-refresh-token": storedRefreshToken } : undefined,
+          }
         );
 
-        const { accessToken } = response.data.data;
+        const { accessToken, refreshToken: newRefreshToken } = response.data.data;
         setAccessToken(accessToken);
+        if (newRefreshToken) {
+          setRefreshToken(newRefreshToken);
+        }
 
         processQueue(null, accessToken);
         isRefreshing = false;
@@ -101,11 +134,11 @@ api.interceptors.response.use(
         processQueue(refreshError, null);
         isRefreshing = false;
         setAccessToken(null);
-
-        // Redirect to login if token refresh fails (e.g. refresh token expired/revoked)
-        if (typeof window !== "undefined" && !window.location.pathname.startsWith("/login")) {
-          window.location.href = "/login";
+        setRefreshToken(null);
+        if (typeof window !== "undefined") {
+          localStorage.removeItem("mogoo_user");
         }
+
         return Promise.reject(refreshError);
       }
     }
