@@ -15,7 +15,7 @@ export const socketService = {
     if (!socket) {
       socket = io(getSocketUrl(), {
         autoConnect: true,
-        transports: ["websocket"],
+        transports: ["websocket", "polling"],
       });
     } else if (socket.disconnected) {
       socket.connect();

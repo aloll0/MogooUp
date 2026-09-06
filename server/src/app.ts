@@ -22,12 +22,15 @@ import adminRoutes from "./modules/admin/admin.routes";
 
 const app = express();
 
+// Trust proxy for secure cookies behind reverse proxies (like Render)
+app.set("trust proxy", 1);
+
 // Security HTTP headers
 app.use(helmet());
 
 // Enable CORS
 const allowedOrigins = typeof config.cors.origin === "string"
-  ? config.cors.origin.split(",").map(o => o.trim())
+  ? config.cors.origin.split(",").map((o) => o.trim().replace(/\/+$/, ""))
   : [];
 
 app.use(
@@ -37,7 +40,11 @@ app.use(
       if (!origin) return callback(null, true);
       
       const isDev = config.env === "development";
-      const isAllowed = allowedOrigins.includes(origin) || (isDev && /^http:\/\/(localhost|127\.0\.0\.1):\d+$/.test(origin));
+      const normalizedOrigin = origin.replace(/\/+$/, "");
+      const isAllowed =
+        allowedOrigins.includes(normalizedOrigin) ||
+        allowedOrigins.includes(origin) ||
+        (isDev && /^http:\/\/(localhost|127\.0\.0\.1):\d+$/.test(origin));
       
       if (isAllowed) {
         callback(null, true);
