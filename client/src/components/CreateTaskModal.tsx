@@ -110,8 +110,8 @@ export const CreateTaskModal: React.FC<CreateTaskModalProps> = ({
   };
 
   return (
-    <div className="absolute inset-0 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4 z-50 overflow-y-auto">
-      <div className="bg-white dark:bg-zinc-900 border dark:border-zinc-800 w-full max-w-lg rounded-2xl p-6 shadow-2xl space-y-4 my-8">
+    <div className="fixed inset-0 bg-black/60 backdrop-blur-xs flex items-center justify-center p-3 sm:p-4 z-50 overflow-y-auto">
+      <div className="bg-white dark:bg-zinc-900 border dark:border-zinc-800 w-full max-w-lg rounded-2xl p-5 sm:p-6 shadow-2xl space-y-4 my-auto">
         <div className="flex items-center justify-between border-b dark:border-zinc-800 pb-3">
           <h2 className="text-lg font-bold text-zinc-900 dark:text-zinc-50">
             {isAr ? "إنشاء مهمة جديدة" : t("createTaskModal.title")}

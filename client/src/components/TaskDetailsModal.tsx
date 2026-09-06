@@ -610,21 +610,21 @@ export const TaskDetailsModal: React.FC<TaskDetailsModalProps> = ({
   );
 
   return (
-    <div className="absolute inset-0 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4 z-50 overflow-y-auto">
-      <div className="bg-white dark:bg-zinc-900 border dark:border-zinc-800 w-full max-w-4xl rounded-2xl overflow-hidden shadow-2xl flex flex-col md:flex-row h-[85vh] max-h-[700px] relative animate-fade-in transition-theme">
+    <div className="fixed inset-0 bg-black/70 backdrop-blur-xs flex items-end sm:items-center justify-center p-0 sm:p-4 z-50 overflow-y-auto">
+      <div className="bg-white dark:bg-zinc-900 border dark:border-zinc-800 w-full max-w-4xl rounded-t-2xl sm:rounded-2xl overflow-hidden shadow-2xl flex flex-col md:flex-row h-[92vh] sm:h-[85vh] max-h-none sm:max-h-[750px] relative animate-fade-in transition-theme">
         
         {/* Close Button floating */}
         <button
           onClick={onClose}
-          className="absolute top-4 end-4 z-20 h-8 w-8 bg-zinc-900/60 text-white rounded-full flex items-center justify-center hover:bg-zinc-900 transition-all cursor-pointer shadow-md"
+          className="absolute top-4 end-4 z-20 h-8 w-8 bg-zinc-900/80 text-white rounded-full flex items-center justify-center hover:bg-zinc-900 transition-all cursor-pointer shadow-md"
         >
           <X className="h-4.5 w-4.5" />
         </button>
 
         {/* LEFT COLUMN: Main task properties & files (60%) */}
-        <div className="flex-1 flex flex-col min-w-0 overflow-y-auto border-e border-zinc-100 dark:border-zinc-800/80">
+        <div className="flex-1 flex flex-col min-w-0 overflow-y-auto border-b md:border-b-0 md:border-e border-zinc-100 dark:border-zinc-800/80">
           {/* Cover Banner */}
-          <div className="h-44 w-full bg-linear-to-r from-purple-600 to-indigo-600 relative shrink-0">
+          <div className="h-36 sm:h-44 w-full bg-[#1e1037] relative shrink-0">
             {coverImage ? (
               <img
                 src={coverImage.url}
@@ -633,10 +633,10 @@ export const TaskDetailsModal: React.FC<TaskDetailsModalProps> = ({
               />
             ) : (
               <div className="absolute inset-0 flex items-center justify-center text-white/20 select-none">
-                <ImageIcon className="h-20 w-20" />
+                <ImageIcon className="h-16 w-16 sm:h-20 sm:w-20" />
               </div>
             )}
-            <div className="absolute inset-0 bg-gradient-to-t from-black/45 to-transparent" />
+            <div className="absolute inset-0 bg-black/30" />
           </div>
 
           <div className="p-6 space-y-6">

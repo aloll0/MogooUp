@@ -285,7 +285,7 @@ export const DashboardTab: React.FC<DashboardTabProps> = ({
                       {/* Responsive Custom SVG/CSS Bar */}
                       <div className="h-2 w-full bg-zinc-100 dark:bg-zinc-800 rounded-full overflow-hidden relative">
                         <motion.div
-                          className="h-full bg-linear-to-r from-purple-500 to-indigo-500 rounded-full"
+                          className="h-full bg-purple-600 rounded-full"
                           initial={{ width: 0 }}
                           animate={{ width: `${percentage}%` }}
                           transition={{ duration: 1.0, ease: "easeOut" }}
@@ -433,12 +433,12 @@ export const DashboardTab: React.FC<DashboardTabProps> = ({
   };
 
   return (
-    <div className="flex-1 flex flex-col overflow-y-auto p-6 space-y-6">
+    <div className="flex-1 flex flex-col overflow-y-auto p-3 sm:p-6 space-y-6">
       
       {/* Header Panel */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b dark:border-zinc-800 pb-4">
         <div>
-          <h2 className="text-xl font-bold flex items-center gap-2">
+          <h2 className="text-lg sm:text-xl font-bold flex items-center gap-2">
             <span>{t("stats.widgetsHeader", { defaultValue: "Interactive Widgets Dashboard" })}</span>
           </h2>
           <p className="text-xs text-zinc-500 dark:text-zinc-450 mt-1">
@@ -466,7 +466,7 @@ export const DashboardTab: React.FC<DashboardTabProps> = ({
           axis="y"
           values={widgetOrder}
           onReorder={updateOrder}
-          className="grid grid-cols-1 md:grid-cols-2 gap-6"
+          className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-6"
         >
           {widgetOrder.map((widgetId) => (
             <Reorder.Item

@@ -404,7 +404,7 @@ export const ReportsTab: React.FC<ReportsTabProps> = ({
 
                         <div className="h-2.5 w-full bg-zinc-100 dark:bg-zinc-800 rounded-full overflow-hidden">
                           <motion.div
-                            className="h-full bg-linear-to-r from-purple-500 to-indigo-500 rounded-full"
+                            className="h-full bg-purple-600 dark:bg-purple-500 rounded-full"
                             initial={{ width: 0 }}
                             animate={{ width: `${widthPercent}%` }}
                             transition={{ duration: 0.8, ease: "easeOut" }}

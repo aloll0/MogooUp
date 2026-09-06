@@ -481,27 +481,28 @@ export const CalendarTab: React.FC<Omit<CalendarTabProps, "members">> = ({
         </div>
       </div>
 
-      {/* 3. Weekday Columns Header (Only Month view) */}
-      {viewMode === "month" && (
-        <div className="grid grid-cols-7 text-center font-bold text-xs text-zinc-450 dark:text-zinc-555 uppercase tracking-wider bg-zinc-100/50 dark:bg-zinc-900/10 py-2.5 rounded-lg border dark:border-zinc-850 shrink-0 select-none">
-          {weekdays.map((day) => (
-            <div key={day}>{day}</div>
-          ))}
-        </div>
-      )}
+      {/* 3. Weekday Columns Header & Dynamic Body */}
+      <div className="flex-1 min-h-[350px] overflow-x-auto pb-2">
+        <div className="min-w-[620px] md:min-w-0 space-y-2">
+          {viewMode === "month" && (
+            <div className="grid grid-cols-7 text-center font-bold text-xs text-zinc-450 dark:text-zinc-555 uppercase tracking-wider bg-zinc-100/50 dark:bg-zinc-900/10 py-2.5 rounded-lg border dark:border-zinc-850 shrink-0 select-none">
+              {weekdays.map((day) => (
+                <div key={day}>{day}</div>
+              ))}
+            </div>
+          )}
 
-      {/* 4. Calendar Dynamic Body */}
-      <div className="flex-1 min-h-[350px]">
-        {viewMode === "month" && renderMonthView()}
-        {viewMode === "week" && renderWeekView()}
-        {viewMode === "day" && renderDayView()}
+          {viewMode === "month" && renderMonthView()}
+          {viewMode === "week" && renderWeekView()}
+          {viewMode === "day" && renderDayView()}
+        </div>
       </div>
 
       {/* 5. Modal showing tasks for a selected day in Month View */}
       <AnimatePresence>
         {selectedDayTasks && (
           <div
-            className="absolute inset-0 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4 z-40"
+            className="fixed inset-0 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4 z-50 overflow-y-auto"
             onClick={() => setSelectedDayTasks(null)}
           >
             <motion.div
@@ -509,7 +510,7 @@ export const CalendarTab: React.FC<Omit<CalendarTabProps, "members">> = ({
               animate={{ scale: 1, opacity: 1 }}
               exit={{ scale: 0.95, opacity: 0 }}
               onClick={(e) => e.stopPropagation()}
-              className="bg-white dark:bg-zinc-900 border dark:border-zinc-800 w-full max-w-md rounded-2xl p-6 shadow-2xl space-y-4 max-h-[80vh] flex flex-col text-start"
+              className="bg-white dark:bg-zinc-900 border dark:border-zinc-800 w-full max-w-md rounded-2xl p-5 sm:p-6 shadow-2xl space-y-4 max-h-[85vh] flex flex-col text-start my-auto"
             >
               <div className="flex items-center justify-between border-b dark:border-zinc-800 pb-3 shrink-0">
                 <h3 className="text-base font-extrabold flex items-center gap-2">

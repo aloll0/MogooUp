@@ -346,9 +346,9 @@ export const ClientProjectsTab: React.FC<ClientProjectsTabProps> = ({
         <div className="flex-1 flex flex-col lg:flex-row min-h-0 overflow-hidden">
           
           {/* Left panel: Clients list */}
-          <div className="w-full lg:w-80 border-r border-zinc-200 dark:border-zinc-800 flex flex-col bg-white dark:bg-[#120722]/10 overflow-hidden">
+          <div className="w-full lg:w-80 border-b lg:border-b-0 lg:border-r border-zinc-200 dark:border-zinc-800 flex flex-col bg-white dark:bg-[#120722]/10 max-h-56 lg:max-h-none shrink-0 overflow-hidden">
             {/* Search Input */}
-            <div className="p-4 border-b border-zinc-200 dark:border-zinc-800">
+            <div className="p-3 sm:p-4 border-b border-zinc-200 dark:border-zinc-800 shrink-0">
               <div className="relative">
                 <Search className="absolute left-3 top-2.5 h-4 w-4 text-zinc-400" />
                 <input

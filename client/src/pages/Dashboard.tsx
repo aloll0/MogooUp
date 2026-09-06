@@ -103,6 +103,7 @@ export const Dashboard: React.FC = () => {
   const [isNotificationsOpen, setIsNotificationsOpen] = useState(false);
   const [isScratchpadOpen, setIsScratchpadOpen] = useState(false);
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
+  const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
 
   // Inputs
 
@@ -515,34 +516,45 @@ export const Dashboard: React.FC = () => {
     setIsInviteModalOpen(true);
   };
 
-  return (
-    <div className="flex h-screen w-screen bg-zinc-50 dark:bg-[#070111] font-sans text-zinc-950 dark:text-zinc-50 overflow-hidden transition-theme">
-      {/* 1. SIDEBAR */}
-      <aside className={`bg-[#120722] text-zinc-100 flex flex-col justify-between border-e border-[#1f1035] shrink-0 transition-all duration-300 no-print ${isSidebarCollapsed ? "w-16" : "w-64"}`}>
+  const renderSidebarContent = (isMobile: boolean = false) => {
+    const collapsed = isMobile ? false : isSidebarCollapsed;
+
+    return (
+      <>
         <div className="flex flex-col overflow-y-auto flex-1">
           {/* Header Branding */}
-          <div className={`p-4 flex items-center border-b border-[#1f1035] ${isSidebarCollapsed ? "flex-col gap-3 justify-center" : "justify-between"}`}>
+          <div className={`p-4 flex items-center border-b border-[#1f1035] ${collapsed ? "flex-col gap-3 justify-center" : "justify-between"}`}>
             <div className="flex items-center gap-2 overflow-hidden">
               <img src={taskflowLogo} alt="Taskflow Logo" className="h-8 w-8 object-contain rounded-lg shadow-md shrink-0" />
-              {!isSidebarCollapsed && (
+              {!collapsed && (
                 <span className="font-bold text-lg tracking-wide text-zinc-100 truncate">Taskflow</span>
               )}
             </div>
-            <button
-              onClick={() => setIsSidebarCollapsed(!isSidebarCollapsed)}
-              className="p-1.5 hover:bg-white/5 text-zinc-400 hover:text-white rounded-lg transition-all cursor-pointer shrink-0"
-              title={isSidebarCollapsed ? t('sidebar.expand', { defaultValue: "Expand" }) : t('sidebar.collapse', { defaultValue: "Collapse" })}
-            >
-              {isSidebarCollapsed ? (
-                <Menu className="h-4.5 w-4.5" />
-              ) : (
-                i18n.dir() === "rtl" ? <ChevronRight className="h-4.5 w-4.5" /> : <ChevronLeft className="h-4.5 w-4.5" />
-              )}
-            </button>
+            {isMobile ? (
+              <button
+                onClick={() => setIsMobileSidebarOpen(false)}
+                className="p-1.5 hover:bg-white/5 text-zinc-400 hover:text-white rounded-lg transition-all cursor-pointer shrink-0"
+                title="Close"
+              >
+                <X className="h-5 w-5" />
+              </button>
+            ) : (
+              <button
+                onClick={() => setIsSidebarCollapsed(!isSidebarCollapsed)}
+                className="p-1.5 hover:bg-white/5 text-zinc-400 hover:text-white rounded-lg transition-all cursor-pointer shrink-0"
+                title={isSidebarCollapsed ? t('sidebar.expand', { defaultValue: "Expand" }) : t('sidebar.collapse', { defaultValue: "Collapse" })}
+              >
+                {isSidebarCollapsed ? (
+                  <Menu className="h-4.5 w-4.5" />
+                ) : (
+                  i18n.dir() === "rtl" ? <ChevronRight className="h-4.5 w-4.5" /> : <ChevronLeft className="h-4.5 w-4.5" />
+                )}
+              </button>
+            )}
           </div>
 
           {/* Workspace Switcher */}
-          {!isSidebarCollapsed && !user?.isSystemAdmin && (
+          {!collapsed && !user?.isSystemAdmin && (
             <div className="p-4 border-b border-[#1f1035]">
               <label className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest block mb-2">
                 {t('sidebar.currentWorkspace')}
@@ -552,7 +564,10 @@ export const Dashboard: React.FC = () => {
                   value={activeWorkspace?._id || ""}
                   onChange={(e) => {
                     const ws = workspaces.find((w) => w._id === e.target.value);
-                    if (ws) navigate(`/w/${ws._id}`);
+                    if (ws) {
+                      navigate(`/w/${ws._id}`);
+                      if (isMobile) setIsMobileSidebarOpen(false);
+                    }
                   }}
                   className="w-full bg-[#1b0d32] border border-[#2b174d] rounded-lg py-2 px-3 text-sm text-zinc-100 appearance-none focus:outline-hidden focus:ring-1 focus:ring-purple-500 cursor-pointer"
                 >
@@ -566,7 +581,10 @@ export const Dashboard: React.FC = () => {
               </div>
 
               <button
-                onClick={() => setIsWorkspaceModalOpen(true)}
+                onClick={() => {
+                  setIsWorkspaceModalOpen(true);
+                  if (isMobile) setIsMobileSidebarOpen(false);
+                }}
                 className="mt-3 flex items-center gap-1.5 text-xs text-purple-400 hover:text-purple-300 font-semibold transition-colors cursor-pointer"
               >
                 <Plus className="h-3.5 w-3.5" />
@@ -576,11 +594,11 @@ export const Dashboard: React.FC = () => {
           )}
 
           {/* Tab Navigation */}
-          <div className={`px-2 py-3 border-b border-[#1f1035] space-y-1 ${isSidebarCollapsed ? "flex flex-col items-center" : ""}`}>
+          <div className={`px-2 py-3 border-b border-[#1f1035] space-y-1 ${collapsed ? "flex flex-col items-center" : ""}`}>
             {[
               ...(!user?.isSystemAdmin
                 ? [
-                  { id: "kanban", icon: Layers, label: t('sidebar.board', { defaultValue: "Kanban Board" }) },
+                    { id: "kanban", icon: Layers, label: t('sidebar.board', { defaultValue: "Kanban Board" }) },
                     { id: "dashboard", icon: LayoutDashboard, label: t('sidebar.dashboard', { defaultValue: "Widgets Dashboard" }) },
                     { id: "reports", icon: BarChart2, label: t('sidebar.reports', { defaultValue: "Reports & Analytics" }) },
                     { id: "clients", icon: Briefcase, label: t('sidebar.clients', { defaultValue: "Client Projects" }) },
@@ -611,6 +629,7 @@ export const Dashboard: React.FC = () => {
                 <button
                   key={tab.id}
                   onClick={() => {
+                    if (isMobile) setIsMobileSidebarOpen(false);
                     if (tab.id.startsWith("admin-")) {
                       const targetSub = tab.id.substring(6);
                       navigate(`/admin?sub=${targetSub}`);
@@ -628,16 +647,16 @@ export const Dashboard: React.FC = () => {
                     }
                   }}
                   className={`w-full flex items-center rounded-lg transition-all cursor-pointer ${
-                    isSidebarCollapsed ? "justify-center p-2.5" : "gap-2.5 py-2 px-3 text-start"
+                    collapsed ? "justify-center p-2.5" : "gap-2.5 py-2 px-3 text-start"
                   } ${
                     isActive
-                      ? "bg-purple-500/15 border-s-4 border-purple-500 text-white font-semibold shadow-[0_0_15px_rgba(168,85,247,0.15)]"
+                      ? "bg-purple-500/15 border-s-4 border-purple-500 text-white font-semibold"
                       : "text-zinc-400 hover:bg-white/5 hover:text-white"
                   }`}
-                  title={isSidebarCollapsed ? tab.label : undefined}
+                  title={collapsed ? tab.label : undefined}
                 >
                   <Icon className="h-4 w-4 shrink-0" />
-                  {!isSidebarCollapsed && <span className="text-sm truncate">{tab.label}</span>}
+                  {!collapsed && <span className="text-sm truncate">{tab.label}</span>}
                 </button>
               );
             })}
@@ -646,64 +665,68 @@ export const Dashboard: React.FC = () => {
           {/* Spaces Navigation */}
           {!user?.isSystemAdmin && (
             <div className="p-3 flex flex-col">
-              <div className={`flex items-center justify-between mb-3 ${isSidebarCollapsed ? "justify-center" : ""}`}>
-              {!isSidebarCollapsed && (
-                <span className="text-xs font-semibold text-zinc-500 uppercase tracking-wider block">
-                  {t('sidebar.spaces')} ({spaces.length})
-                </span>
-              )}
-              <button
-                onClick={handleOpenSpaceModal}
-                className="text-zinc-400 hover:text-zinc-100 p-0.5 hover:bg-white/5 rounded-md transition-all cursor-pointer"
-                title={t('sidebar.createSpace', { defaultValue: "Create Space" })}
-              >
-                <Plus className="h-4 w-4" />
-              </button>
-            </div>
+              <div className={`flex items-center justify-between mb-3 ${collapsed ? "justify-center" : ""}`}>
+                {!collapsed && (
+                  <span className="text-xs font-semibold text-zinc-500 uppercase tracking-wider block">
+                    {t('sidebar.spaces')} ({spaces.length})
+                  </span>
+                )}
+                <button
+                  onClick={() => {
+                    handleOpenSpaceModal();
+                    if (isMobile) setIsMobileSidebarOpen(false);
+                  }}
+                  className="text-zinc-400 hover:text-zinc-100 p-0.5 hover:bg-white/5 rounded-md transition-all cursor-pointer"
+                  title={t('sidebar.createSpace', { defaultValue: "Create Space" })}
+                >
+                  <Plus className="h-4 w-4" />
+                </button>
+              </div>
 
-            <nav className={`space-y-1 ${isSidebarCollapsed ? "flex flex-col items-center" : ""}`}>
-              {isLoadingSpaces ? (
-                <div className="flex justify-center p-4">
-                  <Loader2 className="h-5 w-5 animate-spin text-zinc-655" />
-                </div>
-              ) : spaces.length === 0 ? (
-                !isSidebarCollapsed && <p className="text-[11px] text-zinc-550 text-center py-4">{t('sidebar.noActiveSpaces')}</p>
-              ) : (
-                spaces.map((sp) => {
-                  const isActive = activeSpace?._id === sp._id && activeTab === "kanban";
-                  return (
-                    <button
-                      key={sp._id}
-                      onClick={() => {
-                        navigate(`/w/${activeWorkspace?._id}/space/${sp._id}`);
-                      }}
-                      className={`w-full flex items-center rounded-lg transition-all cursor-pointer ${
-                        isSidebarCollapsed ? "justify-center p-2.5" : "gap-2.5 py-2 px-3 text-start"
-                      } ${
-                        isActive
-                          ? "bg-purple-500/10 text-purple-300 font-semibold border-s-4 border-purple-500/60"
-                          : "text-zinc-400 hover:bg-white/5 hover:text-zinc-200"
-                      }`}
-                      title={isSidebarCollapsed ? sp.name : undefined}
-                    >
-                      <div
-                        className="h-2.5 w-2.5 rounded-full shrink-0"
-                        style={{ backgroundColor: sp.color || "#aa3bff" }}
-                      />
-                      {!isSidebarCollapsed && <span className="text-sm truncate">{sp.name}</span>}
-                    </button>
-                  );
-                })
-              )}
-            </nav>
-          </div>
+              <nav className={`space-y-1 ${collapsed ? "flex flex-col items-center" : ""}`}>
+                {isLoadingSpaces ? (
+                  <div className="flex justify-center p-4">
+                    <Loader2 className="h-5 w-5 animate-spin text-zinc-500" />
+                  </div>
+                ) : spaces.length === 0 ? (
+                  !collapsed && <p className="text-[11px] text-zinc-500 text-center py-4">{t('sidebar.noActiveSpaces')}</p>
+                ) : (
+                  spaces.map((sp) => {
+                    const isActive = activeSpace?._id === sp._id && activeTab === "kanban";
+                    return (
+                      <button
+                        key={sp._id}
+                        onClick={() => {
+                          navigate(`/w/${activeWorkspace?._id}/space/${sp._id}`);
+                          if (isMobile) setIsMobileSidebarOpen(false);
+                        }}
+                        className={`w-full flex items-center rounded-lg transition-all cursor-pointer ${
+                          collapsed ? "justify-center p-2.5" : "gap-2.5 py-2 px-3 text-start"
+                        } ${
+                          isActive
+                            ? "bg-purple-500/10 text-purple-300 font-semibold border-s-4 border-purple-500/60"
+                            : "text-zinc-400 hover:bg-white/5 hover:text-zinc-200"
+                        }`}
+                        title={collapsed ? sp.name : undefined}
+                      >
+                        <div
+                          className="h-2.5 w-2.5 rounded-full shrink-0"
+                          style={{ backgroundColor: sp.color || "#aa3bff" }}
+                        />
+                        {!collapsed && <span className="text-sm truncate">{sp.name}</span>}
+                      </button>
+                    );
+                  })
+                )}
+              </nav>
+            </div>
           )}
         </div>
 
         {/* Footer Profile */}
         <div className="flex flex-col shrink-0">
           {/* Powered by logo footer */}
-          {!isSidebarCollapsed && (
+          {!collapsed && (
             <div className="px-4 py-2.5 border-t border-[#1f1035] flex flex-col gap-1 items-center justify-center bg-zinc-950/20">
               <span className="text-[8px] font-mono tracking-widest text-zinc-500 uppercase">POWERED BY</span>
               <img src={arabProLogo} alt="Arab Pro" className="h-5 object-contain opacity-70 hover:opacity-100 transition-opacity" />
@@ -711,9 +734,12 @@ export const Dashboard: React.FC = () => {
           )}
 
           {/* Profile bar */}
-          <div className={`p-3 border-t border-[#1f1035] bg-[#0c0318] flex items-center justify-between ${isSidebarCollapsed ? "flex-col gap-3 justify-center" : ""}`}>
+          <div className={`p-3 border-t border-[#1f1035] bg-[#0c0318] flex items-center justify-between ${collapsed ? "flex-col gap-3 justify-center" : ""}`}>
             <div 
-              onClick={() => setIsProfileModalOpen(true)}
+              onClick={() => {
+                setIsProfileModalOpen(true);
+                if (isMobile) setIsMobileSidebarOpen(false);
+              }}
               className="flex items-center gap-2.5 overflow-hidden cursor-pointer hover:bg-white/5 p-1 rounded-lg transition-all"
               title={i18n.language === "ar" ? "إعدادات الملف الشخصي" : "Profile Settings"}
             >
@@ -722,7 +748,7 @@ export const Dashboard: React.FC = () => {
                 alt="Avatar"
                 className="h-8 w-8 rounded-full bg-zinc-850 border border-[#2b174d] shrink-0"
               />
-              {!isSidebarCollapsed && (
+              {!collapsed && (
                 <div className="text-start overflow-hidden">
                   <p className="text-xs font-semibold text-zinc-200 truncate">{user?.fullName}</p>
                   <p className="text-[10px] text-zinc-500 truncate">{user?.email}</p>
@@ -738,17 +764,57 @@ export const Dashboard: React.FC = () => {
             </button>
           </div>
         </div>
+      </>
+    );
+  };
+
+  return (
+    <div className="flex h-screen w-screen bg-zinc-50 dark:bg-[#070111] font-sans text-zinc-950 dark:text-zinc-50 overflow-hidden transition-theme">
+      {/* 1. DESKTOP SIDEBAR */}
+      <aside className={`hidden md:flex bg-[#120722] text-zinc-100 flex-col justify-between border-e border-[#1f1035] shrink-0 transition-all duration-300 no-print ${isSidebarCollapsed ? "w-16" : "w-64"}`}>
+        {renderSidebarContent(false)}
       </aside>
+
+      {/* 2. MOBILE DRAWER SIDEBAR */}
+      <AnimatePresence>
+        {isMobileSidebarOpen && (
+          <>
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={() => setIsMobileSidebarOpen(false)}
+              className="fixed inset-0 bg-black/70 backdrop-blur-xs z-50 md:hidden"
+            />
+            <motion.aside
+              initial={{ x: isAr ? "100%" : "-100%" }}
+              animate={{ x: 0 }}
+              exit={{ x: isAr ? "100%" : "-100%" }}
+              transition={{ type: "spring", damping: 25, stiffness: 260 }}
+              className="fixed top-0 bottom-0 start-0 w-72 max-w-[85vw] bg-[#120722] text-zinc-100 flex flex-col justify-between border-e border-[#1f1035] z-50 md:hidden shadow-2xl"
+            >
+              {renderSidebarContent(true)}
+            </motion.aside>
+          </>
+        )}
+      </AnimatePresence>
 
       {/* 2. MAIN BOARD WORKSPACE */}
       <main className="flex-1 flex flex-col min-w-0 overflow-hidden">
         {user?.isSystemAdmin ? (
           <div className="flex-1 flex flex-col overflow-hidden animate-fade-in text-start">
             {/* Header Toolbar */}
-            <header className="h-16 border-b border-zinc-200 dark:border-white/5 bg-white dark:bg-[#120722]/30 backdrop-blur-md p-4 flex items-center justify-between shrink-0 transition-theme relative z-20 no-print">
-              <div className="flex items-center gap-3">
-                <Shield className="h-5 w-5 text-purple-500" />
-                <h1 className="text-xl font-bold tracking-tight">
+            <header className="h-16 border-b border-zinc-200 dark:border-white/5 bg-white dark:bg-[#120722]/30 backdrop-blur-md px-3 sm:px-4 py-3 flex items-center justify-between shrink-0 transition-theme relative z-20 no-print gap-2">
+              <div className="flex items-center gap-2 sm:gap-3 min-w-0">
+                <button
+                  onClick={() => setIsMobileSidebarOpen(true)}
+                  className="md:hidden p-1.5 text-zinc-600 dark:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-white/5 rounded-lg transition-colors cursor-pointer shrink-0"
+                  title="Open navigation menu"
+                >
+                  <Menu className="h-5 w-5" />
+                </button>
+                <Shield className="h-5 w-5 text-purple-500 shrink-0" />
+                <h1 className="text-sm sm:text-lg md:text-xl font-bold tracking-tight truncate">
                   {adminSubTab === "dashboard" ? (isAr ? "تحليلات عامة للمنصة" : "Admin Analytics Overview") :
                    adminSubTab === "companies" ? (isAr ? "فحص مساحات عمل الشركات" : "Workspace & Company Inspector") :
                    adminSubTab === "users" ? (isAr ? "مراجعة واعتماد الحسابات" : "User Access Verification") :
@@ -756,13 +822,13 @@ export const Dashboard: React.FC = () => {
                    adminSubTab === "deleted" ? (isAr ? "استعادة المهام المحذوفة" : "Soft-Deleted Task Recovery") :
                    (isAr ? "سجل الأحداث والتدقيق للنظام" : "Immutable System Audit Logs")}
                 </h1>
-                <span className="text-xs font-semibold px-2 py-0.5 bg-zinc-100 dark:bg-zinc-800/80 rounded-md text-zinc-500 dark:text-zinc-400 select-none">
+                <span className="hidden lg:inline-block text-xs font-semibold px-2 py-0.5 bg-zinc-100 dark:bg-zinc-800/80 rounded-md text-zinc-500 dark:text-zinc-400 select-none shrink-0">
                   {isAr ? "مشرف نظام عرب برو" : "Arab Pro Platform Admin"}
                 </span>
               </div>
 
               {/* Actions on the right side of header for Admin */}
-              <div className="flex items-center gap-4">
+              <div className="flex items-center gap-2 sm:gap-4 shrink-0">
                 {/* Language Switcher */}
                 <div dir="ltr" className="flex items-center bg-zinc-100 dark:bg-zinc-800/60 p-0.5 rounded-lg border border-zinc-200 dark:border-zinc-850 relative h-8 shrink-0 select-none">
                   <motion.div
@@ -850,84 +916,69 @@ export const Dashboard: React.FC = () => {
         ) : (
           <div className="flex-1 flex flex-col overflow-hidden">
             {/* Header Toolbar */}
-            <header className="h-16 border-b border-zinc-200 dark:border-white/5 bg-white dark:bg-[#120722]/30 backdrop-blur-md p-4 flex items-center justify-between shrink-0 transition-theme relative z-20">
-              {activeTab === "admin" ? (
-                <div className="flex items-center gap-3">
-                  <Shield className="h-5 w-5 text-purple-500" />
-                  <h1 className="text-xl font-bold tracking-tight">
-                    {adminSubTab === "dashboard" ? "Admin Analytics Overview" :
-                     adminSubTab === "companies" ? "Workspace & Company Inspector" :
-                     adminSubTab === "users" ? "User Access Verification" :
-                     adminSubTab === "deleted" ? "Soft-Deleted Task Recovery" :
-                     "Immutable System Audit Logs"}
-                  </h1>
-                  <span className="text-xs font-semibold px-2 py-0.5 bg-zinc-100 dark:bg-zinc-800/80 rounded-md text-zinc-500 dark:text-zinc-400 select-none">
-                    Arab Pro Platform Admin
-                  </span>
-                </div>
-              ) : activeTab === "clients" ? (
-                <div className="flex items-center gap-3">
-                  <Briefcase className="h-5 w-5 text-purple-500" />
-                  <h1 className="text-xl font-bold tracking-tight">{t('sidebar.clients', { defaultValue: "Client Projects" })}</h1>
-                  <span className="text-xs font-semibold px-2 py-0.5 bg-zinc-100 dark:bg-zinc-800/80 rounded-md text-zinc-500 dark:text-zinc-400 select-none">
-                    {activeWorkspace?.name}
-                  </span>
-                </div>
-              ) : activeTab === "team" ? (
-                <div className="flex items-center gap-3">
-                  <Users className="h-5 w-5 text-purple-500" />
-                  <h1 className="text-xl font-bold tracking-tight">{t('sidebar.team', { defaultValue: "Workspace Team" })}</h1>
-                  <span className="text-xs font-semibold px-2 py-0.5 bg-zinc-100 dark:bg-zinc-800/80 rounded-md text-zinc-500 dark:text-zinc-400 select-none">
-                    {activeWorkspace?.name}
-                  </span>
-                </div>
-              ) : activeTab === "dashboard" ? (
-                <div className="flex items-center gap-3">
-                  <LayoutDashboard className="h-5 w-5 text-purple-500" />
-                  <h1 className="text-xl font-bold tracking-tight">{t('sidebar.dashboard', { defaultValue: "Widgets Dashboard" })}</h1>
-                  <span className="text-xs font-semibold px-2 py-0.5 bg-zinc-100 dark:bg-zinc-800/80 rounded-md text-zinc-500 dark:text-zinc-400 select-none">
-                    {activeWorkspace?.name}
-                  </span>
-                </div>
-              ) : activeTab === "reports" ? (
-                <div className="flex items-center gap-3">
-                  <BarChart2 className="h-5 w-5 text-purple-500" />
-                  <h1 className="text-xl font-bold tracking-tight">{t('sidebar.reports', { defaultValue: "Reports & Analytics" })}</h1>
-                  <span className="text-xs font-semibold px-2 py-0.5 bg-zinc-100 dark:bg-zinc-800/80 rounded-md text-zinc-500 dark:text-zinc-400 select-none">
-                    {activeWorkspace?.name}
-                  </span>
-                </div>
-              ) : activeTab === "gantt" ? (
-                <div className="flex items-center gap-3">
-                  <Clock className="h-5 w-5 text-purple-500" />
-                  <h1 className="text-xl font-bold tracking-tight">{t('sidebar.gantt', { defaultValue: "Gantt Chart" })}</h1>
-                  <span className="text-xs font-semibold px-2 py-0.5 bg-zinc-100 dark:bg-zinc-800/80 rounded-md text-zinc-500 dark:text-zinc-400 select-none">
-                    {activeWorkspace?.name}
-                  </span>
-                </div>
-              ) : activeTab === "calendar" ? (
-                <div className="flex items-center gap-3">
-                  <Calendar className="h-5 w-5 text-purple-500" />
-                  <h1 className="text-xl font-bold tracking-tight">{t('sidebar.calendar', { defaultValue: "Calendar View" })}</h1>
-                  <span className="text-xs font-semibold px-2 py-0.5 bg-zinc-100 dark:bg-zinc-800/80 rounded-md text-zinc-500 dark:text-zinc-400 select-none">
-                    {activeWorkspace?.name}
-                  </span>
-                </div>
-              ) : (
-                <div className="flex items-center gap-3">
-                  <div
-                    className="h-3 w-3 rounded-full"
-                    style={{ backgroundColor: activeSpace?.color || "#aa3bff" }}
-                  />
-                  <h1 className="text-xl font-bold tracking-tight">{activeSpace?.name}</h1>
-                  <span className="text-xs font-semibold px-2 py-0.5 bg-zinc-100 dark:bg-zinc-800/80 rounded-md text-zinc-500 dark:text-zinc-400 select-none">
-                    {t('header.kanbanBoard')}
-                  </span>
-                </div>
-              )}
+            <header className="h-16 border-b border-zinc-200 dark:border-white/5 bg-white dark:bg-[#120722]/30 backdrop-blur-md px-3 sm:px-4 py-3 flex items-center justify-between shrink-0 transition-theme relative z-20 gap-2">
+              <div className="flex items-center gap-2 sm:gap-3 min-w-0">
+                <button
+                  onClick={() => setIsMobileSidebarOpen(true)}
+                  className="md:hidden p-1.5 text-zinc-600 dark:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-white/5 rounded-lg transition-colors cursor-pointer shrink-0"
+                  title="Open navigation menu"
+                >
+                  <Menu className="h-5 w-5" />
+                </button>
+                {activeTab === "admin" ? (
+                  <>
+                    <Shield className="h-5 w-5 text-purple-500 shrink-0" />
+                    <h1 className="text-sm sm:text-lg md:text-xl font-bold tracking-tight truncate">
+                      {adminSubTab === "dashboard" ? "Admin Analytics Overview" :
+                       adminSubTab === "companies" ? "Workspace & Company Inspector" :
+                       adminSubTab === "users" ? "User Access Verification" :
+                       adminSubTab === "deleted" ? "Soft-Deleted Task Recovery" :
+                       "Immutable System Audit Logs"}
+                    </h1>
+                  </>
+                ) : activeTab === "clients" ? (
+                  <>
+                    <Briefcase className="h-5 w-5 text-purple-500 shrink-0" />
+                    <h1 className="text-sm sm:text-lg md:text-xl font-bold tracking-tight truncate">{t('sidebar.clients', { defaultValue: "Client Projects" })}</h1>
+                  </>
+                ) : activeTab === "team" ? (
+                  <>
+                    <Users className="h-5 w-5 text-purple-500 shrink-0" />
+                    <h1 className="text-sm sm:text-lg md:text-xl font-bold tracking-tight truncate">{t('sidebar.team', { defaultValue: "Workspace Team" })}</h1>
+                  </>
+                ) : activeTab === "dashboard" ? (
+                  <>
+                    <LayoutDashboard className="h-5 w-5 text-purple-500 shrink-0" />
+                    <h1 className="text-sm sm:text-lg md:text-xl font-bold tracking-tight truncate">{t('sidebar.dashboard', { defaultValue: "Widgets Dashboard" })}</h1>
+                  </>
+                ) : activeTab === "reports" ? (
+                  <>
+                    <BarChart2 className="h-5 w-5 text-purple-500 shrink-0" />
+                    <h1 className="text-sm sm:text-lg md:text-xl font-bold tracking-tight truncate">{t('sidebar.reports', { defaultValue: "Reports & Analytics" })}</h1>
+                  </>
+                ) : activeTab === "gantt" ? (
+                  <>
+                    <Clock className="h-5 w-5 text-purple-500 shrink-0" />
+                    <h1 className="text-sm sm:text-lg md:text-xl font-bold tracking-tight truncate">{t('sidebar.gantt', { defaultValue: "Gantt Chart" })}</h1>
+                  </>
+                ) : activeTab === "calendar" ? (
+                  <>
+                    <Calendar className="h-5 w-5 text-purple-500 shrink-0" />
+                    <h1 className="text-sm sm:text-lg md:text-xl font-bold tracking-tight truncate">{t('sidebar.calendar', { defaultValue: "Calendar View" })}</h1>
+                  </>
+                ) : (
+                  <>
+                    <div
+                      className="h-3 w-3 rounded-full shrink-0"
+                      style={{ backgroundColor: activeSpace?.color || "#aa3bff" }}
+                    />
+                    <h1 className="text-sm sm:text-lg md:text-xl font-bold tracking-tight truncate">{activeSpace?.name || activeWorkspace?.name}</h1>
+                  </>
+                )}
+              </div>
 
               {/* Invite Members / Actions */}
-              <div className="flex items-center gap-4">
+              <div className="flex items-center gap-1.5 sm:gap-3 shrink-0">
                 {/* Language Switcher */}
                 <div dir="ltr" className="flex items-center bg-zinc-100 dark:bg-zinc-800/60 p-0.5 rounded-lg border border-zinc-200 dark:border-zinc-850 relative h-8 shrink-0 select-none">
                   <motion.div
@@ -967,7 +1018,7 @@ export const Dashboard: React.FC = () => {
                 <div className="relative">
                   <button
                     onClick={() => setIsNotificationsOpen(!isNotificationsOpen)}
-                    className="p-2 text-zinc-555 hover:text-zinc-950 dark:text-zinc-400 dark:hover:text-zinc-55 hover:bg-zinc-100 dark:hover:bg-zinc-800 rounded-lg transition-all relative cursor-pointer"
+                    className="p-1.5 sm:p-2 text-zinc-555 hover:text-zinc-950 dark:text-zinc-400 dark:hover:text-zinc-55 hover:bg-zinc-100 dark:hover:bg-zinc-800 rounded-lg transition-all relative cursor-pointer"
                   >
                     <Bell className="h-4 w-4" />
                     {unreadCount > 0 && (
@@ -976,7 +1027,7 @@ export const Dashboard: React.FC = () => {
                   </button>
 
                   {isNotificationsOpen && (
-                    <div className="absolute end-0 mt-2 w-80 bg-white dark:bg-zinc-900 border dark:border-zinc-800 rounded-2xl shadow-xl overflow-hidden z-50 transition-theme max-h-96 flex flex-col">
+                    <div className="absolute end-0 mt-2 w-72 sm:w-80 max-w-[calc(100vw-32px)] bg-white dark:bg-zinc-900 border dark:border-zinc-800 rounded-2xl shadow-xl overflow-hidden z-50 transition-theme max-h-96 flex flex-col">
                       <div className="p-3 border-b dark:border-zinc-800 flex items-center justify-between shrink-0 bg-zinc-50/50 dark:bg-zinc-950/10 gap-2">
                         <div className="flex items-center gap-1.5">
                           <button
@@ -1065,7 +1116,7 @@ export const Dashboard: React.FC = () => {
                 <button
                   onClick={toggleTheme}
                   title={t('header.toggleTheme')}
-                  className="p-2 text-zinc-555 hover:text-zinc-950 dark:text-zinc-400 dark:hover:text-zinc-55 hover:bg-zinc-100 dark:hover:bg-zinc-800 rounded-lg transition-all cursor-pointer"
+                  className="p-1.5 sm:p-2 text-zinc-555 hover:text-zinc-950 dark:text-zinc-400 dark:hover:text-zinc-55 hover:bg-zinc-100 dark:hover:bg-zinc-800 rounded-lg transition-all cursor-pointer"
                 >
                   {theme === "light" ? <Moon className="h-4 w-4" /> : <Sun className="h-4 w-4" />}
                 </button>
@@ -1077,12 +1128,12 @@ export const Dashboard: React.FC = () => {
                     <button
                       onClick={() => setIsScratchpadOpen(true)}
                       title={t('scratchpad.scratchpadTitle')}
-                      className="p-2 text-zinc-555 hover:text-zinc-950 dark:text-zinc-400 dark:hover:text-zinc-55 hover:bg-zinc-100 dark:hover:bg-zinc-800 rounded-lg transition-all cursor-pointer"
+                      className="p-1.5 sm:p-2 text-zinc-555 hover:text-zinc-950 dark:text-zinc-400 dark:hover:text-zinc-55 hover:bg-zinc-100 dark:hover:bg-zinc-800 rounded-lg transition-all cursor-pointer"
                     >
                       <Edit3 className="h-4 w-4" />
                     </button>
 
-                    <div className="flex items-center -space-x-2 overflow-hidden rtl:space-x-reverse">
+                    <div className="hidden sm:flex items-center -space-x-2 overflow-hidden rtl:space-x-reverse">
                       {members.map((m: any) => (
                         <img
                           key={m._id}
@@ -1360,8 +1411,8 @@ export const Dashboard: React.FC = () => {
                 )}
               </Suspense>
             ) : (
-              <div className="flex-1 overflow-x-auto overflow-y-hidden p-6 bg-zinc-50/50 dark:bg-zinc-950/20 transition-theme kanban-scrollbar">
-                <div className="flex gap-4 h-full items-start">
+              <div className="flex-1 overflow-x-auto overflow-y-hidden p-3 sm:p-6 bg-zinc-50/50 dark:bg-zinc-950/20 transition-theme kanban-scrollbar">
+                <div className="flex gap-3 sm:gap-4 h-full items-start snap-x snap-mandatory sm:snap-none">
                   {lists.map((list) => (
                     <KanbanColumn
                       key={list._id}
