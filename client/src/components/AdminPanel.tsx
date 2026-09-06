@@ -168,13 +168,13 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ activeSubTab }) => {
   const selectedCompanyObj = companies.find((c: any) => c._id === selectedCompanyId);
 
   return (
-    <div className="p-6 space-y-6 text-start">
+    <div className="p-3 sm:p-6 space-y-6 text-start">
       
       {/* 1. Header Section */}
       <div className="border-b dark:border-zinc-800 pb-4 flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
-          <h2 className="text-xl font-bold flex items-center gap-2 text-zinc-900 dark:text-white">
-            <Shield className="h-5.5 w-5.5 text-purple-600 dark:text-purple-400" />
+          <h2 className="text-lg sm:text-xl font-bold flex items-center gap-2 text-zinc-900 dark:text-white">
+            <Shield className="h-5 w-5 text-purple-600 dark:text-purple-400 shrink-0" />
             <span>{isAr ? "لوحة تحكم المشرف العام" : "Super Admin Dashboard & Console"}</span>
           </h2>
           <p className="text-xs text-zinc-500 mt-1 dark:text-zinc-400">
@@ -185,10 +185,10 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ activeSubTab }) => {
         </div>
         
         {/* Tab switchers */}
-        <div className="flex flex-wrap gap-1.5 bg-zinc-100 dark:bg-zinc-800 p-1 rounded-xl text-xs select-none font-bold border dark:border-zinc-800 shrink-0">
+        <div className="flex overflow-x-auto no-scrollbar gap-1.5 bg-zinc-100 dark:bg-zinc-800 p-1 rounded-xl text-xs select-none font-bold border dark:border-zinc-800 shrink-0 max-w-full">
           <button
             onClick={() => { navigate("/admin?sub=dashboard"); setSelectedCompanyId(null); setSearchQuery(""); }}
-            className={`px-3 py-1.5 rounded-lg transition-all cursor-pointer ${
+            className={`px-3 py-1.5 rounded-lg transition-all cursor-pointer shrink-0 whitespace-nowrap ${
               activeTab === "dashboard" ? "bg-purple-600 text-white shadow-xs" : "text-zinc-500 hover:text-zinc-700 dark:hover:text-zinc-200"
             }`}
           >
@@ -196,7 +196,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ activeSubTab }) => {
           </button>
           <button
             onClick={() => { navigate("/admin?sub=companies"); setSelectedCompanyId(null); setSearchQuery(""); }}
-            className={`px-3 py-1.5 rounded-lg transition-all cursor-pointer ${
+            className={`px-3 py-1.5 rounded-lg transition-all cursor-pointer shrink-0 whitespace-nowrap ${
               activeTab === "companies" ? "bg-purple-600 text-white shadow-xs" : "text-zinc-500 hover:text-zinc-700 dark:hover:text-zinc-200"
             }`}
           >
@@ -204,7 +204,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ activeSubTab }) => {
           </button>
           <button
             onClick={() => { navigate("/admin?sub=users"); setSelectedCompanyId(null); setSearchQuery(""); setSelectedEmployeeId(null); }}
-            className={`px-3 py-1.5 rounded-lg transition-all cursor-pointer ${
+            className={`px-3 py-1.5 rounded-lg transition-all cursor-pointer shrink-0 whitespace-nowrap ${
               activeTab === "users" ? "bg-purple-600 text-white shadow-xs" : "text-zinc-500 hover:text-zinc-700 dark:hover:text-zinc-200"
             }`}
           >
@@ -212,7 +212,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ activeSubTab }) => {
           </button>
           <button
             onClick={() => { navigate("/admin?sub=employee-reports"); setSelectedCompanyId(null); setSearchQuery(""); setSelectedEmployeeId(null); }}
-            className={`px-3 py-1.5 rounded-lg transition-all cursor-pointer ${
+            className={`px-3 py-1.5 rounded-lg transition-all cursor-pointer shrink-0 whitespace-nowrap ${
               activeTab === "employee-reports" ? "bg-purple-600 text-white shadow-xs" : "text-zinc-500 hover:text-zinc-700 dark:hover:text-zinc-200"
             }`}
           >
@@ -220,7 +220,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ activeSubTab }) => {
           </button>
           <button
             onClick={() => { navigate("/admin?sub=deleted"); setSelectedCompanyId(null); setSearchQuery(""); setSelectedEmployeeId(null); }}
-            className={`px-3 py-1.5 rounded-lg transition-all cursor-pointer ${
+            className={`px-3 py-1.5 rounded-lg transition-all cursor-pointer shrink-0 whitespace-nowrap ${
               activeTab === "deleted" ? "bg-purple-600 text-white shadow-xs" : "text-zinc-500 hover:text-zinc-700 dark:hover:text-zinc-200"
             }`}
           >
@@ -228,7 +228,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ activeSubTab }) => {
           </button>
           <button
             onClick={() => { navigate("/admin?sub=audit"); setSelectedCompanyId(null); setSearchQuery(""); setSelectedEmployeeId(null); }}
-            className={`px-3 py-1.5 rounded-lg transition-all cursor-pointer ${
+            className={`px-3 py-1.5 rounded-lg transition-all cursor-pointer shrink-0 whitespace-nowrap ${
               activeTab === "audit" ? "bg-purple-600 text-white shadow-xs" : "text-zinc-500 hover:text-zinc-700 dark:hover:text-zinc-200"
             }`}
           >
@@ -261,7 +261,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ activeSubTab }) => {
       {activeTab === "dashboard" && (
         <div className="space-y-6">
           {/* KPI Dashboard Cards */}
-          <div className="grid grid-cols-2 lg:grid-cols-5 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3 sm:gap-4">
             <div className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-2xl p-4 shadow-xs flex items-center gap-3">
               <div className="h-10 w-10 rounded-xl bg-purple-500/10 text-purple-650 dark:text-purple-400 flex items-center justify-center shrink-0">
                 <Building className="h-5 w-5" />

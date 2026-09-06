@@ -34,11 +34,11 @@ const getPriorityColor = (priority: string) => {
 const getStatusGanttColor = (status: string) => {
   switch (status.toLowerCase()) {
     case "done":
-      return "from-green-400 to-emerald-500 shadow-emerald-500/10";
+      return "bg-emerald-600 border-emerald-500/40 hover:bg-emerald-500";
     case "in-progress":
-      return "from-blue-400 to-indigo-500 shadow-indigo-500/10";
+      return "bg-blue-600 border-blue-500/40 hover:bg-blue-500";
     default:
-      return "from-purple-400 to-fuchsia-500 shadow-fuchsia-500/10";
+      return "bg-purple-600 border-purple-500/40 hover:bg-purple-500";
   }
 };
 
@@ -336,7 +336,7 @@ export const GanttTab: React.FC<Omit<GanttTabProps, "members">> = ({
                     <div key={task._id} className="h-12 relative flex items-center">
                       <div
                         onClick={() => onTaskClick(task)}
-                        className={`absolute h-7 rounded-xl bg-gradient-to-r ${getStatusGanttColor(task.status)} border border-white/20 hover:border-white/50 text-white shadow-xs p-1.5 flex items-center justify-between cursor-pointer hover:scale-[1.02] hover:shadow-md transition-all z-10 overflow-hidden select-none group`}
+                        className={`absolute h-7 rounded-lg ${getStatusGanttColor(task.status)} border text-white shadow-xs p-1.5 flex items-center justify-between cursor-pointer hover:scale-[1.01] transition-all z-10 overflow-hidden select-none group`}
                         style={{
                           left: isRTL ? undefined : barLeft + 4,
                           right: isRTL ? barLeft + 4 : undefined,

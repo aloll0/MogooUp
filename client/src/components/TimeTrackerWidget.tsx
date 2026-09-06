@@ -147,8 +147,8 @@ export const TimeTrackerWidget: React.FC<TimeTrackerWidgetProps> = ({ tasks }) =
     <>
       {/* Floating Widget Bar */}
       <div
-        className={`fixed bottom-6 ltr:right-6 ltr:left-auto rtl:left-6 rtl:right-auto z-40 bg-zinc-900 text-zinc-100 rounded-2xl shadow-2xl border border-zinc-800 transition-all duration-300 overflow-hidden ${
-          isMinimized ? "w-48" : "w-80"
+        className={`fixed bottom-4 sm:bottom-6 ltr:right-3 sm:ltr:right-6 rtl:left-3 sm:rtl:left-6 z-40 bg-zinc-900 text-zinc-100 rounded-2xl shadow-2xl border border-zinc-800 transition-all duration-300 overflow-hidden max-w-[calc(100vw-24px)] ${
+          isMinimized ? "w-44 sm:w-48" : "w-72 sm:w-80"
         }`}
       >
         {/* Header Title / Toggle */}

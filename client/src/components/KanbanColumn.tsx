@@ -92,7 +92,7 @@ export const KanbanColumn: React.FC<KanbanColumnProps> = ({
           onMoveTask(taskId, list._id, list.name.toLowerCase().replace(/\s+/g, "-"));
         }
       }}
-      className={`w-72 shrink-0 rounded-xl flex flex-col max-h-full transition-all duration-200 border-2 ${
+      className={`w-[82vw] sm:w-76 md:w-80 shrink-0 snap-center rounded-xl flex flex-col max-h-full transition-all duration-200 border-2 ${
         isDragOver
           ? "bg-purple-500/10 border-purple-500 border-dashed"
           : "bg-zinc-100/70 dark:bg-zinc-900/60 border-zinc-250/20 dark:border-zinc-800/80"

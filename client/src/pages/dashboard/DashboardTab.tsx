@@ -285,7 +285,7 @@ export const DashboardTab: React.FC<DashboardTabProps> = ({
                       {/* Responsive Custom SVG/CSS Bar */}
                       <div className="h-2 w-full bg-zinc-100 dark:bg-zinc-800 rounded-full overflow-hidden relative">
                         <motion.div
-                          className="h-full bg-linear-to-r from-purple-500 to-indigo-500 rounded-full"
+                          className="h-full bg-purple-600 dark:bg-purple-500 rounded-full"
                           initial={{ width: 0 }}
                           animate={{ width: `${percentage}%` }}
                           transition={{ duration: 1.0, ease: "easeOut" }}

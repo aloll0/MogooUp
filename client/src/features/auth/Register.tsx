@@ -94,24 +94,21 @@ export const Register: React.FC = () => {
 
   if (isSuccess) {
     return (
-      <div className="flex min-h-screen w-full items-center justify-center bg-linear-to-br from-[#160430] via-[#0d021f] to-[#05000e] text-white px-4 font-sans relative overflow-hidden">
-        {/* Nebula gradients */}
-        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[400px] h-[400px] bg-purple-500/10 rounded-full filter blur-[100px] pointer-events-none" />
-
+      <div className="flex min-h-screen w-full items-center justify-center bg-[#0d091a] text-white px-4 font-sans relative overflow-hidden">
         <motion.div
           initial={{ opacity: 0, scale: 0.95 }}
           animate={{ opacity: 1, scale: 1 }}
           transition={{ type: "spring" as const, stiffness: 100 }}
-          className="w-full max-w-md space-y-6 text-center bg-[#1f113a]/30 border border-white/5 backdrop-blur-xl p-8 rounded-2xl shadow-[0_20px_50px_rgba(0,0,0,0.4)] z-10"
+          className="w-full max-w-md space-y-6 text-center bg-[#180e2b] border border-white/10 p-8 rounded-2xl shadow-2xl z-10"
         >
-          <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-full bg-purple-500/15 border border-purple-500/30 text-purple-400 animate-bounce duration-[3000ms]">
+          <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-full bg-purple-500/15 border border-purple-500/30 text-purple-400">
             <CheckCircle className="h-7 w-7" />
           </div>
           <div className="space-y-2">
-            <h2 className="text-2xl font-extrabold bg-gradient-to-r from-white to-purple-200 bg-clip-text text-transparent">
+            <h2 className="text-2xl font-extrabold text-white">
               {t("auth.registerSuccessTitle", "Registration Successful!")}
             </h2>
-            <p className="text-sm text-purple-200/80 leading-relaxed font-semibold">
+            <p className="text-sm text-purple-200/80 leading-relaxed font-normal">
               {t(
                 "auth.pendingApprovalDesc",
                 "Your account has been created successfully! It is now pending administrator approval. Once a System Administrator approves your account, you will be able to log in."
@@ -120,7 +117,7 @@ export const Register: React.FC = () => {
           </div>
           <button
             onClick={() => navigate("/login")}
-            className="w-full rounded-xl bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 active:scale-[0.98] py-3 px-4 text-sm font-bold text-white shadow-[0_4px_20px_rgba(147,51,234,0.35)] transition-all cursor-pointer"
+            className="w-full rounded-xl bg-purple-600 hover:bg-purple-500 active:scale-[0.98] py-3 px-4 text-sm font-semibold text-white shadow-md transition-all cursor-pointer"
           >
             {t("auth.goToLogin", "Go to Login")}
           </button>
@@ -130,24 +127,17 @@ export const Register: React.FC = () => {
   }
 
   return (
-    <div className="flex min-h-screen w-full bg-linear-to-br from-[#160430] via-[#0d021f] to-[#05000e] text-white font-sans overflow-x-hidden selection:bg-purple-500/35 selection:text-white">
+    <div className="flex min-h-screen w-full bg-[#0d091a] text-white font-sans overflow-x-hidden selection:bg-purple-500/35 selection:text-white">
       {/* Brand Side Panel */}
-      <div className="hidden lg:flex w-1/2 relative overflow-hidden flex-col justify-between p-12">
-        {/* Background cosmic planet image with motion parallax */}
+      <div className="hidden lg:flex w-1/2 relative overflow-hidden flex-col justify-between p-12 bg-[#120c24] border-r rtl:border-r-0 rtl:border-l border-white/5">
+        {/* Background cosmic planet image with subtle opacity */}
         <motion.div
-          initial={{ scale: 1.1, opacity: 0 }}
-          animate={{ scale: 1, opacity: 0.55 }}
-          transition={{ duration: 2.5, ease: "easeOut" }}
+          initial={{ scale: 1.05, opacity: 0 }}
+          animate={{ scale: 1, opacity: 0.35 }}
+          transition={{ duration: 1.5, ease: "easeOut" }}
           style={{ backgroundImage: `url(${cosmicBg})` }}
-          className="absolute inset-0 bg-cover bg-center mix-blend-lighten pointer-events-none"
+          className="absolute inset-0 bg-cover bg-center pointer-events-none"
         />
-
-        {/* Seamless blending gradient mask */}
-        <div className="absolute inset-0 bg-gradient-to-r rtl:bg-gradient-to-l from-transparent via-[#160430]/35 to-[#160430] pointer-events-none" />
-
-        {/* Nebula gradients */}
-        <div className="absolute top-[-10%] right-[-10%] w-[500px] h-[500px] bg-purple-600/15 rounded-full filter blur-[120px] mix-blend-screen pointer-events-none animate-pulse duration-[8000ms]" />
-        <div className="absolute bottom-[-10%] left-[-10%] w-[400px] h-[400px] bg-indigo-600/10 rounded-full filter blur-[100px] mix-blend-screen pointer-events-none animate-pulse duration-[6000ms]" />
 
         {/* Company Header Logo */}
         <motion.div
@@ -166,8 +156,8 @@ export const Register: React.FC = () => {
             animate={{ opacity: 1, x: 0 }}
             transition={{ type: "spring" as const, stiffness: 60, delay: 0.2 }}
           >
-            <h1 className="text-4xl xl:text-5xl font-extrabold leading-tight tracking-tight bg-linear-to-r from-white via-purple-100 to-purple-300 bg-clip-text text-transparent">
-              {t("auth.adventureTitle", "SIGN IN TO YOUR ADVENTURE!")}
+            <h1 className="text-4xl xl:text-5xl font-extrabold leading-tight tracking-tight text-white">
+              {t("auth.startAdventureTitle", "START YOUR ADVENTURE!")}
             </h1>
           </motion.div>
 
@@ -234,23 +224,22 @@ export const Register: React.FC = () => {
               whileHover={{ scale: 1.05 }}
             >
               <div className="relative group">
-                <div className="absolute -inset-1 rounded-full bg-gradient-to-r from-purple-600 to-indigo-600 opacity-60 blur-md group-hover:opacity-100 transition duration-500" />
                 <img
                   src={taskflowLogo}
                   alt="Taskflow Logo"
-                  className="relative h-16 w-16 object-contain rounded-xl"
+                  className="h-16 w-16 object-contain rounded-xl shadow-md"
                 />
               </div>
             </motion.div>
             <motion.div variants={itemVariants} className="space-y-1.5">
-              <h2 className="text-2xl md:text-3xl font-extrabold tracking-tight bg-gradient-to-r from-white to-purple-200 bg-clip-text text-transparent">
+              <h2 className="text-2xl md:text-3xl font-extrabold tracking-tight text-white">
                 {t("auth.signUpSubtitle", "Create an account")}
               </h2>
               <p className="text-xs text-zinc-400">
                 {t("auth.alreadyHaveAccount", "Already have an account?")}{" "}
                 <Link
                   to="/login"
-                  className="font-semibold text-purple-400 hover:underline"
+                  className="font-semibold text-purple-400 hover:text-purple-300 hover:underline"
                 >
                   {t("auth.signIn", "Sign in")}
                 </Link>
@@ -266,7 +255,7 @@ export const Register: React.FC = () => {
                   initial={{ opacity: 0, y: -10 }}
                   animate={{ opacity: 1, y: 0 }}
                   exit={{ opacity: 0, y: -10 }}
-                  className="flex items-center gap-2 rounded-lg bg-red-950/20 border border-red-500/30 p-3 text-sm text-red-400"
+                  className="flex items-center gap-2 rounded-lg bg-red-950/30 border border-red-500/30 p-3 text-sm text-red-400"
                 >
                   <AlertCircle className="h-4 w-4 shrink-0" />
                   <span>{apiError}</span>
@@ -292,10 +281,10 @@ export const Register: React.FC = () => {
                   placeholder={t("auth.fullNamePlaceholder", "John Doe")}
                   autoComplete="name"
                   disabled={isSubmitting}
-                  className={`w-full rounded-xl border bg-black/20 backdrop-blur-md py-2.5 ps-10 pe-4 text-sm text-white outline-hidden transition-all placeholder:text-zinc-500 focus:bg-black/35 focus:ring-2 ${
+                  className={`w-full rounded-xl border bg-black/30 py-2.5 ps-10 pe-4 text-sm text-white outline-hidden transition-all placeholder:text-zinc-500 focus:bg-black/50 focus:ring-2 ${
                     errors.fullName
                       ? "border-red-500/50 focus:ring-red-500/20"
-                      : "border-white/10 focus:border-purple-500/60 focus:ring-purple-500/20"
+                      : "border-white/10 focus:border-purple-500 focus:ring-purple-500/20"
                   }`}
                   {...register("fullName")}
                 />
@@ -323,10 +312,10 @@ export const Register: React.FC = () => {
                   placeholder={t("auth.emailPlaceholder", "name@example.com")}
                   autoComplete="email"
                   disabled={isSubmitting}
-                  className={`w-full rounded-xl border bg-black/20 backdrop-blur-md py-2.5 ps-10 pe-4 text-sm text-white outline-hidden transition-all placeholder:text-zinc-500 focus:bg-black/35 focus:ring-2 ${
+                  className={`w-full rounded-xl border bg-black/30 py-2.5 ps-10 pe-4 text-sm text-white outline-hidden transition-all placeholder:text-zinc-500 focus:bg-black/50 focus:ring-2 ${
                     errors.email
                       ? "border-red-500/50 focus:ring-red-500/20"
-                      : "border-white/10 focus:border-purple-500/60 focus:ring-purple-500/20"
+                      : "border-white/10 focus:border-purple-500 focus:ring-purple-500/20"
                   }`}
                   {...register("email")}
                 />
@@ -354,10 +343,10 @@ export const Register: React.FC = () => {
                   placeholder={t("auth.createPasswordPlaceholder", "Create a strong password")}
                   autoComplete="new-password"
                   disabled={isSubmitting}
-                  className={`w-full rounded-xl border bg-black/20 backdrop-blur-md py-2.5 ps-10 pe-10 text-sm text-white outline-hidden transition-all placeholder:text-zinc-500 focus:bg-black/35 focus:ring-2 ${
+                  className={`w-full rounded-xl border bg-black/30 py-2.5 ps-10 pe-10 text-sm text-white outline-hidden transition-all placeholder:text-zinc-500 focus:bg-black/50 focus:ring-2 ${
                     errors.password
                       ? "border-red-500/50 focus:ring-red-500/20"
-                      : "border-white/10 focus:border-purple-500/60 focus:ring-purple-500/20"
+                      : "border-white/10 focus:border-purple-500 focus:ring-purple-500/20"
                   }`}
                   {...register("password")}
                 />
@@ -379,7 +368,7 @@ export const Register: React.FC = () => {
               <button
                 type="submit"
                 disabled={isSubmitting}
-                className="flex w-full items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 active:scale-[0.98] py-3 px-4 text-sm font-bold text-white shadow-[0_4px_20px_rgba(147,51,234,0.35)] hover:shadow-[0_4px_30px_rgba(147,51,234,0.5)] transition-all cursor-pointer disabled:opacity-50 disabled:pointer-events-none disabled:transform-none"
+                className="flex w-full items-center justify-center gap-2 rounded-xl bg-purple-600 hover:bg-purple-500 active:scale-[0.98] py-3 px-4 text-sm font-semibold text-white shadow-md transition-all cursor-pointer disabled:opacity-50 disabled:pointer-events-none disabled:transform-none"
               >
                 {isSubmitting ? (
                   <>

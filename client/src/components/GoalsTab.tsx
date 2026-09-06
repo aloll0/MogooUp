@@ -322,7 +322,7 @@ export const GoalsTab: React.FC<GoalsTabProps> = ({ workspaceId, members: _membe
                 {/* Progress Bar Track */}
                 <div className="h-1.5 w-full bg-zinc-100 dark:bg-zinc-800">
                   <div
-                    className="h-full bg-linear-to-r from-purple-500 to-indigo-500 transition-all duration-500"
+                    className="h-full bg-purple-600 dark:bg-purple-500 transition-all duration-500"
                     style={{ width: `${progress}%` }}
                   />
                 </div>
