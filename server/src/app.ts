@@ -39,17 +39,16 @@ app.use(
       // Allow requests with no origin (like mobile apps, curl, postman)
       if (!origin) return callback(null, true);
       
-      const isDev = config.env === "development";
       const normalizedOrigin = origin.replace(/\/+$/, "");
-      const isAllowed =
-        allowedOrigins.includes(normalizedOrigin) ||
-        allowedOrigins.includes(origin) ||
-        (isDev && /^http:\/\/(localhost|127\.0\.0\.1):\d+$/.test(origin));
       
-      if (isAllowed) {
+      const isVercelDomain = normalizedOrigin.endsWith(".vercel.app");
+      const isLocalhost = /^http:\/\/(localhost|127\.0\.0\.1):\d+$/.test(normalizedOrigin);
+      const isExplicitlyAllowed = allowedOrigins.includes(normalizedOrigin) || allowedOrigins.includes(origin);
+      
+      if (isVercelDomain || isLocalhost || isExplicitlyAllowed) {
         callback(null, true);
       } else {
-        callback(new Error(`Origin ${origin} not allowed by CORS`));
+        callback(null, false);
       }
     },
     credentials: true,
