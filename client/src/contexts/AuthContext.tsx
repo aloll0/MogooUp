@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useState, useEffect } from "react";
-import { api, setAccessToken } from "../services/api";
+import { api, setAccessToken, setRefreshToken, getRefreshToken, getAccessToken } from "../services/api";
 import { useQueryClient } from "@tanstack/react-query";
 
 export interface User {
@@ -26,25 +26,76 @@ interface AuthContextType {
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const [user, setUser] = useState<User | null>(null);
+  const [user, setUserState] = useState<User | null>(() => {
+    try {
+      const cached = localStorage.getItem("mogoo_user");
+      return cached ? JSON.parse(cached) : null;
+    } catch {
+      return null;
+    }
+  });
   const [isLoading, setIsLoading] = useState(true);
   const queryClient = useQueryClient();
 
-  // Initialize session by refreshing the access token silently on load
+  const setUser: React.Dispatch<React.SetStateAction<User | null>> = (updater) => {
+    setUserState((prev) => {
+      const nextUser = typeof updater === "function" ? updater(prev) : updater;
+      if (nextUser) {
+        localStorage.setItem("mogoo_user", JSON.stringify(nextUser));
+      } else {
+        localStorage.removeItem("mogoo_user");
+      }
+      return nextUser;
+    });
+  };
+
+  // Initialize session by checking token or refreshing silently on load
   useEffect(() => {
     const initializeAuth = async () => {
-      try {
-        const refreshResponse = await api.post("/auth/refresh");
-        const { accessToken } = refreshResponse.data.data;
-        setAccessToken(accessToken);
+      const storedAccessToken = getAccessToken();
+      const storedRefreshToken = getRefreshToken();
 
-        // Retrieve current profile details
-        const meResponse = await api.get("/auth/me");
-        setUser(meResponse.data.data.user);
-      } catch (error) {
-        // Fail silently: user is not logged in
-        setAccessToken(null);
+      // If no token exists at all in storage or cookies, user is guest
+      if (!storedAccessToken && !storedRefreshToken) {
         setUser(null);
+        setIsLoading(false);
+        return;
+      }
+
+      if (storedAccessToken) {
+        setAccessToken(storedAccessToken);
+      }
+
+      try {
+        // Retrieve current profile details with access token
+        const meResponse = await api.get("/auth/me");
+        const currentUser = meResponse.data.data.user;
+        setUser(currentUser);
+      } catch (error) {
+        // Access token may be expired, attempt refresh
+        try {
+          const refreshResponse = await api.post(
+            "/auth/refresh",
+            { refreshToken: storedRefreshToken },
+            {
+              headers: storedRefreshToken ? { "x-refresh-token": storedRefreshToken } : undefined,
+            }
+          );
+          const { accessToken, refreshToken: newRefreshToken } = refreshResponse.data.data;
+          setAccessToken(accessToken);
+          if (newRefreshToken) {
+            setRefreshToken(newRefreshToken);
+          }
+
+          const meResponse = await api.get("/auth/me");
+          const currentUser = meResponse.data.data.user;
+          setUser(currentUser);
+        } catch (refreshError) {
+          // Token is definitively invalid/revoked
+          setAccessToken(null);
+          setRefreshToken(null);
+          setUser(null);
+        }
       } finally {
         setIsLoading(false);
       }
@@ -57,12 +108,16 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     setIsLoading(true);
     try {
       const response = await api.post("/auth/login", { email, password });
-      const { user: loggedInUser, accessToken } = response.data.data;
+      const { user: loggedInUser, accessToken, refreshToken } = response.data.data;
       queryClient.clear();
       setAccessToken(accessToken);
+      if (refreshToken) {
+        setRefreshToken(refreshToken);
+      }
       setUser(loggedInUser);
     } catch (error) {
       setAccessToken(null);
+      setRefreshToken(null);
       setUser(null);
       throw error;
     } finally {
@@ -80,6 +135,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       await api.post("/auth/logout");
     } finally {
       setAccessToken(null);
+      setRefreshToken(null);
       setUser(null);
       queryClient.clear();
       setIsLoading(false);
