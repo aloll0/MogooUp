@@ -11,10 +11,25 @@
     "reports": "Reports & Analytics",
     "gantt": "Gantt Chart",
     "calendar": "Calendar View",
-    "goals": "Strategic Goals & OKRs"
+    "goals": "Strategic Goals & OKRs",
+    "adminDashboard": "Admin Dashboard",
+    "companiesDrilldown": "Company Inspector",
+    "approvals": "User Approvals",
+    "employeeReports": "Employee Reports",
+    "deletedItems": "Deleted Items",
+    "auditLogs": "System Audit Logs"
+  },
+  "adminHeader": {
+    "titleDashboard": "Admin Analytics Overview",
+    "titleCompanies": "Workspace & Company Inspector",
+    "titleUsers": "User Access Verification",
+    "titleEmployeeReports": "Employee Activity Reports",
+    "titleDeleted": "Soft-Deleted Task Recovery",
+    "titleAudit": "Immutable System Audit Logs",
+    "platformAdminBadge": "Arab Pro Platform Admin"
   },
   "welcome": {
-    "title": "Welcome to Taskflow!",
+    "title": "Welcome to Arab Pro!",
     "subtitle": "Every project space requires a workspace to start. Setup your workspace to launch lists and Kanban cards.",
     "btnCreateWs": "Create Your First Workspace"
   },
@@ -230,9 +245,9 @@
   "auth": {
     "signInTitle": "Sign In",
     "signUpTitle": "Sign Up",
-    "signInSubtitle": "Sign in to Taskflow",
-    "signUpSubtitle": "Create an account",
-    "newToTaskflow": "New to Taskflow?",
+    "signInSubtitle": "Sign in to Arab Pro",
+    "signUpSubtitle": "Create an Arab Pro account",
+    "newToTaskflow": "New to Arab Pro?",
     "createFreeAccount": "Create a free account",
     "alreadyHaveAccount": "Already have an account?",
     "signIn": "Sign In",
@@ -248,11 +263,13 @@
     "signingIn": "Signing in...",
     "creatingAccount": "Creating account...",
     "checkEmailTitle": "Check your email",
-    "checkEmailDesc": "We've sent a verification link to your email address. Please click the link to verify your account and activate Taskflow.",
+    "checkEmailDesc": "We've sent a verification link to your email address. Please click the link to verify your account and activate Arab Pro.",
     "goToLogin": "Go to Login",
-    "adventureTitle": "SIGN IN TO YOUR ADVENTURE!",
-    "adventureSubtitle": "The next-generation project space unifying tasks, sprints, docs, and team collaboration in one extremely fast workspace.",
-    "poweredBy": "POWERED BY ARAB PRO"
+    "adventureTitle": "SIGN IN TO YOUR WORKSPACE!",
+    "startAdventureTitle": "START YOUR WORKSPACE WITH ARAB PRO!",
+    "adventureSubtitle": "The next-generation enterprise workspace unifying tasks, sprints, docs, and team collaboration in one extremely fast environment.",
+    "poweredBy": "ARAB PRO DIGITAL ENTERPRISE",
+    "langToggle": "عربي"
   },
   "validation": {
     "invalidEmail": "Please enter a valid email address",

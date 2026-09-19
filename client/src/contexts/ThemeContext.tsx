@@ -10,13 +10,11 @@ interface ThemeContextType {
 const ThemeContext = createContext<ThemeContextType | undefined>(undefined);
 
 export const ThemeProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  // Check localStorage or preferred system theme
+  // Default to pure dark theme for Arab Pro branding
   const [theme, setTheme] = useState<Theme>(() => {
-    const savedTheme = localStorage.getItem("taskflow_theme") as Theme;
-    if (savedTheme) return savedTheme;
-    
-    const systemPrefersDark = window.matchMedia("(prefers-color-scheme: dark)").matches;
-    return systemPrefersDark ? "dark" : "light";
+    const savedTheme = localStorage.getItem("arabpro_theme") || localStorage.getItem("taskflow_theme") as Theme;
+    if (savedTheme === "light" || savedTheme === "dark") return savedTheme;
+    return "dark";
   });
 
   useEffect(() => {
@@ -28,7 +26,7 @@ export const ThemeProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       root.classList.remove("dark");
       document.body.classList.remove("dark");
     }
-    localStorage.setItem("taskflow_theme", theme);
+    localStorage.setItem("arabpro_theme", theme);
   }, [theme]);
 
   const toggleTheme = () => {
