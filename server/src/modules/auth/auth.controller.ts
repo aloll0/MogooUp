@@ -23,11 +23,15 @@ export class AuthController {
 
       res.status(201).json({
         success: true,
-        message: "Registration successful. Please verify your email.",
+        message: user.isApproved
+          ? "Registration successful. You can now log in."
+          : "Registration successful. Pending admin approval.",
         data: {
           id: user._id,
           email: user.email,
           fullName: user.fullName,
+          isApproved: user.isApproved,
+          isSystemAdmin: user.isSystemAdmin,
         },
       });
     } catch (error) {

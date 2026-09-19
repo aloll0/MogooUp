@@ -2,7 +2,7 @@ import bcrypt from "bcrypt";
 import jwt from "jsonwebtoken";
 import { config } from "../../config";
 import { userRepository } from "../user/user.repository";
-import { IUser } from "../user/user.model";
+import { UserModel, IUser } from "../user/user.model";
 import {
   ConflictError,
   UnauthorizedError,
@@ -39,6 +39,9 @@ export class AuthService {
       throw new ConflictError("Email is already registered");
     }
 
+    const totalUsers = await UserModel.countDocuments();
+    const isFirstUser = totalUsers === 0;
+
     const passwordHash = await bcrypt.hash(password, 12);
     const verificationToken = crypto.randomBytes(32).toString("hex");
 
@@ -47,9 +50,9 @@ export class AuthService {
       fullName,
       passwordHash,
       verificationToken,
-      isVerified: false, // will require verification (or mock in demo)
-      isApproved: false, // requires admin approval
-      isSystemAdmin: false,
+      isVerified: true,
+      isApproved: isFirstUser ? true : false,
+      isSystemAdmin: isFirstUser ? true : false,
       tokenVersion: 0,
     });
   }
