@@ -7,7 +7,9 @@
     "dev": "ts-node-dev --respawn --transpile-only src/server.ts",
     "build": "tsc",
     "start": "node dist/server.js",
-    "db:seed": "ts-node-dev --transpile-only src/database/seed.ts"
+    "db:seed": "ts-node-dev --transpile-only src/database/seed.ts",
+    "db:reset": "ts-node-dev --transpile-only src/database/reset.ts",
+    "db:clean": "ts-node-dev --transpile-only src/database/reset.ts"
   },
   "keywords": [],
   "author": "",

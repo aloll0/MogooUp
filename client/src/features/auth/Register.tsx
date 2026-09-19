@@ -39,6 +39,7 @@ export const Register: React.FC = () => {
   const [showPassword, setShowPassword] = useState(false);
   const [apiError, setApiError] = useState<string | null>(null);
   const [isSuccess, setIsSuccess] = useState(false);
+  const [registeredUser, setRegisteredUser] = useState<{ isApproved?: boolean; isSystemAdmin?: boolean } | null>(null);
   const { t, i18n } = useTranslation();
 
   const registerSchema = getRegisterSchema(t);
@@ -59,7 +60,8 @@ export const Register: React.FC = () => {
   const onSubmit = async (data: RegisterFormValues) => {
     setApiError(null);
     try {
-      await registerApi(data.email, data.fullName, data.password);
+      const result = await registerApi(data.email, data.fullName, data.password);
+      setRegisteredUser(result || null);
       setIsSuccess(true);
     } catch (err: any) {
       const errorMessage =
@@ -109,10 +111,15 @@ export const Register: React.FC = () => {
               {t("auth.registerSuccessTitle", "Registration Successful!")}
             </h2>
             <p className="text-sm text-zinc-300 leading-relaxed font-normal">
-              {t(
-                "auth.pendingApprovalDesc",
-                "Your account has been created successfully! It is now pending administrator approval. Once a System Administrator approves your account, you will be able to log in."
-              )}
+              {registeredUser?.isSystemAdmin || registeredUser?.isApproved
+                ? t(
+                    "auth.adminRegisteredDesc",
+                    "Your account has been registered as the Primary System Administrator! You can now log in immediately to start setting up your workspaces and team."
+                  )
+                : t(
+                    "auth.pendingApprovalDesc",
+                    "Your account has been created successfully! It is now pending administrator approval. Once a System Administrator approves your account, you will be able to log in."
+                  )}
             </p>
           </div>
           <button
