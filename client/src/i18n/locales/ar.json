@@ -26,10 +26,10 @@
     "titleEmployeeReports": "تقارير أنشطة الموظفين",
     "titleDeleted": "استعادة المهام المحذوفة",
     "titleAudit": "سجل الأحداث والتدقيق للنظام",
-    "platformAdminBadge": "مشرف نظام عربي برو"
+    "platformAdminBadge": "مشرف نظام عرب برو"
   },
   "welcome": {
-    "title": "مرحباً بك في عربي برو!",
+    "title": "مرحباً بك في عرب برو!",
     "subtitle": "تتطلب كل مساحة مشروع مساحة عمل للبدء. قم بإعداد مساحة العمل الخاصة بك لإطلاق القوائم وبطاقات كانبان.",
     "btnCreateWs": "إنشاء مساحة العمل الأولى الخاصة بك"
   },
@@ -245,9 +245,9 @@
   "auth": {
     "signInTitle": "تسجيل الدخول",
     "signUpTitle": "إنشاء حساب",
-    "signInSubtitle": "تسجيل الدخول إلى عربي برو",
-    "signUpSubtitle": "إنشاء حساب جديد في عربي برو",
-    "newToTaskflow": "جديد في عربي برو؟",
+    "signInSubtitle": "تسجيل الدخول إلى عرب برو",
+    "signUpSubtitle": "إنشاء حساب جديد في عرب برو",
+    "newToTaskflow": "جديد في عرب برو؟",
     "createFreeAccount": "أنشئ حساباً مجانياً",
     "alreadyHaveAccount": "لديك حساب بالفعل؟",
     "signIn": "تسجيل الدخول",
@@ -268,7 +268,7 @@
     "pendingApprovalDesc": "تم إنشاء حسابك بنجاح! حسابك الآن بانتظار موافقة مشرف النظام. بمجرد اعتماد الحساب ستتمكن من تسجيل الدخول.",
     "goToLogin": "الذهاب لصفحة تسجيل الدخول",
     "adventureTitle": "سجل دخولك إلى مساحة عملك!",
-    "startAdventureTitle": "ابدأ مساحة عملك مع عربي برو!",
+    "startAdventureTitle": "ابدأ مساحة عملك مع عرب برو!",
     "adventureSubtitle": "الجيل القادم من مساحات إدارة المشاريع لتوحيد المهام، الفرق، والمستندات في بيئة فائقة السرعة.",
     "poweredBy": "ARAB PRO DIGITAL ENTERPRISE",
     "langToggle": "English"

@@ -679,7 +679,7 @@ export const ClientProjectsTab: React.FC<ClientProjectsTabProps> = ({
               </div>
               <div style={{ textAlign: isAr ? "left" : "right" }}>
                 <span style={{ padding: "6px 12px", backgroundColor: "#f3e8ff", color: "#6d28d9", borderRadius: "8px", fontSize: "11px", fontWeight: "800" }}>
-                  {isAr ? "تم التحقق من عربي برو" : "Arab Pro Verified"}
+                  {isAr ? "تم التحقق من عرب برو" : "Arab Pro Verified"}
                 </span>
                 <p style={{ fontSize: "10px", color: "#9ca3af", marginTop: "8px", fontWeight: "600" }}>
                   {isAr ? "تمت الطباعة في: " : "Printed on: "}{new Date().toLocaleDateString(i18n.language)}
