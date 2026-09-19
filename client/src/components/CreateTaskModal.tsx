@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { useTranslation } from "react-i18next";
-import { X, Loader2, Calendar, Sparkles, LayoutList, AlignLeft, AlertCircle } from "lucide-react";
+import { X, Loader2, Calendar, Sparkles, LayoutList, AlignLeft } from "lucide-react";
 
 interface CreateTaskModalProps {
   isOpen: boolean;
