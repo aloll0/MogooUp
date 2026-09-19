@@ -137,7 +137,7 @@ export class TaskService {
     }
 
     // Map assignees if provided
-    const oldAssignees = task.assignees.map((id) => id.toString());
+    const oldAssignees = (task.assignees || []).map((a: any) => a?._id?.toString() || a?.toString() || "");
     const oldStatus = task.status;
     const oldListId = task.listId.toString();
 

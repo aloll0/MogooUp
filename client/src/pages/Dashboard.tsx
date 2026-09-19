@@ -27,8 +27,8 @@ import { CreateListModal } from "../components/CreateListModal";
 import { CreateTaskModal } from "../components/CreateTaskModal";
 import { InviteMembersModal } from "../components/InviteMembersModal";
 import { ProfileModal } from "../components/ProfileModal";
-import taskflowLogo from "../assets/taskflow_logo.png";
-import arabProLogo from "../assets/arab_pro_logo.png";
+import arabProLogo from "../assets/arabpro_logo.png";
+import arabProIcon from "../assets/arabpro_icon.png";
 import {
   Plus,
   LogOut,
@@ -523,11 +523,20 @@ export const Dashboard: React.FC = () => {
       <>
         <div className="flex flex-col overflow-y-auto flex-1">
           {/* Header Branding */}
-          <div className={`p-4 flex items-center border-b border-[#1f1035] ${collapsed ? "flex-col gap-3 justify-center" : "justify-between"}`}>
-            <div className="flex items-center gap-2 overflow-hidden">
-              <img src={taskflowLogo} alt="Taskflow Logo" className="h-8 w-8 object-contain rounded-lg shadow-md shrink-0" />
-              {!collapsed && (
-                <span className="font-bold text-lg tracking-wide text-zinc-100 truncate">Taskflow</span>
+          <div className={`p-4 flex items-center border-b border-[#1f1233] bg-black/30 transition-all ${collapsed ? "flex-col gap-3 justify-center items-center px-2 py-3.5" : "justify-between"}`}>
+            <div className="flex items-center gap-2 overflow-hidden justify-center">
+              {collapsed ? (
+                <img
+                  src={arabProIcon}
+                  alt="Arab Pro"
+                  className="h-8 w-8 object-contain shrink-0 drop-shadow-[0_0_10px_rgba(181,126,222,0.6)] transition-all hover:scale-110"
+                />
+              ) : (
+                <img
+                  src={arabProLogo}
+                  alt="Arab Pro Logo"
+                  className="h-9 w-auto max-w-[150px] object-contain shrink-0"
+                />
               )}
             </div>
             {isMobile ? (
@@ -555,7 +564,7 @@ export const Dashboard: React.FC = () => {
 
           {/* Workspace Switcher */}
           {!collapsed && !user?.isSystemAdmin && (
-            <div className="p-4 border-b border-[#1f1035]">
+            <div className="p-4 border-b border-[#1f1233]">
               <label className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest block mb-2">
                 {t('sidebar.currentWorkspace')}
               </label>
@@ -569,7 +578,7 @@ export const Dashboard: React.FC = () => {
                       if (isMobile) setIsMobileSidebarOpen(false);
                     }
                   }}
-                  className="w-full bg-[#1b0d32] border border-[#2b174d] rounded-lg py-2 px-3 text-sm text-zinc-100 appearance-none focus:outline-hidden focus:ring-1 focus:ring-purple-500 cursor-pointer"
+                  className="w-full bg-[#0e071c] border border-[#261540] rounded-lg py-2 px-3 text-sm text-zinc-100 appearance-none focus:outline-hidden focus:ring-1 focus:ring-[#b57ede] cursor-pointer"
                 >
                   {workspaces.map((ws) => (
                     <option key={ws._id} value={ws._id}>
@@ -585,7 +594,7 @@ export const Dashboard: React.FC = () => {
                   setIsWorkspaceModalOpen(true);
                   if (isMobile) setIsMobileSidebarOpen(false);
                 }}
-                className="mt-3 flex items-center gap-1.5 text-xs text-purple-400 hover:text-purple-300 font-semibold transition-colors cursor-pointer"
+                className="mt-3 flex items-center gap-1.5 text-xs text-[#b57ede] hover:text-[#d3a6f7] font-semibold transition-colors cursor-pointer"
               >
                 <Plus className="h-3.5 w-3.5" />
                 <span>{t('sidebar.createWorkspace')}</span>
@@ -594,7 +603,7 @@ export const Dashboard: React.FC = () => {
           )}
 
           {/* Tab Navigation */}
-          <div className={`px-2 py-3 border-b border-[#1f1035] space-y-1 ${collapsed ? "flex flex-col items-center" : ""}`}>
+          <div className={`px-2 py-3 border-b border-[#1f1233] space-y-1 ${collapsed ? "flex flex-col items-center" : ""}`}>
             {[
               ...(!user?.isSystemAdmin
                 ? [
@@ -613,7 +622,7 @@ export const Dashboard: React.FC = () => {
                     { id: "admin-dashboard", icon: LayoutDashboard, label: t('sidebar.adminDashboard', { defaultValue: "Admin Dashboard" }) },
                     { id: "admin-companies", icon: Building, label: t('sidebar.companiesDrilldown', { defaultValue: "Company Inspector" }) },
                     { id: "admin-users", icon: UserCheck, label: t('sidebar.approvals', { defaultValue: "User Approvals" }) },
-                    { id: "admin-employee-reports", icon: Users, label: i18n.language === "ar" ? "تقارير الموظفين" : "Employee Reports" },
+                    { id: "admin-employee-reports", icon: Users, label: t('sidebar.employeeReports', { defaultValue: "Employee Reports" }) },
                     { id: "admin-deleted", icon: Trash2, label: t('sidebar.deletedItems', { defaultValue: "Deleted Items" }) },
                     { id: "admin-audit", icon: Activity, label: t('sidebar.auditLogs', { defaultValue: "System Audit Logs" }) },
                   ]
@@ -650,12 +659,12 @@ export const Dashboard: React.FC = () => {
                     collapsed ? "justify-center p-2.5" : "gap-2.5 py-2 px-3 text-start"
                   } ${
                     isActive
-                      ? "bg-purple-500/15 border-s-4 border-purple-500 text-white font-semibold"
+                      ? "bg-[#b57ede]/15 border-s-4 border-[#b57ede] text-white font-bold"
                       : "text-zinc-400 hover:bg-white/5 hover:text-white"
                   }`}
                   title={collapsed ? tab.label : undefined}
                 >
-                  <Icon className="h-4 w-4 shrink-0" />
+                  <Icon className={`h-4 w-4 shrink-0 ${isActive ? "text-[#b57ede]" : ""}`} />
                   {!collapsed && <span className="text-sm truncate">{tab.label}</span>}
                 </button>
               );
@@ -704,14 +713,14 @@ export const Dashboard: React.FC = () => {
                           collapsed ? "justify-center p-2.5" : "gap-2.5 py-2 px-3 text-start"
                         } ${
                           isActive
-                            ? "bg-purple-500/10 text-purple-300 font-semibold border-s-4 border-purple-500/60"
+                            ? "bg-[#b57ede]/10 text-[#b57ede] font-semibold border-s-4 border-[#b57ede]"
                             : "text-zinc-400 hover:bg-white/5 hover:text-zinc-200"
                         }`}
                         title={collapsed ? sp.name : undefined}
                       >
                         <div
                           className="h-2.5 w-2.5 rounded-full shrink-0"
-                          style={{ backgroundColor: sp.color || "#aa3bff" }}
+                          style={{ backgroundColor: sp.color || "#b57ede" }}
                         />
                         {!collapsed && <span className="text-sm truncate">{sp.name}</span>}
                       </button>
@@ -727,26 +736,25 @@ export const Dashboard: React.FC = () => {
         <div className="flex flex-col shrink-0">
           {/* Powered by logo footer */}
           {!collapsed && (
-            <div className="px-4 py-2.5 border-t border-[#1f1035] flex flex-col gap-1 items-center justify-center bg-zinc-950/20">
-              <span className="text-[8px] font-mono tracking-widest text-zinc-500 uppercase">POWERED BY</span>
-              <img src={arabProLogo} alt="Arab Pro" className="h-5 object-contain opacity-70 hover:opacity-100 transition-opacity" />
+            <div className="px-4 py-2.5 border-t border-[#1f1233] flex flex-col gap-1 items-center justify-center bg-black/40">
+              <span className="text-[8px] font-mono tracking-widest text-[#b57ede]/70 uppercase">ARAB PRO ENTERPRISE</span>
             </div>
           )}
 
           {/* Profile bar */}
-          <div className={`p-3 border-t border-[#1f1035] bg-[#0c0318] flex items-center justify-between ${collapsed ? "flex-col gap-3 justify-center" : ""}`}>
+          <div className={`p-3 border-t border-[#1f1233] bg-[#05030a] flex items-center justify-between ${collapsed ? "flex-col gap-3 justify-center" : ""}`}>
             <div 
               onClick={() => {
                 setIsProfileModalOpen(true);
                 if (isMobile) setIsMobileSidebarOpen(false);
               }}
               className="flex items-center gap-2.5 overflow-hidden cursor-pointer hover:bg-white/5 p-1 rounded-lg transition-all"
-              title={i18n.language === "ar" ? "إعدادات الملف الشخصي" : "Profile Settings"}
+              title={t('profile.title', { defaultValue: "Profile Settings" })}
             >
               <img
                 src={user?.avatarUrl || "https://api.dicebear.com/7.x/bottts/svg?seed=Demo"}
                 alt="Avatar"
-                className="h-8 w-8 rounded-full bg-zinc-850 border border-[#2b174d] shrink-0"
+                className="h-8 w-8 rounded-full bg-[#160b26] border border-[#2b174d] shrink-0"
               />
               {!collapsed && (
                 <div className="text-start overflow-hidden">
@@ -769,9 +777,9 @@ export const Dashboard: React.FC = () => {
   };
 
   return (
-    <div className="flex h-screen w-screen bg-zinc-50 dark:bg-[#070111] font-sans text-zinc-950 dark:text-zinc-50 overflow-hidden transition-theme">
+    <div className="flex h-screen w-screen bg-[#000000] font-sans text-white overflow-hidden transition-theme selection:bg-[#b57ede]/35 selection:text-white">
       {/* 1. DESKTOP SIDEBAR */}
-      <aside className={`hidden md:flex bg-[#120722] text-zinc-100 flex-col justify-between border-e border-[#1f1035] shrink-0 transition-all duration-300 no-print ${isSidebarCollapsed ? "w-16" : "w-64"}`}>
+      <aside className={`hidden md:flex bg-[#05030a] text-zinc-100 flex-col justify-between border-e border-[#1a1029] shrink-0 transition-all duration-300 no-print ${isSidebarCollapsed ? "w-16" : "w-64"}`}>
         {renderSidebarContent(false)}
       </aside>
 
@@ -784,14 +792,14 @@ export const Dashboard: React.FC = () => {
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
               onClick={() => setIsMobileSidebarOpen(false)}
-              className="fixed inset-0 bg-black/70 backdrop-blur-xs z-50 md:hidden"
+              className="fixed inset-0 bg-black/80 backdrop-blur-xs z-50 md:hidden"
             />
             <motion.aside
               initial={{ x: isAr ? "100%" : "-100%" }}
               animate={{ x: 0 }}
               exit={{ x: isAr ? "100%" : "-100%" }}
               transition={{ type: "spring", damping: 25, stiffness: 260 }}
-              className="fixed top-0 bottom-0 start-0 w-72 max-w-[85vw] bg-[#120722] text-zinc-100 flex flex-col justify-between border-e border-[#1f1035] z-50 md:hidden shadow-2xl"
+              className="fixed top-0 bottom-0 start-0 w-72 max-w-[85vw] bg-[#05030a] text-zinc-100 flex flex-col justify-between border-e border-[#1a1029] z-50 md:hidden shadow-2xl"
             >
               {renderSidebarContent(true)}
             </motion.aside>
@@ -804,35 +812,36 @@ export const Dashboard: React.FC = () => {
         {user?.isSystemAdmin ? (
           <div className="flex-1 flex flex-col overflow-hidden animate-fade-in text-start">
             {/* Header Toolbar */}
-            <header className="h-16 border-b border-zinc-200 dark:border-white/5 bg-white dark:bg-[#120722]/30 backdrop-blur-md px-3 sm:px-4 py-3 flex items-center justify-between shrink-0 transition-theme relative z-20 no-print gap-2">
+            <header className="h-16 border-b border-[#1f1233] bg-[#0a0614]/85 backdrop-blur-md px-3 sm:px-4 py-3 flex items-center justify-between shrink-0 transition-theme relative z-20 no-print gap-2">
               <div className="flex items-center gap-2 sm:gap-3 min-w-0">
                 <button
                   onClick={() => setIsMobileSidebarOpen(true)}
-                  className="md:hidden p-1.5 text-zinc-600 dark:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-white/5 rounded-lg transition-colors cursor-pointer shrink-0"
+                  className="md:hidden p-1.5 text-zinc-400 hover:text-white hover:bg-white/5 rounded-lg transition-colors cursor-pointer shrink-0"
                   title="Open navigation menu"
                 >
                   <Menu className="h-5 w-5" />
                 </button>
-                <Shield className="h-5 w-5 text-purple-500 shrink-0" />
-                <h1 className="text-sm sm:text-lg md:text-xl font-bold tracking-tight truncate">
-                  {adminSubTab === "dashboard" ? (isAr ? "تحليلات عامة للمنصة" : "Admin Analytics Overview") :
-                   adminSubTab === "companies" ? (isAr ? "فحص مساحات عمل الشركات" : "Workspace & Company Inspector") :
-                   adminSubTab === "users" ? (isAr ? "مراجعة واعتماد الحسابات" : "User Access Verification") :
-                   adminSubTab === "employee-reports" ? (isAr ? "تقارير أنشطة الموظفين" : "Employee Activity Reports") :
-                   adminSubTab === "deleted" ? (isAr ? "استعادة المهام المحذوفة" : "Soft-Deleted Task Recovery") :
-                   (isAr ? "سجل الأحداث والتدقيق للنظام" : "Immutable System Audit Logs")}
+                <Shield className="h-5 w-5 text-[#b57ede] shrink-0" />
+                <h1 className="text-sm sm:text-lg md:text-xl font-bold tracking-tight truncate text-white">
+                  {adminSubTab === "dashboard" ? t('adminHeader.titleDashboard', { defaultValue: "Admin Analytics Overview" }) :
+                   adminSubTab === "companies" ? t('adminHeader.titleCompanies', { defaultValue: "Workspace & Company Inspector" }) :
+                   adminSubTab === "users" ? t('adminHeader.titleUsers', { defaultValue: "User Access Verification" }) :
+                   adminSubTab === "employee-reports" ? t('adminHeader.titleEmployeeReports', { defaultValue: "Employee Activity Reports" }) :
+                   adminSubTab === "deleted" ? t('adminHeader.titleDeleted', { defaultValue: "Soft-Deleted Task Recovery" }) :
+                   t('adminHeader.titleAudit', { defaultValue: "Immutable System Audit Logs" })}
                 </h1>
-                <span className="hidden lg:inline-block text-xs font-semibold px-2 py-0.5 bg-zinc-100 dark:bg-zinc-800/80 rounded-md text-zinc-500 dark:text-zinc-400 select-none shrink-0">
-                  {isAr ? "مشرف نظام عرب برو" : "Arab Pro Platform Admin"}
+                <span className="hidden lg:inline-flex items-center gap-1.5 text-xs font-semibold px-2.5 py-0.5 bg-[#031e19] border border-[#064237] rounded-md text-[#c6ff00] select-none shrink-0">
+                  <span className="h-1.5 w-1.5 rounded-full bg-[#c6ff00]" />
+                  {t('adminHeader.platformAdminBadge', { defaultValue: "Arab Pro Platform Admin" })}
                 </span>
               </div>
 
               {/* Actions on the right side of header for Admin */}
               <div className="flex items-center gap-2 sm:gap-4 shrink-0">
                 {/* Language Switcher */}
-                <div dir="ltr" className="flex items-center bg-zinc-100 dark:bg-zinc-800/60 p-0.5 rounded-lg border border-zinc-200 dark:border-zinc-850 relative h-8 shrink-0 select-none">
+                <div dir="ltr" className="flex items-center bg-black/60 p-0.5 rounded-lg border border-[#261540] relative h-8 shrink-0 select-none">
                   <motion.div
-                    className="absolute top-0.5 bottom-0.5 bg-white dark:bg-zinc-900 rounded-md shadow-xs"
+                    className="absolute top-0.5 bottom-0.5 bg-[#b57ede] rounded-md shadow-xs"
                     initial={false}
                     animate={{
                       left: i18n.language === 'en' ? '2px' : '34px',
@@ -843,10 +852,10 @@ export const Dashboard: React.FC = () => {
                   
                   <button
                     onClick={() => i18n.changeLanguage('en')}
-                    className={`relative z-10 w-8 h-full text-center text-[10px] font-extrabold transition-colors cursor-pointer ${
+                    className={`relative z-10 w-8 h-full text-center text-[10px] font-black transition-colors cursor-pointer ${
                       i18n.language === 'en'
-                        ? 'text-purple-650 dark:text-purple-400'
-                        : 'text-zinc-450 hover:text-zinc-650 dark:hover:text-zinc-200'
+                        ? 'text-black'
+                        : 'text-zinc-400 hover:text-white'
                     }`}
                   >
                     EN
@@ -854,10 +863,10 @@ export const Dashboard: React.FC = () => {
                   
                   <button
                     onClick={() => i18n.changeLanguage('ar')}
-                    className={`relative z-10 w-8 h-full text-center text-[10px] font-extrabold transition-colors cursor-pointer ${
+                    className={`relative z-10 w-8 h-full text-center text-[10px] font-black transition-colors cursor-pointer ${
                       i18n.language === 'ar'
-                        ? 'text-purple-650 dark:text-purple-400'
-                        : 'text-zinc-450 hover:text-zinc-650 dark:hover:text-zinc-200'
+                        ? 'text-black'
+                        : 'text-zinc-400 hover:text-white'
                     }`}
                   >
                     AR
@@ -868,17 +877,17 @@ export const Dashboard: React.FC = () => {
                 <button
                   onClick={toggleTheme}
                   title={t('header.toggleTheme')}
-                  className="p-2 text-zinc-555 hover:text-zinc-950 dark:text-zinc-400 dark:hover:text-zinc-55 hover:bg-zinc-100 dark:hover:bg-zinc-800 rounded-lg transition-all cursor-pointer"
+                  className="p-2 text-zinc-400 hover:text-white hover:bg-white/5 rounded-lg transition-all cursor-pointer"
                 >
-                  {theme === "light" ? <Moon className="h-4 w-4" /> : <Sun className="h-4 w-4" />}
+                  {theme === "light" ? <Moon className="h-4 w-4" /> : <Sun className="h-4 w-4 text-[#b57ede]" />}
                 </button>
               </div>
             </header>
             
-            <div className="flex-1 overflow-y-auto min-h-0">
+            <div className="flex-1 overflow-y-auto overflow-x-hidden min-h-0 min-w-0 max-w-full bg-[#000000]">
               <Suspense fallback={
-                <div className="flex-1 flex items-center justify-center p-8 bg-zinc-50/50 dark:bg-zinc-950/20">
-                  <Loader2 className="h-8 w-8 animate-spin text-purple-500" />
+                <div className="flex-1 flex items-center justify-center p-8 bg-black/40">
+                  <Loader2 className="h-8 w-8 animate-spin text-[#b57ede]" />
                 </div>
               }>
                 <AdminPanel activeSubTab={adminSubTab as any} />
@@ -886,49 +895,49 @@ export const Dashboard: React.FC = () => {
             </div>
           </div>
         ) : workspaces.length === 0 && !isLoadingWorkspaces ? (
-          <div className="flex-1 flex flex-col items-center justify-center p-8 text-center max-w-md mx-auto animate-fade-in">
-            <Briefcase className="h-16 w-16 text-purple-500 mb-6" />
-            <h1 className="text-3xl font-extrabold mb-3">{t('welcome.title')}</h1>
-            <p className="text-zinc-550 dark:text-zinc-400 mb-8 leading-relaxed">
+          <div className="flex-1 flex flex-col items-center justify-center p-8 text-center max-w-md mx-auto animate-fade-in bg-[#000000]">
+            <Briefcase className="h-16 w-16 text-[#b57ede] mb-6" />
+            <h1 className="text-3xl font-extrabold mb-3 text-white">{t('welcome.title')}</h1>
+            <p className="text-zinc-400 mb-8 leading-relaxed">
               {t('welcome.subtitle')}
             </p>
             <button
               onClick={() => setIsWorkspaceModalOpen(true)}
-              className="px-6 py-3 rounded-xl bg-purple-600 hover:bg-purple-700 font-bold text-white shadow-md transition-all cursor-pointer"
+              className="px-6 py-3 rounded-xl bg-[#b57ede] hover:bg-[#a668d2] font-black text-black shadow-[0_0_20px_rgba(181,126,222,0.4)] transition-all cursor-pointer"
             >
               {t('welcome.btnCreateWs')}
             </button>
           </div>
         ) : !activeSpace && activeTab === "kanban" ? (
-          <div className="flex-1 flex flex-col items-center justify-center p-8 text-center max-w-md mx-auto">
-            <Layers className="h-16 w-16 text-purple-500 mb-6 animate-pulse" />
-            <h1 className="text-2xl font-bold mb-3">{t('noSpaces.title')}</h1>
-            <p className="text-zinc-550 dark:text-zinc-400 mb-8 leading-relaxed">
+          <div className="flex-1 flex flex-col items-center justify-center p-8 text-center max-w-md mx-auto bg-[#000000]">
+            <Layers className="h-16 w-16 text-[#b57ede] mb-6 animate-pulse" />
+            <h1 className="text-2xl font-bold mb-3 text-white">{t('noSpaces.title')}</h1>
+            <p className="text-zinc-400 mb-8 leading-relaxed">
               {t('noSpaces.subtitle', { workspaceName: activeWorkspace?.name })}
             </p>
             <button
               onClick={handleOpenSpaceModal}
-              className="px-6 py-3 rounded-xl bg-purple-600 hover:bg-purple-700 font-bold text-white shadow-md transition-all cursor-pointer"
+              className="px-6 py-3 rounded-xl bg-[#b57ede] hover:bg-[#a668d2] font-black text-black shadow-[0_0_20px_rgba(181,126,222,0.4)] transition-all cursor-pointer"
             >
               {t('noSpaces.btnCreateSpace')}
             </button>
           </div>
         ) : (
-          <div className="flex-1 flex flex-col overflow-hidden">
+          <div className="flex-1 flex flex-col overflow-hidden bg-[#000000]">
             {/* Header Toolbar */}
-            <header className="h-16 border-b border-zinc-200 dark:border-white/5 bg-white dark:bg-[#120722]/30 backdrop-blur-md px-3 sm:px-4 py-3 flex items-center justify-between shrink-0 transition-theme relative z-20 gap-2">
+            <header className="h-16 border-b border-[#1f1233] bg-[#0a0614]/85 backdrop-blur-md px-3 sm:px-4 py-3 flex items-center justify-between shrink-0 transition-theme relative z-20 gap-2">
               <div className="flex items-center gap-2 sm:gap-3 min-w-0">
                 <button
                   onClick={() => setIsMobileSidebarOpen(true)}
-                  className="md:hidden p-1.5 text-zinc-600 dark:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-white/5 rounded-lg transition-colors cursor-pointer shrink-0"
+                  className="md:hidden p-1.5 text-zinc-400 hover:text-white hover:bg-white/5 rounded-lg transition-colors cursor-pointer shrink-0"
                   title="Open navigation menu"
                 >
                   <Menu className="h-5 w-5" />
                 </button>
                 {activeTab === "admin" ? (
                   <>
-                    <Shield className="h-5 w-5 text-purple-500 shrink-0" />
-                    <h1 className="text-sm sm:text-lg md:text-xl font-bold tracking-tight truncate">
+                    <Shield className="h-5 w-5 text-[#b57ede] shrink-0" />
+                    <h1 className="text-sm sm:text-lg md:text-xl font-bold tracking-tight truncate text-white">
                       {adminSubTab === "dashboard" ? "Admin Analytics Overview" :
                        adminSubTab === "companies" ? "Workspace & Company Inspector" :
                        adminSubTab === "users" ? "User Access Verification" :
@@ -938,41 +947,46 @@ export const Dashboard: React.FC = () => {
                   </>
                 ) : activeTab === "clients" ? (
                   <>
-                    <Briefcase className="h-5 w-5 text-purple-500 shrink-0" />
-                    <h1 className="text-sm sm:text-lg md:text-xl font-bold tracking-tight truncate">{t('sidebar.clients', { defaultValue: "Client Projects" })}</h1>
+                    <Briefcase className="h-5 w-5 text-[#b57ede] shrink-0" />
+                    <h1 className="text-sm sm:text-lg md:text-xl font-bold tracking-tight truncate text-white">{t('sidebar.clients', { defaultValue: "Client Projects" })}</h1>
                   </>
                 ) : activeTab === "team" ? (
                   <>
-                    <Users className="h-5 w-5 text-purple-500 shrink-0" />
-                    <h1 className="text-sm sm:text-lg md:text-xl font-bold tracking-tight truncate">{t('sidebar.team', { defaultValue: "Workspace Team" })}</h1>
+                    <Users className="h-5 w-5 text-[#b57ede] shrink-0" />
+                    <h1 className="text-sm sm:text-lg md:text-xl font-bold tracking-tight truncate text-white">{t('sidebar.team', { defaultValue: "Workspace Team" })}</h1>
                   </>
                 ) : activeTab === "dashboard" ? (
                   <>
-                    <LayoutDashboard className="h-5 w-5 text-purple-500 shrink-0" />
-                    <h1 className="text-sm sm:text-lg md:text-xl font-bold tracking-tight truncate">{t('sidebar.dashboard', { defaultValue: "Widgets Dashboard" })}</h1>
+                    <LayoutDashboard className="h-5 w-5 text-[#b57ede] shrink-0" />
+                    <h1 className="text-sm sm:text-lg md:text-xl font-bold tracking-tight truncate text-white">{t('sidebar.dashboard', { defaultValue: "Widgets Dashboard" })}</h1>
                   </>
                 ) : activeTab === "reports" ? (
                   <>
-                    <BarChart2 className="h-5 w-5 text-purple-500 shrink-0" />
-                    <h1 className="text-sm sm:text-lg md:text-xl font-bold tracking-tight truncate">{t('sidebar.reports', { defaultValue: "Reports & Analytics" })}</h1>
+                    <BarChart2 className="h-5 w-5 text-[#b57ede] shrink-0" />
+                    <h1 className="text-sm sm:text-lg md:text-xl font-bold tracking-tight truncate text-white">{t('sidebar.reports', { defaultValue: "Reports & Analytics" })}</h1>
                   </>
                 ) : activeTab === "gantt" ? (
                   <>
-                    <Clock className="h-5 w-5 text-purple-500 shrink-0" />
-                    <h1 className="text-sm sm:text-lg md:text-xl font-bold tracking-tight truncate">{t('sidebar.gantt', { defaultValue: "Gantt Chart" })}</h1>
+                    <Clock className="h-5 w-5 text-[#b57ede] shrink-0" />
+                    <h1 className="text-sm sm:text-lg md:text-xl font-bold tracking-tight truncate text-white">{t('sidebar.gantt', { defaultValue: "Gantt Chart" })}</h1>
                   </>
                 ) : activeTab === "calendar" ? (
                   <>
-                    <Calendar className="h-5 w-5 text-purple-500 shrink-0" />
-                    <h1 className="text-sm sm:text-lg md:text-xl font-bold tracking-tight truncate">{t('sidebar.calendar', { defaultValue: "Calendar View" })}</h1>
+                    <Calendar className="h-5 w-5 text-[#b57ede] shrink-0" />
+                    <h1 className="text-sm sm:text-lg md:text-xl font-bold tracking-tight truncate text-white">{t('sidebar.calendar', { defaultValue: "Calendar View" })}</h1>
+                  </>
+                ) : activeTab === "goals" ? (
+                  <>
+                    <Target className="h-5 w-5 text-[#b57ede] shrink-0" />
+                    <h1 className="text-sm sm:text-lg md:text-xl font-bold tracking-tight truncate text-white">{t('sidebar.goals', { defaultValue: "Strategic Goals & OKRs" })}</h1>
                   </>
                 ) : (
                   <>
                     <div
                       className="h-3 w-3 rounded-full shrink-0"
-                      style={{ backgroundColor: activeSpace?.color || "#aa3bff" }}
+                      style={{ backgroundColor: activeSpace?.color || "#b57ede" }}
                     />
-                    <h1 className="text-sm sm:text-lg md:text-xl font-bold tracking-tight truncate">{activeSpace?.name || activeWorkspace?.name}</h1>
+                    <h1 className="text-sm sm:text-lg md:text-xl font-bold tracking-tight truncate text-white">{activeSpace?.name || activeWorkspace?.name}</h1>
                   </>
                 )}
               </div>
@@ -980,9 +994,9 @@ export const Dashboard: React.FC = () => {
               {/* Invite Members / Actions */}
               <div className="flex items-center gap-1.5 sm:gap-3 shrink-0">
                 {/* Language Switcher */}
-                <div dir="ltr" className="flex items-center bg-zinc-100 dark:bg-zinc-800/60 p-0.5 rounded-lg border border-zinc-200 dark:border-zinc-850 relative h-8 shrink-0 select-none">
+                <div dir="ltr" className="flex items-center bg-black/60 p-0.5 rounded-lg border border-[#261540] relative h-8 shrink-0 select-none">
                   <motion.div
-                    className="absolute top-0.5 bottom-0.5 bg-white dark:bg-zinc-900 rounded-md shadow-xs"
+                    className="absolute top-0.5 bottom-0.5 bg-[#b57ede] rounded-md shadow-xs"
                     initial={false}
                     animate={{
                       left: i18n.language === 'en' ? '2px' : '34px',
@@ -993,10 +1007,10 @@ export const Dashboard: React.FC = () => {
                   
                   <button
                     onClick={() => i18n.changeLanguage('en')}
-                    className={`relative z-10 w-8 h-full text-center text-[10px] font-extrabold transition-colors cursor-pointer ${
+                    className={`relative z-10 w-8 h-full text-center text-[10px] font-black transition-colors cursor-pointer ${
                       i18n.language === 'en'
-                        ? 'text-purple-650 dark:text-purple-400'
-                        : 'text-zinc-450 hover:text-zinc-650 dark:hover:text-zinc-200'
+                        ? 'text-black'
+                        : 'text-zinc-400 hover:text-white'
                     }`}
                   >
                     EN
@@ -1004,10 +1018,10 @@ export const Dashboard: React.FC = () => {
                   
                   <button
                     onClick={() => i18n.changeLanguage('ar')}
-                    className={`relative z-10 w-8 h-full text-center text-[10px] font-extrabold transition-colors cursor-pointer ${
+                    className={`relative z-10 w-8 h-full text-center text-[10px] font-black transition-colors cursor-pointer ${
                       i18n.language === 'ar'
-                        ? 'text-purple-650 dark:text-purple-400'
-                        : 'text-zinc-450 hover:text-zinc-650 dark:hover:text-zinc-200'
+                        ? 'text-black'
+                        : 'text-zinc-400 hover:text-white'
                     }`}
                   >
                     AR
@@ -1018,42 +1032,42 @@ export const Dashboard: React.FC = () => {
                 <div className="relative">
                   <button
                     onClick={() => setIsNotificationsOpen(!isNotificationsOpen)}
-                    className="p-1.5 sm:p-2 text-zinc-555 hover:text-zinc-950 dark:text-zinc-400 dark:hover:text-zinc-55 hover:bg-zinc-100 dark:hover:bg-zinc-800 rounded-lg transition-all relative cursor-pointer"
+                    className="p-1.5 sm:p-2 text-zinc-400 hover:text-white hover:bg-white/5 rounded-lg transition-all relative cursor-pointer"
                   >
                     <Bell className="h-4 w-4" />
                     {unreadCount > 0 && (
-                      <span className="absolute top-1.5 end-1.5 h-2 w-2 rounded-full bg-purple-600 animate-pulse" />
+                      <span className="absolute top-1.5 end-1.5 h-2 w-2 rounded-full bg-[#c6ff00] animate-pulse" />
                     )}
                   </button>
 
                   {isNotificationsOpen && (
-                    <div className="absolute end-0 mt-2 w-72 sm:w-80 max-w-[calc(100vw-32px)] bg-white dark:bg-zinc-900 border dark:border-zinc-800 rounded-2xl shadow-xl overflow-hidden z-50 transition-theme max-h-96 flex flex-col">
-                      <div className="p-3 border-b dark:border-zinc-800 flex items-center justify-between shrink-0 bg-zinc-50/50 dark:bg-zinc-950/10 gap-2">
+                    <div className="absolute end-0 mt-2 w-72 sm:w-80 max-w-[calc(100vw-32px)] bg-[#0a0614] border border-[#261540] rounded-2xl shadow-2xl overflow-hidden z-50 transition-theme max-h-96 flex flex-col">
+                      <div className="p-3 border-b border-[#1f1233] flex items-center justify-between shrink-0 bg-black/50 gap-2">
                         <div className="flex items-center gap-1.5">
                           <button
                             onClick={() => setIsNotificationsOpen(false)}
-                            className="text-zinc-450 hover:text-zinc-650 dark:hover:text-zinc-200 transition-colors p-0.5 rounded-md hover:bg-zinc-200/50 dark:hover:bg-zinc-800 cursor-pointer"
+                            className="text-zinc-400 hover:text-white transition-colors p-0.5 rounded-md hover:bg-white/5 cursor-pointer"
                             title="Close"
                           >
                             <X className="h-3.5 w-3.5" />
                           </button>
-                          <span className="text-xs font-bold text-zinc-700 dark:text-zinc-300">
+                          <span className="text-xs font-bold text-white">
                             {t('notifications.title', { defaultValue: "Notifications" })} ({unreadCount})
                           </span>
                         </div>
                         {unreadCount > 0 && (
                           <button
                             onClick={() => markAllReadMutation.mutate()}
-                            className="text-[10px] font-bold text-purple-650 hover:text-purple-700 dark:text-purple-400 dark:hover:text-purple-300 cursor-pointer whitespace-nowrap"
+                            className="text-[10px] font-bold text-[#b57ede] hover:text-[#d3a6f7] cursor-pointer whitespace-nowrap"
                           >
                             {t('notifications.markAllRead', { defaultValue: "Mark all as read" })}
                           </button>
                         )}
                       </div>
 
-                      <div className="flex-1 overflow-y-auto divide-y divide-zinc-100 dark:divide-zinc-800/60 max-h-80">
+                      <div className="flex-1 overflow-y-auto divide-y divide-[#1f1233] max-h-80">
                         {notifications.length === 0 ? (
-                          <div className="p-8 text-center text-xs text-zinc-450">
+                          <div className="p-8 text-center text-xs text-zinc-500">
                             {t('notifications.empty', { defaultValue: "No notifications yet" })}
                           </div>
                         ) : (
@@ -1076,25 +1090,25 @@ export const Dashboard: React.FC = () => {
                                   }
                                 }
                               }}
-                              className={`p-3 text-start hover:bg-zinc-50 dark:hover:bg-zinc-800/40 cursor-pointer transition-all ${
-                                !n.isRead ? "bg-purple-500/5" : ""
+                              className={`p-3 text-start hover:bg-white/5 cursor-pointer transition-all ${
+                                !n.isRead ? "bg-[#b57ede]/10" : ""
                               }`}
                             >
                               <div className="flex items-start gap-2.5">
                                 <div className="mt-0.5 shrink-0">
-                                  {n.type === "task_assigned" && <Users className="h-4.5 w-4.5 text-blue-500" />}
-                                  {n.type === "task_updated" && <Layers className="h-4.5 w-4.5 text-amber-500" />}
-                                  {n.type === "comment_mentioned" && <MessageSquare className="h-4.5 w-4.5 text-purple-500" />}
-                                  {n.type === "workspace_invite" && <UserPlus className="h-4.5 w-4.5 text-green-500" />}
+                                  {n.type === "task_assigned" && <Users className="h-4.5 w-4.5 text-[#b57ede]" />}
+                                  {n.type === "task_updated" && <Layers className="h-4.5 w-4.5 text-[#c6ff00]" />}
+                                  {n.type === "comment_mentioned" && <MessageSquare className="h-4.5 w-4.5 text-[#b57ede]" />}
+                                  {n.type === "workspace_invite" && <UserPlus className="h-4.5 w-4.5 text-[#c6ff00]" />}
                                 </div>
                                 <div className="min-w-0 flex-1">
-                                  <p className="text-xs font-bold text-zinc-850 dark:text-zinc-100">
+                                  <p className="text-xs font-bold text-white">
                                     {n.title}
                                   </p>
-                                  <p className="text-[11px] text-zinc-550 mt-0.5 break-words">
+                                  <p className="text-[11px] text-zinc-400 mt-0.5 break-words">
                                     {n.message}
                                   </p>
-                                  <span className="text-[9px] text-zinc-450 block mt-1">
+                                  <span className="text-[9px] text-zinc-500 block mt-1">
                                     {new Date(n.createdAt).toLocaleTimeString(i18n.language, {
                                       hour: "2-digit",
                                       minute: "2-digit",
@@ -1102,7 +1116,7 @@ export const Dashboard: React.FC = () => {
                                   </span>
                                 </div>
                                 {!n.isRead && (
-                                  <span className="h-1.5 w-1.5 rounded-full bg-purple-600 mt-1.5 shrink-0" />
+                                  <span className="h-1.5 w-1.5 rounded-full bg-[#c6ff00] mt-1.5 shrink-0" />
                                 )}
                               </div>
                             </div>
@@ -1116,9 +1130,9 @@ export const Dashboard: React.FC = () => {
                 <button
                   onClick={toggleTheme}
                   title={t('header.toggleTheme')}
-                  className="p-1.5 sm:p-2 text-zinc-555 hover:text-zinc-950 dark:text-zinc-400 dark:hover:text-zinc-55 hover:bg-zinc-100 dark:hover:bg-zinc-800 rounded-lg transition-all cursor-pointer"
+                  className="p-1.5 sm:p-2 text-zinc-400 hover:text-white hover:bg-white/5 rounded-lg transition-all cursor-pointer"
                 >
-                  {theme === "light" ? <Moon className="h-4 w-4" /> : <Sun className="h-4 w-4" />}
+                  {theme === "light" ? <Moon className="h-4 w-4" /> : <Sun className="h-4 w-4 text-[#b57ede]" />}
                 </button>
 
                 {/* Hide workspace-specific items for Super Admin */}
@@ -1128,9 +1142,9 @@ export const Dashboard: React.FC = () => {
                     <button
                       onClick={() => setIsScratchpadOpen(true)}
                       title={t('scratchpad.scratchpadTitle')}
-                      className="p-1.5 sm:p-2 text-zinc-555 hover:text-zinc-950 dark:text-zinc-400 dark:hover:text-zinc-55 hover:bg-zinc-100 dark:hover:bg-zinc-800 rounded-lg transition-all cursor-pointer"
+                      className="p-1.5 sm:p-2 text-zinc-400 hover:text-white hover:bg-white/5 rounded-lg transition-all cursor-pointer"
                     >
-                      <Edit3 className="h-4 w-4" />
+                      <Edit3 className="h-4 w-4 text-[#b57ede]" />
                     </button>
 
                     <div className="hidden sm:flex items-center -space-x-2 overflow-hidden rtl:space-x-reverse">
@@ -1140,12 +1154,12 @@ export const Dashboard: React.FC = () => {
                           title={`${m.userId?.fullName} (${t(`roles.${m.role}`)})`}
                           src={m.userId?.avatarUrl || "https://api.dicebear.com/7.x/bottts/svg"}
                           alt="member"
-                          className="h-7 w-7 rounded-full border border-white dark:border-zinc-900 bg-zinc-800"
+                          className="h-7 w-7 rounded-full border border-[#261540] bg-[#160b26]"
                         />
                       ))}
                       <button
                         onClick={handleOpenInviteModal}
-                        className="h-7 w-7 rounded-full border border-dashed border-zinc-400 bg-zinc-100 dark:bg-zinc-855 flex items-center justify-center text-zinc-500 hover:text-zinc-950 dark:hover:text-zinc-100 hover:border-zinc-800 hover:bg-white transition-all cursor-pointer"
+                        className="h-7 w-7 rounded-full border border-dashed border-[#b57ede]/50 bg-[#0a0614] flex items-center justify-center text-[#b57ede] hover:text-white hover:border-[#b57ede] hover:bg-[#b57ede]/20 transition-all cursor-pointer"
                       >
                         <UserPlus className="h-3.5 w-3.5" />
                       </button>

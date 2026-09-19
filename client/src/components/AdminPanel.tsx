@@ -27,6 +27,51 @@ interface AdminPanelProps {
   activeSubTab?: "dashboard" | "companies" | "users" | "deleted" | "audit" | "employee-reports";
 }
 
+const formatAuditValue = (key: string, val: any, isAr: boolean): string => {
+  if (val === undefined || val === null || val === "") return "-";
+  if (key === "assignees") {
+    if (Array.isArray(val)) {
+      if (val.length === 0) return isAr ? "لا يوجد مسؤولين" : "None";
+      return isAr ? `${val.length} مسؤولين` : `${val.length} assignees`;
+    }
+    return isAr ? "المسؤولون" : "Assignees";
+  }
+  if (typeof val === "object") {
+    try {
+      const str = JSON.stringify(val);
+      if (str.length > 50) return str.substring(0, 47) + "...";
+      return str;
+    } catch {
+      return "[Object]";
+    }
+  }
+  const strVal = String(val);
+  if (strVal.includes("data:image") || strVal.includes("base64") || strVal.length > 50) {
+    if (strVal.includes("data:image") || strVal.includes("base64")) {
+      return isAr ? "[بيانات صورة]" : "[Image Data]";
+    }
+    return strVal.substring(0, 47) + "...";
+  }
+  return strVal;
+};
+
+const formatKeyName = (key: string, isAr: boolean): string => {
+  if (!isAr) return key;
+  const map: Record<string, string> = {
+    title: "العنوان",
+    description: "الوصف",
+    status: "الحالة",
+    priority: "الأولوية",
+    dueDate: "تاريخ الاستحقاق",
+    startDate: "تاريخ البدء",
+    assignees: "المسؤولون",
+    projectName: "المشروع",
+    notes: "الملاحظات",
+    timeEstimate: "الوقت المقدر",
+  };
+  return map[key] || key;
+};
+
 export const AdminPanel: React.FC<AdminPanelProps> = ({ activeSubTab }) => {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
@@ -168,7 +213,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ activeSubTab }) => {
   const selectedCompanyObj = companies.find((c: any) => c._id === selectedCompanyId);
 
   return (
-    <div className="p-3 sm:p-6 space-y-6 text-start">
+    <div className="p-3 sm:p-6 space-y-6 text-start max-w-full overflow-x-hidden min-w-0">
       
       {/* 1. Header Section */}
       <div className="border-b dark:border-zinc-800 pb-4 flex flex-col md:flex-row md:items-center justify-between gap-4">
@@ -250,9 +295,9 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ activeSubTab }) => {
             }
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            className="w-full pl-9 pr-4 py-2 text-xs rounded-xl bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 focus:outline-none focus:ring-1 focus:ring-purple-500 text-zinc-900 dark:text-zinc-100"
+            className="w-full pl-9 pr-4 py-2 bg-white dark:bg-zinc-850 border border-zinc-200 dark:border-zinc-800 rounded-xl text-xs font-semibold focus:outline-hidden focus:ring-2 focus:ring-purple-500/20 focus:border-purple-500 dark:text-white"
           />
-          <Search className="absolute left-3 top-2.5 h-3.5 w-3.5 text-zinc-400" />
+          <Search className="h-4 w-4 text-zinc-400 absolute left-3 top-2.5" />
         </div>
       )}
 
@@ -823,15 +868,15 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ activeSubTab }) => {
                 const changeKeys = Object.keys(changes);
                 
                 return (
-                  <div key={act._id} className="p-4 hover:bg-zinc-50/50 dark:hover:bg-zinc-850/15 flex items-start justify-between gap-4 text-xs">
-                    <div className="flex items-start gap-3 min-w-0">
+                  <div key={act._id} className="p-4 hover:bg-zinc-50/50 dark:hover:bg-zinc-850/15 flex items-start justify-between gap-4 text-xs max-w-full overflow-hidden">
+                    <div className="flex items-start gap-3 min-w-0 flex-1 overflow-hidden">
                       <img
                         src={act.userId?.avatarUrl || "https://api.dicebear.com/7.x/bottts/svg"}
                         alt="actor avatar"
                         className="h-7 w-7 rounded-full bg-zinc-850 border shrink-0 mt-0.5"
                       />
-                      <div className="min-w-0 space-y-1">
-                        <p className="text-zinc-800 dark:text-zinc-200">
+                      <div className="min-w-0 flex-1 space-y-1 overflow-hidden">
+                        <p className="text-zinc-800 dark:text-zinc-200 truncate">
                           <strong className="font-bold text-zinc-900 dark:text-white mr-1.5">{act.userId?.fullName || (isAr ? "مدير النظام" : "System Actor")}</strong>
                           <span className="px-1.5 py-0.5 bg-zinc-100 dark:bg-zinc-800 text-zinc-500 rounded font-semibold text-[10px] capitalize mr-2">
                             {act.action}
@@ -843,12 +888,14 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ activeSubTab }) => {
                         
                         {/* Change differences list */}
                         {changeKeys.length > 0 && (
-                          <div className="mt-2 pl-3 border-l-2 dark:border-zinc-800 space-y-1">
+                          <div className="mt-2 pl-3 border-l-2 dark:border-zinc-800 space-y-1 max-w-full overflow-hidden">
                             {changeKeys.map((key) => {
-                              const item = changes[key];
+                              const item = changes[key] || {};
+                              const oldText = formatAuditValue(key, item.old, isAr);
+                              const newText = formatAuditValue(key, item.new, isAr);
                               return (
-                                <p key={key} className="text-[10.5px] text-zinc-500 leading-relaxed font-mono">
-                                  • <span className="font-bold capitalize">{key}</span> {isAr ? "تغير من:" : "changed from:"} <span className="text-red-500 line-through">"{item.old || "-"}"</span> {isAr ? "إلى:" : "to:"} <span className="text-green-500 font-bold">"{item.new}"</span>
+                                <p key={key} className="text-[10.5px] text-zinc-500 leading-relaxed font-mono break-all overflow-hidden">
+                                  • <span className="font-bold capitalize">{formatKeyName(key, isAr)}</span> {isAr ? "تغير من:" : "changed from:"} <span className="text-red-500 line-through">"{oldText}"</span> {isAr ? "إلى:" : "to:"} <span className="text-green-500 font-bold">"{newText}"</span>
                                 </p>
                               );
                             })}

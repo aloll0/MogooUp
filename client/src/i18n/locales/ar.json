@@ -11,10 +11,25 @@
     "reports": "التقارير والإحصائيات",
     "gantt": "مخطط جانت",
     "calendar": "عرض التقويم",
-    "goals": "الأهداف الإستراتيجية و OKRs"
+    "goals": "الأهداف الإستراتيجية و OKRs",
+    "adminDashboard": "لوحة الإدارة الرئيسية",
+    "companiesDrilldown": "فحص الشركات ومساحات العمل",
+    "approvals": "مراجعة واعتماد الحسابات",
+    "employeeReports": "تقارير أنشطة الموظفين",
+    "deletedItems": "استعادة العناصر المحذوفة",
+    "auditLogs": "سجل التدقيق والأحداث"
+  },
+  "adminHeader": {
+    "titleDashboard": "تحليلات عامة للمنصة",
+    "titleCompanies": "فحص مساحات عمل الشركات",
+    "titleUsers": "مراجعة واعتماد الحسابات",
+    "titleEmployeeReports": "تقارير أنشطة الموظفين",
+    "titleDeleted": "استعادة المهام المحذوفة",
+    "titleAudit": "سجل الأحداث والتدقيق للنظام",
+    "platformAdminBadge": "مشرف نظام عربي برو"
   },
   "welcome": {
-    "title": "مرحباً بك في Taskflow!",
+    "title": "مرحباً بك في عربي برو!",
     "subtitle": "تتطلب كل مساحة مشروع مساحة عمل للبدء. قم بإعداد مساحة العمل الخاصة بك لإطلاق القوائم وبطاقات كانبان.",
     "btnCreateWs": "إنشاء مساحة العمل الأولى الخاصة بك"
   },
@@ -230,9 +245,9 @@
   "auth": {
     "signInTitle": "تسجيل الدخول",
     "signUpTitle": "إنشاء حساب",
-    "signInSubtitle": "تسجيل الدخول إلى Taskflow",
-    "signUpSubtitle": "إنشاء حساب جديد",
-    "newToTaskflow": "جديد في Taskflow؟",
+    "signInSubtitle": "تسجيل الدخول إلى عربي برو",
+    "signUpSubtitle": "إنشاء حساب جديد في عربي برو",
+    "newToTaskflow": "جديد في عربي برو؟",
     "createFreeAccount": "أنشئ حساباً مجانياً",
     "alreadyHaveAccount": "لديك حساب بالفعل؟",
     "signIn": "تسجيل الدخول",
@@ -242,17 +257,19 @@
     "passwordLabel": "كلمة المرور",
     "passwordPlaceholder": "أدخل كلمة المرور",
     "fullNameLabel": "الاسم الكامل",
-    "fullNamePlaceholder": "جون دو",
+    "fullNamePlaceholder": "الاسم الكامل",
     "createPasswordPlaceholder": "أنشئ كلمة مرور قوية",
     "forgotPassword": "نسيت كلمة المرور؟",
     "signingIn": "جاري الدخول...",
     "creatingAccount": "جاري إنشاء الحساب...",
     "checkEmailTitle": "تحقق من بريدك الإلكتروني",
-    "checkEmailDesc": "لقد أرسلنا رابط تحقق إلى بريدك الإلكتروني. يرجى الضغط على الرابط لتفعيل حسابك والبدء في استخدام Taskflow.",
+    "checkEmailDesc": "لقد أرسلنا رابط تحقق إلى بريدك الإلكتروني. يرجى الضغط على الرابط لتفعيل حسابك والبدء في استخدام عربي برو.",
     "goToLogin": "الذهاب لصفحة تسجيل الدخول",
-    "adventureTitle": "سجل دخولك لتبدأ مغامرتك!",
-    "adventureSubtitle": "الجيل القادم من مساحات إدارة المشاريع لتوحيد المهام، الدورات، المستندات، والتعاون الجماعي في بيئة عمل فائقة السرعة.",
-    "poweredBy": "POWERED BY ARAB PRO"
+    "adventureTitle": "سجل دخولك إلى مساحة عملك!",
+    "startAdventureTitle": "ابدأ مساحة عملك مع عربي برو!",
+    "adventureSubtitle": "الجيل القادم من مساحات إدارة المشاريع لتوحيد المهام، الفرق، والمستندات في بيئة فائقة السرعة.",
+    "poweredBy": "ARAB PRO DIGITAL ENTERPRISE",
+    "langToggle": "English"
   },
   "validation": {
     "invalidEmail": "يرجى إدخال بريد إلكتروني صالح",

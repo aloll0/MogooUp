@@ -514,7 +514,7 @@ export const DashboardTab: React.FC<DashboardTabProps> = ({
             </div>
             <div style={{ textAlign: "right", fontSize: "12px", fontWeight: "700", color: "#a1a1aa" }}>
               <p>{new Date().toLocaleDateString(undefined, { dateStyle: "long" })}</p>
-              <p>Mogoo Taskflow Analytics</p>
+              <p>Arab Pro Analytics</p>
             </div>
           </div>
 

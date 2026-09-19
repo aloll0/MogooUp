@@ -1,27 +1,39 @@
-@import url('https://fonts.googleapis.com/css2?family=Cairo:wght@300;400;500;600;700;800&family=Inter:wght@300;400;500;600;700;800&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Cairo:wght@300;400;500;600;700;800;900&family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&family=Tajawal:wght@300;400;500;700;800;900&display=swap');
 
 @import "tailwindcss";
 
 @custom-variant dark (&:where(.dark, .dark *));
 
 @theme {
+  --font-sans: 'Cairo', 'Tajawal', 'Plus Jakarta Sans', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+
+  /* Arab Pro Primary Purple Scale centered on #b57ede */
   --color-primary-50: #faf5ff;
-  --color-primary-100: #f3e8ff;
-  --color-primary-200: #e9d5ff;
-  --color-primary-300: #d8b4fe;
-  --color-primary-400: #c084fc;
-  --color-primary-500: #a855f7;
-  --color-primary-600: #9333ea;
-  --color-primary-700: #7e22ce;
-  --color-primary-800: #6b21a8;
-  --color-primary-900: #581c87;
-  --color-primary-950: #3b0764;
+  --color-primary-100: #f5ebfc;
+  --color-primary-200: #ecd6fa;
+  --color-primary-300: #ddb3f5;
+  --color-primary-400: #ca8def;
+  --color-primary-500: #b57ede;
+  --color-primary-600: #9e59d2;
+  --color-primary-700: #843ec0;
+  --color-primary-800: #6c2fa2;
+  --color-primary-900: #572583;
+  --color-primary-950: #39105d;
 
-  --color-brand-primary: #aa3bff;
-  --color-brand-secondary: #00f2fe;
-  --color-purple-650: #882ee2;
+  /* Arab Pro Official Brand Identity Colors */
+  --color-brand-primary: #b57ede;
+  --color-brand-purple: #b57ede;
+  --color-brand-purple-dark: #843ec0;
+  --color-brand-black: #000000;
+  --color-brand-surface: #0a0614;
+  --color-brand-surface-elevated: #130c22;
+  --color-brand-border: #261640;
+  --color-brand-lime: #c6ff00;
+  --color-brand-darkgreen: #031e19;
+  --color-brand-secondary: #c6ff00;
+  --color-purple-650: #9e59d2;
 
-  /* Custom non-standard zinc shades used in project layouts */
+  /* Sleek custom dark shades */
   --color-zinc-55: #f7f7f9;
   --color-zinc-150: #ededf0;
   --color-zinc-250: #dadade;
@@ -32,54 +44,61 @@
   --color-zinc-555: #5e5e65;
   --color-zinc-650: #48484f;
   --color-zinc-750: #333338;
-  --color-zinc-850: #202024;
-  --color-zinc-855: #1c1c20;
+  --color-zinc-850: #1b1724;
+  --color-zinc-855: #130f1c;
+  --color-zinc-950: #05030a;
 }
 
 @layer base {
   :root {
-    --background: 240 10% 3.9%;
-    --foreground: 0 0% 98%;
+    --background: 0 0% 0%;
+    --foreground: 0 0% 100%;
   }
 
-  body {
-    background-color: #fafafa;
-    color: #18181b;
-    font-family: 'Inter', 'Cairo', system-ui, -apple-system, sans-serif;
+  html, body {
+    background-color: #000000;
+    color: #ffffff;
+    font-family: 'Cairo', 'Tajawal', 'Plus Jakarta Sans', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
     -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    overflow-x: hidden;
   }
 
   body.dark {
-    background-color: #09090b;
-    color: #f4f4f5;
+    background-color: #000000;
+    color: #ffffff;
   }
 }
 
-/* Custom scrollbars for a premium feel */
+/* Custom scrollbars for a sleek black & purple feel */
 ::-webkit-scrollbar {
   width: 6px;
   height: 6px;
 }
 
 ::-webkit-scrollbar-track {
-  background: transparent;
+  background: #000000;
 }
 
 ::-webkit-scrollbar-thumb {
-  background: #d4d4d8;
+  background: #2b1842;
   border-radius: 4px;
 }
 
-.dark ::-webkit-scrollbar-thumb {
-  background: #3f3f46;
+::-webkit-scrollbar-thumb:hover {
+  background: #b57ede;
 }
 
-::-webkit-scrollbar-thumb:hover {
-  background: #a1a1aa;
+.dark ::-webkit-scrollbar-track {
+  background: #000000;
+}
+
+.dark ::-webkit-scrollbar-thumb {
+  background: #2b1842;
 }
 
 .dark ::-webkit-scrollbar-thumb:hover {
-  background: #52525b;
+  background: #b57ede;
 }
 
 /* Custom smooth transitions */
@@ -89,36 +108,61 @@
 
 /* Kanban Board Horizontal Scrollbar styling */
 .kanban-scrollbar::-webkit-scrollbar {
-  height: 10px;
+  height: 8px;
 }
 
 .kanban-scrollbar::-webkit-scrollbar-track {
-  background: rgba(0, 0, 0, 0.05);
+  background: #05030a;
   border-radius: 6px;
 }
 
 .dark .kanban-scrollbar::-webkit-scrollbar-track {
-  background: rgba(255, 255, 255, 0.03);
+  background: #05030a;
 }
 
 .kanban-scrollbar::-webkit-scrollbar-thumb {
-  background: #c084fc;
+  background: #391c5c;
   border-radius: 6px;
-  border: 1px solid transparent;
+  border: 1px solid rgba(181, 126, 222, 0.15);
   background-clip: padding-box;
 }
 
 .dark .kanban-scrollbar::-webkit-scrollbar-thumb {
-  background: #a855f7;
+  background: #391c5c;
   border-radius: 6px;
-  border: 1px solid transparent;
+  border: 1px solid rgba(181, 126, 222, 0.2);
   background-clip: padding-box;
 }
 
 .kanban-scrollbar::-webkit-scrollbar-thumb:hover {
-  background: #a855f7;
+  background: #b57ede;
 }
 
 .dark .kanban-scrollbar::-webkit-scrollbar-thumb:hover {
-  background: #9333ea;
+  background: #b57ede;
+}
+
+/* Arab Pro UI Glow Utilities */
+.glow-purple {
+  box-shadow: 0 0 25px -5px rgba(181, 126, 222, 0.4);
+}
+
+.glow-purple-sm {
+  box-shadow: 0 0 15px -3px rgba(181, 126, 222, 0.3);
+}
+
+.glow-lime {
+  box-shadow: 0 0 20px -3px rgba(198, 255, 0, 0.4);
+}
+
+.border-brand-glow {
+  border-color: rgba(181, 126, 222, 0.3);
+}
+
+.bg-radial-purple {
+  background: radial-gradient(circle at 50% 0%, rgba(181, 126, 222, 0.15) 0%, rgba(0, 0, 0, 0.95) 75%);
+}
+
+.bg-radial-emerald {
+  background: radial-gradient(circle at 100% 100%, rgba(3, 30, 25, 0.6) 0%, rgba(0, 0, 0, 0.95) 70%);
 }
