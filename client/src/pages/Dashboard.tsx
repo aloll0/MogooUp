@@ -264,9 +264,13 @@ export const Dashboard: React.FC = () => {
     },
   });
 
-  const currentUserRole = activeWorkspace?.ownerId === user?.id
-    ? "owner"
-    : (members.find((m: any) => m.userId?._id === user?.id)?.role || "guest");
+  const currentUserRole =
+    user?.isSystemAdmin ||
+    activeWorkspace?.ownerId === user?.id ||
+    activeWorkspace?.ownerId === (user as any)?._id ||
+    (activeWorkspace?.ownerId as any)?._id === user?.id
+      ? "owner"
+      : (members.find((m: any) => (m.userId?._id || m.userId?.id || m.userId) === user?.id)?.role || "guest");
 
   // Track task detailed update by query mapping
   const currentTaskDetails = selectedTask
@@ -308,17 +312,23 @@ export const Dashboard: React.FC = () => {
       title: string;
       description?: string;
       priority?: string;
-      clientProjectId: string;
-      projectName: string;
-      assignees: string[];
-      dueDate: string;
+      clientProjectId?: string;
+      projectName?: string;
+      assignees?: string[];
+      dueDate?: string;
       notes?: string;
     }) => taskflowService.createTask(data),
     onSuccess: (_, variables) => {
       queryClient.invalidateQueries({ queryKey: ["tasks", variables.listId] });
+      queryClient.invalidateQueries({ queryKey: ["tasks"] });
       queryClient.invalidateQueries({ queryKey: ["workspaceTasks", activeWorkspace?._id] });
       setIsTaskModalOpen(false);
       setTargetListIdForTask(null);
+      useToastStore.getState().addToast(isAr ? "تم إنشاء المهمة بنجاح!" : "Task created successfully!", "success");
+    },
+    onError: (err: any) => {
+      const msg = err?.response?.data?.error?.message || err?.message || (isAr ? "حدث خطأ أثناء إنشاء المهمة" : "Failed to create task");
+      useToastStore.getState().addToast(msg, "error");
     },
   });
 
@@ -523,7 +533,7 @@ export const Dashboard: React.FC = () => {
       <>
         <div className="flex flex-col overflow-y-auto flex-1">
           {/* Header Branding */}
-          <div className={`p-4 flex items-center border-b border-[#1f1233] bg-black/30 transition-all ${collapsed ? "flex-col gap-3 justify-center items-center px-2 py-3.5" : "justify-between"}`}>
+          <div className={`p-4 flex items-center border-b border-zinc-200 dark:border-[#1f1233] bg-zinc-50 dark:bg-black/30 transition-all ${collapsed ? "flex-col gap-3 justify-center items-center px-2 py-3.5" : "justify-between"}`}>
             <div className="flex items-center gap-2 overflow-hidden justify-center">
               {collapsed ? (
                 <img
@@ -542,7 +552,7 @@ export const Dashboard: React.FC = () => {
             {isMobile ? (
               <button
                 onClick={() => setIsMobileSidebarOpen(false)}
-                className="p-1.5 hover:bg-white/5 text-zinc-400 hover:text-white rounded-lg transition-all cursor-pointer shrink-0"
+                className="p-1.5 hover:bg-zinc-200 dark:hover:bg-white/5 text-zinc-500 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-white rounded-lg transition-all cursor-pointer shrink-0"
                 title="Close"
               >
                 <X className="h-5 w-5" />
@@ -550,7 +560,7 @@ export const Dashboard: React.FC = () => {
             ) : (
               <button
                 onClick={() => setIsSidebarCollapsed(!isSidebarCollapsed)}
-                className="p-1.5 hover:bg-white/5 text-zinc-400 hover:text-white rounded-lg transition-all cursor-pointer shrink-0"
+                className="p-1.5 hover:bg-zinc-200 dark:hover:bg-white/5 text-zinc-500 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-white rounded-lg transition-all cursor-pointer shrink-0"
                 title={isSidebarCollapsed ? t('sidebar.expand', { defaultValue: "Expand" }) : t('sidebar.collapse', { defaultValue: "Collapse" })}
               >
                 {isSidebarCollapsed ? (
@@ -564,7 +574,7 @@ export const Dashboard: React.FC = () => {
 
           {/* Workspace Switcher */}
           {!collapsed && !user?.isSystemAdmin && (
-            <div className="p-4 border-b border-[#1f1233]">
+            <div className="p-4 border-b border-zinc-200 dark:border-[#1f1233]">
               <label className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest block mb-2">
                 {t('sidebar.currentWorkspace')}
               </label>
@@ -578,7 +588,7 @@ export const Dashboard: React.FC = () => {
                       if (isMobile) setIsMobileSidebarOpen(false);
                     }
                   }}
-                  className="w-full bg-[#0e071c] border border-[#261540] rounded-lg py-2 px-3 text-sm text-zinc-100 appearance-none focus:outline-hidden focus:ring-1 focus:ring-[#b57ede] cursor-pointer"
+                  className="w-full bg-zinc-100 dark:bg-[#0e071c] border border-zinc-200 dark:border-[#261540] rounded-lg py-2 px-3 text-sm text-zinc-900 dark:text-zinc-100 appearance-none focus:outline-hidden focus:ring-1 focus:ring-[#b57ede] cursor-pointer font-medium"
                 >
                   {workspaces.map((ws) => (
                     <option key={ws._id} value={ws._id}>
@@ -594,7 +604,7 @@ export const Dashboard: React.FC = () => {
                   setIsWorkspaceModalOpen(true);
                   if (isMobile) setIsMobileSidebarOpen(false);
                 }}
-                className="mt-3 flex items-center gap-1.5 text-xs text-[#b57ede] hover:text-[#d3a6f7] font-semibold transition-colors cursor-pointer"
+                className="mt-3 flex items-center gap-1.5 text-xs text-[#843ec0] dark:text-[#b57ede] hover:text-[#9e59d2] dark:hover:text-[#d3a6f7] font-semibold transition-colors cursor-pointer"
               >
                 <Plus className="h-3.5 w-3.5" />
                 <span>{t('sidebar.createWorkspace')}</span>
@@ -603,7 +613,7 @@ export const Dashboard: React.FC = () => {
           )}
 
           {/* Tab Navigation */}
-          <div className={`px-2 py-3 border-b border-[#1f1233] space-y-1 ${collapsed ? "flex flex-col items-center" : ""}`}>
+          <div className={`px-2 py-3 border-b border-zinc-200 dark:border-[#1f1233] space-y-1 ${collapsed ? "flex flex-col items-center" : ""}`}>
             {[
               ...(!user?.isSystemAdmin
                 ? [
@@ -659,12 +669,12 @@ export const Dashboard: React.FC = () => {
                     collapsed ? "justify-center p-2.5" : "gap-2.5 py-2 px-3 text-start"
                   } ${
                     isActive
-                      ? "bg-[#b57ede]/15 border-s-4 border-[#b57ede] text-white font-bold"
-                      : "text-zinc-400 hover:bg-white/5 hover:text-white"
+                      ? "bg-[#b57ede]/15 border-s-4 border-[#843ec0] dark:border-[#b57ede] text-[#843ec0] dark:text-white font-bold"
+                      : "text-zinc-600 dark:text-zinc-400 hover:bg-zinc-100 dark:hover:bg-white/5 hover:text-zinc-900 dark:hover:text-white"
                   }`}
                   title={collapsed ? tab.label : undefined}
                 >
-                  <Icon className={`h-4 w-4 shrink-0 ${isActive ? "text-[#b57ede]" : ""}`} />
+                  <Icon className={`h-4 w-4 shrink-0 ${isActive ? "text-[#843ec0] dark:text-[#b57ede]" : ""}`} />
                   {!collapsed && <span className="text-sm truncate">{tab.label}</span>}
                 </button>
               );
@@ -685,7 +695,7 @@ export const Dashboard: React.FC = () => {
                     handleOpenSpaceModal();
                     if (isMobile) setIsMobileSidebarOpen(false);
                   }}
-                  className="text-zinc-400 hover:text-zinc-100 p-0.5 hover:bg-white/5 rounded-md transition-all cursor-pointer"
+                  className="text-zinc-500 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-100 p-0.5 hover:bg-zinc-100 dark:hover:bg-white/5 rounded-md transition-all cursor-pointer"
                   title={t('sidebar.createSpace', { defaultValue: "Create Space" })}
                 >
                   <Plus className="h-4 w-4" />
@@ -713,8 +723,8 @@ export const Dashboard: React.FC = () => {
                           collapsed ? "justify-center p-2.5" : "gap-2.5 py-2 px-3 text-start"
                         } ${
                           isActive
-                            ? "bg-[#b57ede]/10 text-[#b57ede] font-semibold border-s-4 border-[#b57ede]"
-                            : "text-zinc-400 hover:bg-white/5 hover:text-zinc-200"
+                            ? "bg-[#b57ede]/15 text-[#843ec0] dark:text-[#b57ede] font-bold border-s-4 border-[#843ec0] dark:border-[#b57ede]"
+                            : "text-zinc-600 dark:text-zinc-400 hover:bg-zinc-100 dark:hover:bg-white/5 hover:text-zinc-900 dark:hover:text-zinc-200"
                         }`}
                         title={collapsed ? sp.name : undefined}
                       >
@@ -736,19 +746,19 @@ export const Dashboard: React.FC = () => {
         <div className="flex flex-col shrink-0">
           {/* Powered by logo footer */}
           {!collapsed && (
-            <div className="px-4 py-2.5 border-t border-[#1f1233] flex flex-col gap-1 items-center justify-center bg-black/40">
-              <span className="text-[8px] font-mono tracking-widest text-[#b57ede]/70 uppercase">ARAB PRO ENTERPRISE</span>
+            <div className="px-4 py-2.5 border-t border-zinc-200 dark:border-[#1f1233] flex flex-col gap-1 items-center justify-center bg-zinc-50 dark:bg-black/40">
+              <span className="text-[8px] font-mono tracking-widest text-[#843ec0] dark:text-[#b57ede]/70 uppercase font-semibold">ARAB PRO ENTERPRISE</span>
             </div>
           )}
 
           {/* Profile bar */}
-          <div className={`p-3 border-t border-[#1f1233] bg-[#05030a] flex items-center justify-between ${collapsed ? "flex-col gap-3 justify-center" : ""}`}>
+          <div className={`p-3 border-t border-zinc-200 dark:border-[#1f1233] bg-zinc-50 dark:bg-[#05030a] flex items-center justify-between ${collapsed ? "flex-col gap-3 justify-center" : ""}`}>
             <div 
               onClick={() => {
                 setIsProfileModalOpen(true);
                 if (isMobile) setIsMobileSidebarOpen(false);
               }}
-              className="flex items-center gap-2.5 overflow-hidden cursor-pointer hover:bg-white/5 p-1 rounded-lg transition-all"
+              className="flex items-center gap-2.5 overflow-hidden cursor-pointer hover:bg-zinc-200/60 dark:hover:bg-white/5 p-1 rounded-lg transition-all"
               title={t('profile.title', { defaultValue: "Profile Settings" })}
             >
               <img
@@ -758,7 +768,7 @@ export const Dashboard: React.FC = () => {
               />
               {!collapsed && (
                 <div className="text-start overflow-hidden">
-                  <p className="text-xs font-semibold text-zinc-200 truncate">{user?.fullName}</p>
+                  <p className="text-xs font-semibold text-zinc-900 dark:text-zinc-200 truncate">{user?.fullName}</p>
                   <p className="text-[10px] text-zinc-500 truncate">{user?.email}</p>
                 </div>
               )}
@@ -766,7 +776,7 @@ export const Dashboard: React.FC = () => {
             <button
               onClick={() => logout()}
               title={t('sidebar.logOut')}
-              className="text-zinc-500 hover:text-red-400 hover:bg-white/5 p-1.5 rounded-lg transition-all cursor-pointer shrink-0"
+              className="text-zinc-500 hover:text-red-500 hover:bg-zinc-200/60 dark:hover:bg-white/5 p-1.5 rounded-lg transition-all cursor-pointer shrink-0"
             >
               <LogOut className="h-4 w-4" />
             </button>
@@ -777,9 +787,9 @@ export const Dashboard: React.FC = () => {
   };
 
   return (
-    <div className="flex h-screen w-screen bg-[#000000] font-sans text-white overflow-hidden transition-theme selection:bg-[#b57ede]/35 selection:text-white">
+    <div className="flex h-screen w-screen bg-[#f8fafc] dark:bg-[#000000] font-sans text-zinc-900 dark:text-white overflow-hidden transition-theme selection:bg-[#b57ede]/35 selection:text-white">
       {/* 1. DESKTOP SIDEBAR */}
-      <aside className={`hidden md:flex bg-[#05030a] text-zinc-100 flex-col justify-between border-e border-[#1a1029] shrink-0 transition-all duration-300 no-print ${isSidebarCollapsed ? "w-16" : "w-64"}`}>
+      <aside className={`hidden md:flex bg-white dark:bg-[#05030a] text-zinc-800 dark:text-zinc-100 flex-col justify-between border-e border-zinc-200 dark:border-[#1a1029] shrink-0 transition-all duration-300 no-print ${isSidebarCollapsed ? "w-16" : "w-64"}`}>
         {renderSidebarContent(false)}
       </aside>
 
@@ -792,14 +802,14 @@ export const Dashboard: React.FC = () => {
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
               onClick={() => setIsMobileSidebarOpen(false)}
-              className="fixed inset-0 bg-black/80 backdrop-blur-xs z-50 md:hidden"
+              className="fixed inset-0 bg-black/60 backdrop-blur-xs z-50 md:hidden"
             />
             <motion.aside
               initial={{ x: isAr ? "100%" : "-100%" }}
               animate={{ x: 0 }}
               exit={{ x: isAr ? "100%" : "-100%" }}
               transition={{ type: "spring", damping: 25, stiffness: 260 }}
-              className="fixed top-0 bottom-0 start-0 w-72 max-w-[85vw] bg-[#05030a] text-zinc-100 flex flex-col justify-between border-e border-[#1a1029] z-50 md:hidden shadow-2xl"
+              className="fixed top-0 bottom-0 start-0 w-72 max-w-[85vw] bg-white dark:bg-[#05030a] text-zinc-800 dark:text-zinc-100 flex flex-col justify-between border-e border-zinc-200 dark:border-[#1a1029] z-50 md:hidden shadow-2xl"
             >
               {renderSidebarContent(true)}
             </motion.aside>
@@ -808,21 +818,21 @@ export const Dashboard: React.FC = () => {
       </AnimatePresence>
 
       {/* 2. MAIN BOARD WORKSPACE */}
-      <main className="flex-1 flex flex-col min-w-0 overflow-hidden">
+      <main className="flex-1 flex flex-col min-w-0 overflow-hidden bg-[#f8fafc] dark:bg-[#000000]">
         {user?.isSystemAdmin ? (
           <div className="flex-1 flex flex-col overflow-hidden animate-fade-in text-start">
             {/* Header Toolbar */}
-            <header className="h-16 border-b border-[#1f1233] bg-[#0a0614]/85 backdrop-blur-md px-3 sm:px-4 py-3 flex items-center justify-between shrink-0 transition-theme relative z-20 no-print gap-2">
+            <header className="h-16 border-b border-zinc-200 dark:border-[#1f1233] bg-white/90 dark:bg-[#0a0614]/85 backdrop-blur-md px-3 sm:px-4 py-3 flex items-center justify-between shrink-0 transition-theme relative z-20 no-print gap-2 text-zinc-900 dark:text-white">
               <div className="flex items-center gap-2 sm:gap-3 min-w-0">
                 <button
                   onClick={() => setIsMobileSidebarOpen(true)}
-                  className="md:hidden p-1.5 text-zinc-400 hover:text-white hover:bg-white/5 rounded-lg transition-colors cursor-pointer shrink-0"
+                  className="md:hidden p-1.5 text-zinc-500 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-white hover:bg-zinc-100 dark:hover:bg-white/5 rounded-lg transition-colors cursor-pointer shrink-0"
                   title="Open navigation menu"
                 >
                   <Menu className="h-5 w-5" />
                 </button>
-                <Shield className="h-5 w-5 text-[#b57ede] shrink-0" />
-                <h1 className="text-sm sm:text-lg md:text-xl font-bold tracking-tight truncate text-white">
+                <Shield className="h-5 w-5 text-[#843ec0] dark:text-[#b57ede] shrink-0" />
+                <h1 className="text-sm sm:text-lg md:text-xl font-bold tracking-tight truncate text-zinc-900 dark:text-white">
                   {adminSubTab === "dashboard" ? t('adminHeader.titleDashboard', { defaultValue: "Admin Analytics Overview" }) :
                    adminSubTab === "companies" ? t('adminHeader.titleCompanies', { defaultValue: "Workspace & Company Inspector" }) :
                    adminSubTab === "users" ? t('adminHeader.titleUsers', { defaultValue: "User Access Verification" }) :
@@ -839,7 +849,7 @@ export const Dashboard: React.FC = () => {
               {/* Actions on the right side of header for Admin */}
               <div className="flex items-center gap-2 sm:gap-4 shrink-0">
                 {/* Language Switcher */}
-                <div dir="ltr" className="flex items-center bg-black/60 p-0.5 rounded-lg border border-[#261540] relative h-8 shrink-0 select-none">
+                <div dir="ltr" className="flex items-center bg-zinc-100 dark:bg-black/60 p-0.5 rounded-lg border border-zinc-200 dark:border-[#261540] relative h-8 shrink-0 select-none">
                   <motion.div
                     className="absolute top-0.5 bottom-0.5 bg-[#b57ede] rounded-md shadow-xs"
                     initial={false}
@@ -855,7 +865,7 @@ export const Dashboard: React.FC = () => {
                     className={`relative z-10 w-8 h-full text-center text-[10px] font-black transition-colors cursor-pointer ${
                       i18n.language === 'en'
                         ? 'text-black'
-                        : 'text-zinc-400 hover:text-white'
+                        : 'text-zinc-500 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-white'
                     }`}
                   >
                     EN
@@ -866,7 +876,7 @@ export const Dashboard: React.FC = () => {
                     className={`relative z-10 w-8 h-full text-center text-[10px] font-black transition-colors cursor-pointer ${
                       i18n.language === 'ar'
                         ? 'text-black'
-                        : 'text-zinc-400 hover:text-white'
+                        : 'text-zinc-500 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-white'
                     }`}
                   >
                     AR
@@ -877,17 +887,17 @@ export const Dashboard: React.FC = () => {
                 <button
                   onClick={toggleTheme}
                   title={t('header.toggleTheme')}
-                  className="p-2 text-zinc-400 hover:text-white hover:bg-white/5 rounded-lg transition-all cursor-pointer"
+                  className="p-2 text-zinc-500 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-white hover:bg-zinc-100 dark:hover:bg-white/5 rounded-lg transition-all cursor-pointer"
                 >
-                  {theme === "light" ? <Moon className="h-4 w-4" /> : <Sun className="h-4 w-4 text-[#b57ede]" />}
+                  {theme === "light" ? <Moon className="h-4 w-4 text-purple-600" /> : <Sun className="h-4 w-4 text-[#b57ede]" />}
                 </button>
               </div>
             </header>
             
-            <div className="flex-1 overflow-y-auto overflow-x-hidden min-h-0 min-w-0 max-w-full bg-[#000000]">
+            <div className="flex-1 overflow-y-auto overflow-x-hidden min-h-0 min-w-0 max-w-full bg-[#f8fafc] dark:bg-[#000000]">
               <Suspense fallback={
-                <div className="flex-1 flex items-center justify-center p-8 bg-black/40">
-                  <Loader2 className="h-8 w-8 animate-spin text-[#b57ede]" />
+                <div className="flex-1 flex items-center justify-center p-8 bg-zinc-50 dark:bg-black/40">
+                  <Loader2 className="h-8 w-8 animate-spin text-[#843ec0] dark:text-[#b57ede]" />
                 </div>
               }>
                 <AdminPanel activeSubTab={adminSubTab as any} />
@@ -895,10 +905,10 @@ export const Dashboard: React.FC = () => {
             </div>
           </div>
         ) : workspaces.length === 0 && !isLoadingWorkspaces ? (
-          <div className="flex-1 flex flex-col items-center justify-center p-8 text-center max-w-md mx-auto animate-fade-in bg-[#000000]">
-            <Briefcase className="h-16 w-16 text-[#b57ede] mb-6" />
-            <h1 className="text-3xl font-extrabold mb-3 text-white">{t('welcome.title')}</h1>
-            <p className="text-zinc-400 mb-8 leading-relaxed">
+          <div className="flex-1 flex flex-col items-center justify-center p-8 text-center max-w-md mx-auto animate-fade-in bg-[#f8fafc] dark:bg-[#000000]">
+            <Briefcase className="h-16 w-16 text-[#843ec0] dark:text-[#b57ede] mb-6" />
+            <h1 className="text-3xl font-extrabold mb-3 text-zinc-900 dark:text-white">{t('welcome.title')}</h1>
+            <p className="text-zinc-600 dark:text-zinc-400 mb-8 leading-relaxed">
               {t('welcome.subtitle')}
             </p>
             <button
@@ -909,10 +919,10 @@ export const Dashboard: React.FC = () => {
             </button>
           </div>
         ) : !activeSpace && activeTab === "kanban" ? (
-          <div className="flex-1 flex flex-col items-center justify-center p-8 text-center max-w-md mx-auto bg-[#000000]">
-            <Layers className="h-16 w-16 text-[#b57ede] mb-6 animate-pulse" />
-            <h1 className="text-2xl font-bold mb-3 text-white">{t('noSpaces.title')}</h1>
-            <p className="text-zinc-400 mb-8 leading-relaxed">
+          <div className="flex-1 flex flex-col items-center justify-center p-8 text-center max-w-md mx-auto bg-[#f8fafc] dark:bg-[#000000]">
+            <Layers className="h-16 w-16 text-[#843ec0] dark:text-[#b57ede] mb-6 animate-pulse" />
+            <h1 className="text-2xl font-bold mb-3 text-zinc-900 dark:text-white">{t('noSpaces.title')}</h1>
+            <p className="text-zinc-600 dark:text-zinc-400 mb-8 leading-relaxed">
               {t('noSpaces.subtitle', { workspaceName: activeWorkspace?.name })}
             </p>
             <button
@@ -923,21 +933,21 @@ export const Dashboard: React.FC = () => {
             </button>
           </div>
         ) : (
-          <div className="flex-1 flex flex-col overflow-hidden bg-[#000000]">
+          <div className="flex-1 flex flex-col overflow-hidden bg-[#f8fafc] dark:bg-[#000000]">
             {/* Header Toolbar */}
-            <header className="h-16 border-b border-[#1f1233] bg-[#0a0614]/85 backdrop-blur-md px-3 sm:px-4 py-3 flex items-center justify-between shrink-0 transition-theme relative z-20 gap-2">
+            <header className="h-16 border-b border-zinc-200 dark:border-[#1f1233] bg-white/90 dark:bg-[#0a0614]/85 backdrop-blur-md px-3 sm:px-4 py-3 flex items-center justify-between shrink-0 transition-theme relative z-20 gap-2 text-zinc-900 dark:text-white">
               <div className="flex items-center gap-2 sm:gap-3 min-w-0">
                 <button
                   onClick={() => setIsMobileSidebarOpen(true)}
-                  className="md:hidden p-1.5 text-zinc-400 hover:text-white hover:bg-white/5 rounded-lg transition-colors cursor-pointer shrink-0"
+                  className="md:hidden p-1.5 text-zinc-500 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-white hover:bg-zinc-100 dark:hover:bg-white/5 rounded-lg transition-colors cursor-pointer shrink-0"
                   title="Open navigation menu"
                 >
                   <Menu className="h-5 w-5" />
                 </button>
                 {activeTab === "admin" ? (
                   <>
-                    <Shield className="h-5 w-5 text-[#b57ede] shrink-0" />
-                    <h1 className="text-sm sm:text-lg md:text-xl font-bold tracking-tight truncate text-white">
+                    <Shield className="h-5 w-5 text-[#843ec0] dark:text-[#b57ede] shrink-0" />
+                    <h1 className="text-sm sm:text-lg md:text-xl font-bold tracking-tight truncate text-zinc-900 dark:text-white">
                       {adminSubTab === "dashboard" ? "Admin Analytics Overview" :
                        adminSubTab === "companies" ? "Workspace & Company Inspector" :
                        adminSubTab === "users" ? "User Access Verification" :
@@ -947,38 +957,38 @@ export const Dashboard: React.FC = () => {
                   </>
                 ) : activeTab === "clients" ? (
                   <>
-                    <Briefcase className="h-5 w-5 text-[#b57ede] shrink-0" />
-                    <h1 className="text-sm sm:text-lg md:text-xl font-bold tracking-tight truncate text-white">{t('sidebar.clients', { defaultValue: "Client Projects" })}</h1>
+                    <Briefcase className="h-5 w-5 text-[#843ec0] dark:text-[#b57ede] shrink-0" />
+                    <h1 className="text-sm sm:text-lg md:text-xl font-bold tracking-tight truncate text-zinc-900 dark:text-white">{t('sidebar.clients', { defaultValue: "Client Projects" })}</h1>
                   </>
                 ) : activeTab === "team" ? (
                   <>
-                    <Users className="h-5 w-5 text-[#b57ede] shrink-0" />
-                    <h1 className="text-sm sm:text-lg md:text-xl font-bold tracking-tight truncate text-white">{t('sidebar.team', { defaultValue: "Workspace Team" })}</h1>
+                    <Users className="h-5 w-5 text-[#843ec0] dark:text-[#b57ede] shrink-0" />
+                    <h1 className="text-sm sm:text-lg md:text-xl font-bold tracking-tight truncate text-zinc-900 dark:text-white">{t('sidebar.team', { defaultValue: "Workspace Team" })}</h1>
                   </>
                 ) : activeTab === "dashboard" ? (
                   <>
-                    <LayoutDashboard className="h-5 w-5 text-[#b57ede] shrink-0" />
-                    <h1 className="text-sm sm:text-lg md:text-xl font-bold tracking-tight truncate text-white">{t('sidebar.dashboard', { defaultValue: "Widgets Dashboard" })}</h1>
+                    <LayoutDashboard className="h-5 w-5 text-[#843ec0] dark:text-[#b57ede] shrink-0" />
+                    <h1 className="text-sm sm:text-lg md:text-xl font-bold tracking-tight truncate text-zinc-900 dark:text-white">{t('sidebar.dashboard', { defaultValue: "Widgets Dashboard" })}</h1>
                   </>
                 ) : activeTab === "reports" ? (
                   <>
-                    <BarChart2 className="h-5 w-5 text-[#b57ede] shrink-0" />
-                    <h1 className="text-sm sm:text-lg md:text-xl font-bold tracking-tight truncate text-white">{t('sidebar.reports', { defaultValue: "Reports & Analytics" })}</h1>
+                    <BarChart2 className="h-5 w-5 text-[#843ec0] dark:text-[#b57ede] shrink-0" />
+                    <h1 className="text-sm sm:text-lg md:text-xl font-bold tracking-tight truncate text-zinc-900 dark:text-white">{t('sidebar.reports', { defaultValue: "Reports & Analytics" })}</h1>
                   </>
                 ) : activeTab === "gantt" ? (
                   <>
-                    <Clock className="h-5 w-5 text-[#b57ede] shrink-0" />
-                    <h1 className="text-sm sm:text-lg md:text-xl font-bold tracking-tight truncate text-white">{t('sidebar.gantt', { defaultValue: "Gantt Chart" })}</h1>
+                    <Clock className="h-5 w-5 text-[#843ec0] dark:text-[#b57ede] shrink-0" />
+                    <h1 className="text-sm sm:text-lg md:text-xl font-bold tracking-tight truncate text-zinc-900 dark:text-white">{t('sidebar.gantt', { defaultValue: "Gantt Chart" })}</h1>
                   </>
                 ) : activeTab === "calendar" ? (
                   <>
-                    <Calendar className="h-5 w-5 text-[#b57ede] shrink-0" />
-                    <h1 className="text-sm sm:text-lg md:text-xl font-bold tracking-tight truncate text-white">{t('sidebar.calendar', { defaultValue: "Calendar View" })}</h1>
+                    <Calendar className="h-5 w-5 text-[#843ec0] dark:text-[#b57ede] shrink-0" />
+                    <h1 className="text-sm sm:text-lg md:text-xl font-bold tracking-tight truncate text-zinc-900 dark:text-white">{t('sidebar.calendar', { defaultValue: "Calendar View" })}</h1>
                   </>
                 ) : activeTab === "goals" ? (
                   <>
-                    <Target className="h-5 w-5 text-[#b57ede] shrink-0" />
-                    <h1 className="text-sm sm:text-lg md:text-xl font-bold tracking-tight truncate text-white">{t('sidebar.goals', { defaultValue: "Strategic Goals & OKRs" })}</h1>
+                    <Target className="h-5 w-5 text-[#843ec0] dark:text-[#b57ede] shrink-0" />
+                    <h1 className="text-sm sm:text-lg md:text-xl font-bold tracking-tight truncate text-zinc-900 dark:text-white">{t('sidebar.goals', { defaultValue: "Strategic Goals & OKRs" })}</h1>
                   </>
                 ) : (
                   <>
@@ -986,7 +996,7 @@ export const Dashboard: React.FC = () => {
                       className="h-3 w-3 rounded-full shrink-0"
                       style={{ backgroundColor: activeSpace?.color || "#b57ede" }}
                     />
-                    <h1 className="text-sm sm:text-lg md:text-xl font-bold tracking-tight truncate text-white">{activeSpace?.name || activeWorkspace?.name}</h1>
+                    <h1 className="text-sm sm:text-lg md:text-xl font-bold tracking-tight truncate text-zinc-900 dark:text-white">{activeSpace?.name || activeWorkspace?.name}</h1>
                   </>
                 )}
               </div>
@@ -994,7 +1004,7 @@ export const Dashboard: React.FC = () => {
               {/* Invite Members / Actions */}
               <div className="flex items-center gap-1.5 sm:gap-3 shrink-0">
                 {/* Language Switcher */}
-                <div dir="ltr" className="flex items-center bg-black/60 p-0.5 rounded-lg border border-[#261540] relative h-8 shrink-0 select-none">
+                <div dir="ltr" className="flex items-center bg-zinc-100 dark:bg-black/60 p-0.5 rounded-lg border border-zinc-200 dark:border-[#261540] relative h-8 shrink-0 select-none">
                   <motion.div
                     className="absolute top-0.5 bottom-0.5 bg-[#b57ede] rounded-md shadow-xs"
                     initial={false}
@@ -1010,7 +1020,7 @@ export const Dashboard: React.FC = () => {
                     className={`relative z-10 w-8 h-full text-center text-[10px] font-black transition-colors cursor-pointer ${
                       i18n.language === 'en'
                         ? 'text-black'
-                        : 'text-zinc-400 hover:text-white'
+                        : 'text-zinc-500 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-white'
                     }`}
                   >
                     EN
@@ -1021,7 +1031,7 @@ export const Dashboard: React.FC = () => {
                     className={`relative z-10 w-8 h-full text-center text-[10px] font-black transition-colors cursor-pointer ${
                       i18n.language === 'ar'
                         ? 'text-black'
-                        : 'text-zinc-400 hover:text-white'
+                        : 'text-zinc-500 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-white'
                     }`}
                   >
                     AR
@@ -1032,7 +1042,7 @@ export const Dashboard: React.FC = () => {
                 <div className="relative">
                   <button
                     onClick={() => setIsNotificationsOpen(!isNotificationsOpen)}
-                    className="p-1.5 sm:p-2 text-zinc-400 hover:text-white hover:bg-white/5 rounded-lg transition-all relative cursor-pointer"
+                    className="p-1.5 sm:p-2 text-zinc-500 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-white hover:bg-zinc-100 dark:hover:bg-white/5 rounded-lg transition-all relative cursor-pointer"
                   >
                     <Bell className="h-4 w-4" />
                     {unreadCount > 0 && (
@@ -1041,31 +1051,31 @@ export const Dashboard: React.FC = () => {
                   </button>
 
                   {isNotificationsOpen && (
-                    <div className="absolute end-0 mt-2 w-72 sm:w-80 max-w-[calc(100vw-32px)] bg-[#0a0614] border border-[#261540] rounded-2xl shadow-2xl overflow-hidden z-50 transition-theme max-h-96 flex flex-col">
-                      <div className="p-3 border-b border-[#1f1233] flex items-center justify-between shrink-0 bg-black/50 gap-2">
+                    <div className="absolute end-0 mt-2 w-72 sm:w-80 max-w-[calc(100vw-32px)] bg-white dark:bg-[#0a0614] border border-zinc-200 dark:border-[#261540] rounded-2xl shadow-2xl overflow-hidden z-50 transition-theme max-h-96 flex flex-col">
+                      <div className="p-3 border-b border-zinc-200 dark:border-[#1f1233] flex items-center justify-between shrink-0 bg-zinc-50 dark:bg-black/50 gap-2">
                         <div className="flex items-center gap-1.5">
                           <button
                             onClick={() => setIsNotificationsOpen(false)}
-                            className="text-zinc-400 hover:text-white transition-colors p-0.5 rounded-md hover:bg-white/5 cursor-pointer"
+                            className="text-zinc-500 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-white transition-colors p-0.5 rounded-md hover:bg-zinc-100 dark:hover:bg-white/5 cursor-pointer"
                             title="Close"
                           >
                             <X className="h-3.5 w-3.5" />
                           </button>
-                          <span className="text-xs font-bold text-white">
+                          <span className="text-xs font-bold text-zinc-900 dark:text-white">
                             {t('notifications.title', { defaultValue: "Notifications" })} ({unreadCount})
                           </span>
                         </div>
                         {unreadCount > 0 && (
                           <button
                             onClick={() => markAllReadMutation.mutate()}
-                            className="text-[10px] font-bold text-[#b57ede] hover:text-[#d3a6f7] cursor-pointer whitespace-nowrap"
+                            className="text-[10px] font-bold text-[#843ec0] dark:text-[#b57ede] hover:underline cursor-pointer whitespace-nowrap"
                           >
                             {t('notifications.markAllRead', { defaultValue: "Mark all as read" })}
                           </button>
                         )}
                       </div>
 
-                      <div className="flex-1 overflow-y-auto divide-y divide-[#1f1233] max-h-80">
+                      <div className="flex-1 overflow-y-auto divide-y divide-zinc-100 dark:divide-[#1f1233] max-h-80">
                         {notifications.length === 0 ? (
                           <div className="p-8 text-center text-xs text-zinc-500">
                             {t('notifications.empty', { defaultValue: "No notifications yet" })}
@@ -1425,7 +1435,7 @@ export const Dashboard: React.FC = () => {
                 )}
               </Suspense>
             ) : (
-              <div className="flex-1 overflow-x-auto overflow-y-hidden p-3 sm:p-6 bg-zinc-50/50 dark:bg-zinc-950/20 transition-theme kanban-scrollbar">
+              <div className="flex-1 overflow-x-auto overflow-y-hidden p-3 sm:p-6 bg-[#eef1f5] dark:bg-zinc-950/20 transition-theme kanban-scrollbar">
                 <div className="flex gap-3 sm:gap-4 h-full items-start snap-x snap-mandatory sm:snap-none">
                   {lists.map((list) => (
                     <KanbanColumn
@@ -1447,7 +1457,7 @@ export const Dashboard: React.FC = () => {
                   {/* Create Column Column Trigger */}
                   <button
                     onClick={handleOpenListModal}
-                    className="w-72 border border-dashed border-zinc-350 dark:border-zinc-800 hover:border-purple-500 dark:hover:border-purple-500 py-3 flex items-center justify-center gap-2 rounded-xl text-sm font-semibold text-zinc-500 hover:text-purple-500 hover:bg-purple-500/5 shrink-0 transition-all cursor-pointer"
+                    className="w-72 bg-white/80 dark:bg-transparent border border-dashed border-zinc-300 dark:border-zinc-800 hover:border-[#843ec0] dark:hover:border-purple-500 py-3 flex items-center justify-center gap-2 rounded-xl text-sm font-semibold text-zinc-600 dark:text-zinc-500 hover:text-[#843ec0] dark:hover:text-purple-400 hover:bg-[#843ec0]/10 shrink-0 transition-all cursor-pointer shadow-xs"
                   >
                     <PlusCircle className="h-4.5 w-4.5" />
                     <span>{t('kanban.createColumn')}</span>
@@ -1514,22 +1524,23 @@ export const Dashboard: React.FC = () => {
       <CreateTaskModal
         isOpen={isTaskModalOpen}
         onClose={() => setIsTaskModalOpen(false)}
-        onSubmit={(data) =>
+        onSubmit={(data) => {
+          const listId = data.listId || targetListIdForTask || lists[0]?._id;
+          if (!listId) {
+            useToastStore.getState().addToast(isAr ? "يرجى إنشاء قائمة/عمود أولاً" : "Please create a column/list first", "warning");
+            return;
+          }
           createTaskMutation.mutate({
-            listId: targetListIdForTask!,
+            listId,
             title: data.title,
             description: data.description,
             priority: data.priority,
-            clientProjectId: data.clientProjectId,
-            projectName: data.projectName,
-            assignees: data.assignees,
             dueDate: data.dueDate,
-            notes: data.notes,
-          })
-        }
+          });
+        }}
         isPending={createTaskMutation.isPending}
-        workspaceId={activeWorkspace?._id || ""}
-        workspaceMembers={members}
+        lists={lists}
+        defaultListId={targetListIdForTask || lists[0]?._id}
       />
 
       {/* 5. Invite/Manage Members Modal */}

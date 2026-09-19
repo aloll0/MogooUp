@@ -147,20 +147,20 @@ export const TimeTrackerWidget: React.FC<TimeTrackerWidgetProps> = ({ tasks }) =
     <>
       {/* Floating Widget Bar */}
       <div
-        className={`fixed bottom-4 sm:bottom-6 ltr:right-3 sm:ltr:right-6 rtl:left-3 sm:rtl:left-6 z-40 bg-zinc-900 text-zinc-100 rounded-2xl shadow-2xl border border-zinc-800 transition-all duration-300 overflow-hidden max-w-[calc(100vw-24px)] ${
+        className={`fixed bottom-4 sm:bottom-6 ltr:right-3 sm:ltr:right-6 rtl:left-3 sm:rtl:left-6 z-40 bg-white dark:bg-[#0a0614] text-zinc-900 dark:text-zinc-100 rounded-2xl shadow-xl border border-zinc-200 dark:border-[#261540] transition-all duration-300 overflow-hidden max-w-[calc(100vw-24px)] ${
           isMinimized ? "w-44 sm:w-48" : "w-72 sm:w-80"
         }`}
       >
         {/* Header Title / Toggle */}
-        <div className="flex items-center justify-between p-3.5 bg-zinc-950 border-b border-zinc-800">
+        <div className="flex items-center justify-between p-3.5 bg-zinc-50 dark:bg-black/50 border-b border-zinc-200 dark:border-[#1f1233]">
           <div className="flex items-center gap-2 font-bold text-xs select-none">
-            <Clock className={`h-4 w-4 ${activeTaskId && !isPaused ? "text-purple-400 animate-pulse" : "text-zinc-400"}`} />
+            <Clock className={`h-4 w-4 ${activeTaskId && !isPaused ? "text-[#843ec0] dark:text-purple-400 animate-pulse" : "text-zinc-500 dark:text-zinc-400"}`} />
             <span>{t("timeTracker.timeTracker")} {isMinimized && activeTaskId && `(${displayTime})`}</span>
           </div>
 
           <button
             onClick={() => setIsMinimized(!isMinimized)}
-            className="p-1 hover:bg-zinc-800 rounded-md text-zinc-400 hover:text-zinc-200 cursor-pointer"
+            className="p-1 hover:bg-zinc-200 dark:hover:bg-zinc-800 rounded-md text-zinc-500 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-200 cursor-pointer"
           >
             {isMinimized ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
           </button>
@@ -174,15 +174,15 @@ export const TimeTrackerWidget: React.FC<TimeTrackerWidgetProps> = ({ tasks }) =
             <div className="space-y-3">
               {!isMinimized && (
                 <div className="text-xs">
-                  <span className="text-zinc-450 uppercase font-extrabold text-[9px] tracking-wider block mb-1">
+                  <span className="text-zinc-500 uppercase font-extrabold text-[9px] tracking-wider block mb-1">
                     Currently Tracking
                   </span>
-                  <div className="font-bold text-zinc-200 truncate">{activeTaskTitle}</div>
+                  <div className="font-bold text-zinc-900 dark:text-zinc-200 truncate">{activeTaskTitle}</div>
                 </div>
               )}
 
               {/* Digital clock display */}
-              <div className="text-center font-mono text-2xl font-black text-purple-400 bg-zinc-950/40 py-2.5 rounded-xl border border-zinc-850">
+              <div className="text-center font-mono text-2xl font-black text-[#843ec0] dark:text-purple-400 bg-zinc-100 dark:bg-zinc-950/40 py-2.5 rounded-xl border border-zinc-200 dark:border-zinc-850">
                 {displayTime}
               </div>
 
@@ -191,7 +191,7 @@ export const TimeTrackerWidget: React.FC<TimeTrackerWidgetProps> = ({ tasks }) =
                 {isPaused ? (
                   <button
                     onClick={resume}
-                    className="flex-1 flex items-center justify-center gap-1.5 bg-purple-600 hover:bg-purple-700 py-2 rounded-xl text-xs font-bold text-white transition-all cursor-pointer"
+                    className="flex-1 flex items-center justify-center gap-1.5 bg-[#843ec0] hover:bg-[#6c2fa2] py-2 rounded-xl text-xs font-bold text-white transition-all cursor-pointer shadow-xs"
                   >
                     <Play className="h-3.5 w-3.5 fill-current" />
                     <span>{t("timeTracker.resumeTracking")}</span>
@@ -199,7 +199,7 @@ export const TimeTrackerWidget: React.FC<TimeTrackerWidgetProps> = ({ tasks }) =
                 ) : (
                   <button
                     onClick={pause}
-                    className="flex-1 flex items-center justify-center gap-1.5 bg-zinc-800 hover:bg-zinc-700 py-2 rounded-xl text-xs font-bold text-zinc-200 transition-all cursor-pointer"
+                    className="flex-1 flex items-center justify-center gap-1.5 bg-zinc-200 dark:bg-zinc-800 hover:bg-zinc-300 dark:hover:bg-zinc-700 py-2 rounded-xl text-xs font-bold text-zinc-800 dark:text-zinc-200 transition-all cursor-pointer"
                   >
                     <Pause className="h-3.5 w-3.5 fill-current" />
                     <span>{t("timeTracker.pauseTracking")}</span>
@@ -208,7 +208,7 @@ export const TimeTrackerWidget: React.FC<TimeTrackerWidgetProps> = ({ tasks }) =
 
                 <button
                   onClick={handleStop}
-                  className="flex-1 flex items-center justify-center gap-1.5 bg-red-600 hover:bg-red-700 py-2 rounded-xl text-xs font-bold text-white transition-all cursor-pointer"
+                  className="flex-1 flex items-center justify-center gap-1.5 bg-rose-600 hover:bg-rose-700 py-2 rounded-xl text-xs font-bold text-white transition-all cursor-pointer shadow-xs"
                 >
                   <Square className="h-3.5 w-3.5 fill-current" />
                   <span>{t("timeTracker.stopTracking")}</span>
@@ -226,7 +226,7 @@ export const TimeTrackerWidget: React.FC<TimeTrackerWidgetProps> = ({ tasks }) =
                   <select
                     value={selectedTaskId}
                     onChange={(e) => setSelectedTaskId(e.target.value)}
-                    className="w-full bg-zinc-950 border border-zinc-800 text-zinc-200 text-xs rounded-xl py-2 px-3 focus:outline-hidden focus:ring-1 focus:ring-purple-500 cursor-pointer"
+                    className="w-full bg-zinc-100 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 text-zinc-900 dark:text-zinc-200 text-xs rounded-xl py-2 px-3 focus:outline-hidden focus:ring-1 focus:ring-purple-500 cursor-pointer font-medium"
                   >
                     {tasks.map((t) => (
                       <option key={t._id} value={t._id}>
@@ -238,7 +238,7 @@ export const TimeTrackerWidget: React.FC<TimeTrackerWidgetProps> = ({ tasks }) =
 
                 <button
                   onClick={handleStart}
-                  className="w-full flex items-center justify-center gap-2 bg-purple-600 hover:bg-purple-700 py-2.5 rounded-xl text-xs font-bold text-white transition-all cursor-pointer shadow-md"
+                  className="w-full flex items-center justify-center gap-2 bg-[#843ec0] hover:bg-[#6c2fa2] py-2.5 rounded-xl text-xs font-bold text-white transition-all cursor-pointer shadow-md"
                 >
                   <Play className="h-3.5 w-3.5 fill-current" />
                   <span>{t("timeTracker.startTracking")}</span>

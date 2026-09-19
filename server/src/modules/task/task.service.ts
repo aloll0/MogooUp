@@ -22,9 +22,16 @@ export class TaskService {
       throw new NotFoundError("Associated Space not found");
     }
 
-    const wsMembership = await workspaceRepository.findMembership(space.workspaceId.toString(), userId);
-    if (!wsMembership || wsMembership.status !== "active") {
-      throw new ForbiddenError("You are not authorized to create tasks in this workspace");
+    const user = await mongoose.model("User").findById(userId);
+    const isSysAdmin = user?.isSystemAdmin;
+    const workspace = await workspaceRepository.findById(space.workspaceId.toString());
+    const isOwner = workspace && (workspace.ownerId?.toString() === userId || (workspace.ownerId as any)?._id?.toString() === userId);
+
+    if (!isSysAdmin && !isOwner) {
+      const wsMembership = await workspaceRepository.findMembership(space.workspaceId.toString(), userId);
+      if (!wsMembership || wsMembership.status !== "active") {
+        throw new ForbiddenError("You are not authorized to create tasks in this workspace");
+      }
     }
 
     // Set defaults
@@ -35,9 +42,13 @@ export class TaskService {
       spaceId: space._id,
       reporterId: new mongoose.Types.ObjectId(userId),
       assignees: taskData.assignees?.map((id) => new mongoose.Types.ObjectId(id.toString())) || [],
-      clientProjectId: taskData.clientProjectId ? new mongoose.Types.ObjectId(taskData.clientProjectId.toString()) : undefined,
+      clientProjectId: taskData.clientProjectId && mongoose.Types.ObjectId.isValid(taskData.clientProjectId.toString())
+        ? new mongoose.Types.ObjectId(taskData.clientProjectId.toString())
+        : undefined,
       projectName: taskData.projectName || "",
       notes: taskData.notes || "",
+      startDate: taskData.startDate ? new Date(taskData.startDate) : undefined,
+      dueDate: taskData.dueDate ? new Date(taskData.dueDate) : undefined,
       status,
       statusHistory: [{
         status,
@@ -100,14 +111,18 @@ export class TaskService {
       throw new NotFoundError("Associated Space not found");
     }
 
-    // Verify workspace membership
+    const user = await mongoose.model("User").findById(userId);
+    const isSysAdmin = user?.isSystemAdmin;
+    const workspace = await workspaceRepository.findById(space.workspaceId.toString());
+    const isOwner = workspace && (workspace.ownerId?.toString() === userId || (workspace.ownerId as any)?._id?.toString() === userId);
+
     const membership = await workspaceRepository.findMembership(space.workspaceId.toString(), userId);
-    if (!membership || membership.status !== "active") {
+    if (!isSysAdmin && !isOwner && (!membership || membership.status !== "active")) {
       throw new ForbiddenError("You are not a member of this workspace");
     }
 
     // Employees (members/guests) should only see their own assigned tasks or tasks they reported
-    if (membership.role === "member" || membership.role === "guest") {
+    if (!isSysAdmin && !isOwner && membership && (membership.role === "member" || membership.role === "guest")) {
       return TaskModel.find({
         listId: new mongoose.Types.ObjectId(listId),
         deleted: { $ne: true },
@@ -131,8 +146,13 @@ export class TaskService {
     }
 
     // Verify membership permissions
+    const user = await mongoose.model("User").findById(userId);
+    const isSysAdmin = user?.isSystemAdmin;
+    const workspace = await workspaceRepository.findById(task.workspaceId.toString());
+    const isOwner = workspace && (workspace.ownerId?.toString() === userId || (workspace.ownerId as any)?._id?.toString() === userId);
+
     const membership = await workspaceRepository.findMembership(task.workspaceId.toString(), userId);
-    if (!membership || membership.status !== "active") {
+    if (!isSysAdmin && !isOwner && (!membership || membership.status !== "active")) {
       throw new ForbiddenError("You do not have permission to modify tasks in this workspace");
     }
 
@@ -308,8 +328,13 @@ export class TaskService {
       throw new NotFoundError("Task not found");
     }
 
+    const user = await mongoose.model("User").findById(userId);
+    const isSysAdmin = user?.isSystemAdmin;
+    const workspace = await workspaceRepository.findById(task.workspaceId.toString());
+    const isOwner = workspace && (workspace.ownerId?.toString() === userId || (workspace.ownerId as any)?._id?.toString() === userId);
+
     const membership = await workspaceRepository.findMembership(task.workspaceId.toString(), userId);
-    if (!membership || !["owner", "admin", "manager"].includes(membership.role)) {
+    if (!isSysAdmin && !isOwner && (!membership || !["owner", "admin", "manager"].includes(membership.role))) {
       throw new ForbiddenError("Only workspace managers, admins or owners can delete tasks");
     }
 
@@ -331,13 +356,18 @@ export class TaskService {
   }
 
   async getTasksByWorkspace(workspaceId: string, userId: string): Promise<ITask[]> {
+    const user = await mongoose.model("User").findById(userId);
+    const isSysAdmin = user?.isSystemAdmin;
+    const workspace = await workspaceRepository.findById(workspaceId);
+    const isOwner = workspace && (workspace.ownerId?.toString() === userId || (workspace.ownerId as any)?._id?.toString() === userId);
+
     const membership = await workspaceRepository.findMembership(workspaceId, userId);
-    if (!membership || membership.status !== "active") {
+    if (!isSysAdmin && !isOwner && (!membership || membership.status !== "active")) {
       throw new ForbiddenError("You do not have access to this workspace");
     }
 
     // Employees (members/guests) should only see their own assigned tasks or tasks they reported
-    if (membership.role === "member" || membership.role === "guest") {
+    if (!isSysAdmin && !isOwner && membership && (membership.role === "member" || membership.role === "guest")) {
       return taskRepository.findTasks({
         workspaceId: new mongoose.Types.ObjectId(workspaceId),
         $or: [
