@@ -15,15 +15,16 @@ export const createTaskSchema = z.object({
     priority: z.enum(["low", "medium", "high", "urgent"]).optional(),
     assignees: z
       .array(z.string().regex(objectIdRegex, "Invalid User ID in assignees"))
-      .min(1, "Assigned employee is required"),
+      .optional()
+      .default([]),
     startDate: z.string().datetime().nullable().optional(),
-    dueDate: z.string({ required_error: "Due date is required" }).datetime(),
+    dueDate: z.string().datetime().nullable().optional(),
     clientProjectId: z
-      .string({ required_error: "Company/Client is required" })
-      .regex(objectIdRegex, "Invalid Company/Client ID"),
-    projectName: z
-      .string({ required_error: "Project/Service is required" })
-      .min(2, "Project name must be at least 2 characters long"),
+      .string()
+      .regex(objectIdRegex, "Invalid Company/Client ID")
+      .nullable()
+      .optional(),
+    projectName: z.string().optional(),
     notes: z.string().optional(),
     attachments: z
       .array(
@@ -74,7 +75,7 @@ export const updateTaskSchema = z.object({
     position: z.number().optional(),
     startDate: z.string().datetime().nullable().optional(),
     dueDate: z.string().datetime().nullable().optional(),
-    clientProjectId: z.string().regex(objectIdRegex, "Invalid Company/Client ID").optional(),
+    clientProjectId: z.string().regex(objectIdRegex, "Invalid Company/Client ID").nullable().optional(),
     projectName: z.string().min(2).optional(),
     notes: z.string().optional(),
     delayReason: z.string().optional(),

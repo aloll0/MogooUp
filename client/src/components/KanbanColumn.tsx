@@ -92,14 +92,14 @@ export const KanbanColumn: React.FC<KanbanColumnProps> = ({
           onMoveTask(taskId, list._id, list.name.toLowerCase().replace(/\s+/g, "-"));
         }
       }}
-      className={`w-[82vw] sm:w-76 md:w-80 shrink-0 snap-center rounded-xl flex flex-col max-h-full transition-all duration-200 border-2 ${
+      className={`w-[82vw] sm:w-76 md:w-80 shrink-0 snap-center rounded-2xl flex flex-col max-h-full transition-all duration-200 border shadow-xs ${
         isDragOver
           ? "bg-purple-500/10 border-purple-500 border-dashed"
-          : "bg-zinc-100/70 dark:bg-zinc-900/60 border-zinc-250/20 dark:border-zinc-800/80"
+          : "bg-[#ebecf0] dark:bg-[#0e071c] border-zinc-300/80 dark:border-[#261540]"
       }`}
     >
       {/* Column Header */}
-      <div className="p-3 flex items-center justify-between border-b border-zinc-200 dark:border-zinc-800 shrink-0">
+      <div className="p-3.5 flex items-center justify-between border-b border-zinc-200/80 dark:border-zinc-800/80 shrink-0 text-zinc-900 dark:text-zinc-100">
         <div className="flex items-center gap-2 min-w-0 flex-1">
           {isEditingName ? (
             <input
@@ -116,7 +116,7 @@ export const KanbanColumn: React.FC<KanbanColumnProps> = ({
                 }
               }}
               autoFocus
-              className="font-semibold text-sm bg-zinc-55 dark:bg-zinc-950 border border-purple-500 rounded px-1.5 py-0.5 outline-hidden w-full focus:ring-1 focus:ring-purple-500 text-zinc-900 dark:text-zinc-100"
+              className="font-bold text-sm bg-white dark:bg-zinc-950 border border-purple-500 rounded-lg px-2 py-0.5 outline-hidden w-full focus:ring-1 focus:ring-purple-500 text-zinc-900 dark:text-zinc-100"
             />
           ) : (
             <span
@@ -126,14 +126,14 @@ export const KanbanColumn: React.FC<KanbanColumnProps> = ({
                 }
               }}
               title={canEditColumn ? "Click to edit column name" : undefined}
-              className={`font-semibold text-sm truncate px-1.5 py-0.5 rounded select-none max-w-[150px] block ${
-                canEditColumn ? "hover:bg-zinc-200/50 dark:hover:bg-zinc-800/50 cursor-pointer" : ""
+              className={`font-black text-sm truncate px-1.5 py-0.5 rounded select-none max-w-[150px] block text-zinc-800 dark:text-zinc-100 ${
+                canEditColumn ? "hover:bg-zinc-200/60 dark:hover:bg-zinc-800/50 cursor-pointer" : ""
               }`}
             >
               {list.name}
             </span>
           )}
-          <span className="text-xs bg-zinc-200 dark:bg-zinc-800 px-1.5 py-0.5 rounded-full text-zinc-500 shrink-0 select-none">
+          <span className="text-xs bg-zinc-200 dark:bg-zinc-800 px-2 py-0.5 rounded-full text-zinc-700 dark:text-zinc-400 font-bold shrink-0 select-none">
             {tasks.length}
           </span>
         </div>
@@ -177,7 +177,7 @@ export const KanbanColumn: React.FC<KanbanColumnProps> = ({
             <Loader2 className="h-5 w-5 animate-spin text-zinc-400" />
           </div>
         ) : tasks.length === 0 ? (
-          <div className="text-center py-6 text-xs text-zinc-400 dark:text-zinc-555">
+          <div className="text-center py-6 text-xs text-zinc-500 dark:text-zinc-500 font-medium">
             {t('kanban.noTasks')}
           </div>
         ) : (
@@ -196,17 +196,17 @@ export const KanbanColumn: React.FC<KanbanColumnProps> = ({
                   e.stopPropagation();
                   e.dataTransfer.setData("text/plain", task._id);
                 }}
-                className={`bg-white dark:bg-zinc-800 border border-zinc-200/80 dark:border-zinc-800/80 p-3 rounded-lg shadow-sm hover:shadow-md transition-all relative group text-start cursor-grab active:cursor-grabbing overflow-hidden ${
+                className={`bg-white dark:bg-[#150d24] border border-zinc-200/90 dark:border-[#2d184a] p-3.5 rounded-xl shadow-xs hover:shadow-md hover:border-[#843ec0]/50 dark:hover:border-[#b57ede]/50 transition-all relative group text-start cursor-grab active:cursor-grabbing overflow-hidden ${
                   isDeleting ? "opacity-40 pointer-events-none" : ""
                 }`}
               >
                 {isDeleting && (
-                  <div className="absolute inset-0 bg-zinc-950/10 dark:bg-black/40 flex items-center justify-center z-20">
+                  <div className="absolute inset-0 bg-white/60 dark:bg-black/40 flex items-center justify-center z-20">
                     <Loader2 className="h-5 w-5 animate-spin text-purple-600 dark:text-purple-400" />
                   </div>
                 )}
                 {coverImage && (
-                  <div className="h-28 -mx-3 -mt-3 mb-3 overflow-hidden border-b border-zinc-200 dark:border-zinc-800">
+                  <div className="h-28 -mx-3.5 -mt-3.5 mb-3 overflow-hidden border-b border-zinc-200 dark:border-zinc-800">
                     <img
                       src={coverImage.url}
                       alt="Cover"
@@ -216,7 +216,7 @@ export const KanbanColumn: React.FC<KanbanColumnProps> = ({
                 )}
                 
                 <div className="flex items-start justify-between gap-2 mb-2">
-                  <span className="text-sm font-semibold leading-tight text-zinc-900 dark:text-zinc-100">
+                  <span className="text-sm font-bold leading-tight text-zinc-900 dark:text-zinc-100">
                     {task.title}
                   </span>
 
@@ -303,7 +303,7 @@ export const KanbanColumn: React.FC<KanbanColumnProps> = ({
       {/* Add Task footer trigger */}
       <button
         onClick={() => onAddTaskClick(list._id)}
-        className="m-2 py-2 flex items-center justify-center gap-1.5 border border-dashed border-zinc-300 dark:border-zinc-800 rounded-lg text-xs font-semibold text-zinc-500 hover:text-zinc-850 dark:hover:text-zinc-300 hover:bg-zinc-200/50 dark:hover:bg-zinc-855/50 transition-all cursor-pointer"
+        className="m-2.5 py-2.5 flex items-center justify-center gap-1.5 border border-dashed border-zinc-300 dark:border-zinc-800 rounded-xl text-xs font-bold text-zinc-600 dark:text-zinc-300 hover:text-[#843ec0] dark:hover:text-[#b57ede] hover:bg-white dark:hover:bg-white/5 hover:border-[#843ec0]/40 dark:hover:border-[#b57ede]/40 transition-all cursor-pointer shadow-xs"
       >
         <Plus className="h-3.5 w-3.5" />
         <span>{t('kanban.addTask')}</span>

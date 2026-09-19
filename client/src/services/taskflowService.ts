@@ -303,6 +303,11 @@ export const taskflowService = {
     description?: string;
     priority?: string;
     assignees?: string[];
+    dueDate?: string;
+    startDate?: string;
+    clientProjectId?: string;
+    projectName?: string;
+    notes?: string;
   }): Promise<Task> => {
     const response = await api.post("/tasks", taskData);
     return response.data.data.task;
