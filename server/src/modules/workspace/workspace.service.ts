@@ -1,8 +1,8 @@
 import mongoose from "mongoose";
 import { workspaceRepository } from "./workspace.repository";
 import { userRepository } from "../user/user.repository";
-import { IWorkspace } from "./workspace.model";
-import { IMembership, WorkspaceRole } from "./membership.model";
+import { IWorkspace, WorkspaceModel } from "./workspace.model";
+import { IMembership, WorkspaceRole, DEFAULT_ROLE_PERMISSIONS, IWorkspacePermissions } from "./membership.model";
 import { ConflictError, NotFoundError, ForbiddenError } from "../../utils/errors";
 
 export class WorkspaceService {
@@ -32,8 +32,14 @@ export class WorkspaceService {
     // Create Workspace
     const workspace = await workspaceRepository.createWorkspace(name, slug, ownerId);
 
-    // Automatically join owner as workspace owner
-    await workspaceRepository.createMembership(workspace._id.toString(), ownerId, "owner", "active");
+    // Automatically join owner as workspace owner with owner permissions
+    await workspaceRepository.createMembership(
+      workspace._id.toString(),
+      ownerId,
+      "owner",
+      "active",
+      DEFAULT_ROLE_PERMISSIONS.owner
+    );
 
     // Automatically create a default Space ("General Space") and the 4 default lists
     const SpaceModel = mongoose.model("Space");
@@ -59,7 +65,39 @@ export class WorkspaceService {
   }
 
   async getUserWorkspaces(userId: string): Promise<IWorkspace[]> {
+    const user = await mongoose.model("User").findById(userId);
+    if (user?.isSystemAdmin) {
+      return WorkspaceModel.find({}).exec();
+    }
     return workspaceRepository.findUserWorkspaces(userId);
+  }
+
+  async deleteWorkspace(workspaceId: string, userId: string): Promise<void> {
+    const user = await mongoose.model("User").findById(userId);
+    const isSysAdmin = user?.isSystemAdmin;
+    const workspace = await workspaceRepository.findById(workspaceId);
+    if (!workspace) {
+      throw new NotFoundError("Workspace not found");
+    }
+    const isOwner = workspace.ownerId?.toString() === userId || (workspace.ownerId as any)?._id?.toString() === userId;
+    if (!isSysAdmin && !isOwner) {
+      throw new ForbiddenError("Only the workspace owner or system administrator can delete this workspace");
+    }
+
+    const SpaceModel = mongoose.model("Space");
+    const ListModel = mongoose.model("List");
+    const TaskModel = mongoose.model("Task");
+    const ClientProjectModel = mongoose.model("ClientProject");
+    const MembershipModel = mongoose.model("Membership");
+
+    await TaskModel.deleteMany({ workspaceId });
+    const spaces = await SpaceModel.find({ workspaceId }, "_id");
+    const spaceIds = spaces.map((s: any) => s._id);
+    await ListModel.deleteMany({ spaceId: { $in: spaceIds } });
+    await SpaceModel.deleteMany({ workspaceId });
+    await ClientProjectModel.deleteMany({ workspaceId });
+    await MembershipModel.deleteMany({ workspaceId });
+    await WorkspaceModel.findByIdAndDelete(workspaceId);
   }
 
   async getWorkspaceBySlug(slug: string, userId: string): Promise<IWorkspace> {
@@ -68,9 +106,11 @@ export class WorkspaceService {
       throw new NotFoundError("Workspace not found");
     }
 
-    // Verify requesting user is a member of the workspace
+    // Verify requesting user is a member of the workspace or system admin
+    const user = await mongoose.model("User").findById(userId);
+    const isSysAdmin = user?.isSystemAdmin;
     const membership = await workspaceRepository.findMembership(workspace._id.toString(), userId);
-    if (!membership || membership.status !== "active") {
+    if (!isSysAdmin && (!membership || membership.status !== "active")) {
       throw new ForbiddenError("You do not have access to this workspace");
     }
 
@@ -78,9 +118,11 @@ export class WorkspaceService {
   }
 
   async getWorkspaceMembers(workspaceId: string, userId: string) {
-    // Validate requestor is member
+    // Validate requestor is member or system admin
+    const user = await mongoose.model("User").findById(userId);
+    const isSysAdmin = user?.isSystemAdmin;
     const membership = await workspaceRepository.findMembership(workspaceId, userId);
-    if (!membership || membership.status !== "active") {
+    if (!isSysAdmin && (!membership || membership.status !== "active")) {
       throw new ForbiddenError("Access denied. You are not a member of this workspace.");
     }
 
@@ -91,18 +133,24 @@ export class WorkspaceService {
     workspaceId: string,
     email: string,
     role: WorkspaceRole,
-    inviterId: string
+    inviterId: string,
+    customPermissions?: Partial<IWorkspacePermissions>
   ): Promise<IMembership> {
-    // 1. Validate inviter is Owner or Admin
+    // 1. Validate inviter is Owner or Admin or has canInviteMembers permission or is system admin
+    const user = await mongoose.model("User").findById(inviterId);
+    const isSysAdmin = user?.isSystemAdmin;
     const inviterMembership = await workspaceRepository.findMembership(workspaceId, inviterId);
-    if (!inviterMembership || !["owner", "admin"].includes(inviterMembership.role)) {
-      throw new ForbiddenError("Only workspace owners or admins can invite new members");
+    const isOwnerOrAdmin = inviterMembership && ["owner", "admin"].includes(inviterMembership.role);
+    const canInvite = inviterMembership?.permissions?.canInviteMembers;
+
+    if (!isSysAdmin && !isOwnerOrAdmin && !canInvite) {
+      throw new ForbiddenError("Only workspace owners, admins, or authorized members can invite new members");
     }
 
     // 2. Find target user by email
     const targetUser = await userRepository.findByEmail(email);
     if (!targetUser) {
-      throw new NotFoundError(`User with email ${email} is not registered on Taskflow yet.`);
+      throw new NotFoundError(`User with email ${email} is not registered on the platform yet.`);
     }
 
     // 3. Check if target user is already a member
@@ -111,37 +159,96 @@ export class WorkspaceService {
       throw new ConflictError("This user is already a member of this workspace");
     }
 
-    // 4. Create membership invitation
-    return workspaceRepository.createMembership(workspaceId, targetUser._id.toString(), role, "active"); // auto-active for simplicity in this sprint
+    // 4. Merge permissions
+    const permissions: IWorkspacePermissions = {
+      ...(DEFAULT_ROLE_PERMISSIONS[role] || DEFAULT_ROLE_PERMISSIONS.member),
+      ...(customPermissions || {}),
+    };
+
+    // 5. Create membership
+    return workspaceRepository.createMembership(
+      workspaceId,
+      targetUser._id.toString(),
+      role,
+      "active",
+      permissions
+    );
   }
 
-  async updateMemberRole(
+  async updateMemberRoleAndPermissions(
     workspaceId: string,
     targetUserId: string,
-    role: WorkspaceRole,
-    requestorId: string
+    requestorId: string,
+    role?: WorkspaceRole,
+    permissions?: Partial<IWorkspacePermissions>
   ): Promise<IMembership> {
-    // 1. Validate requestor is Owner or Admin
+    const user = await mongoose.model("User").findById(requestorId);
+    const isSysAdmin = user?.isSystemAdmin;
     const requestorMembership = await workspaceRepository.findMembership(workspaceId, requestorId);
-    if (!requestorMembership || !["owner", "admin"].includes(requestorMembership.role)) {
-      throw new ForbiddenError("Only workspace owners or admins can modify member roles");
+    const workspace = await workspaceRepository.findById(workspaceId);
+    const isOwner = workspace && (workspace.ownerId?.toString() === requestorId || (workspace.ownerId as any)?._id?.toString() === requestorId);
+
+    if (!isSysAdmin && !isOwner && (!requestorMembership || !["owner", "admin"].includes(requestorMembership.role))) {
+      throw new ForbiddenError("Only workspace owners or admins can modify member roles and permissions");
     }
 
-    // 2. Prevent modifying the owner's role
+    const targetMembership = await workspaceRepository.findMembership(workspaceId, targetUserId);
+    if (!targetMembership) {
+      throw new NotFoundError("Member not found in workspace");
+    }
+    if (targetMembership.role === "owner" && !isOwner && !isSysAdmin) {
+      throw new ForbiddenError("Cannot modify the workspace owner's role or permissions");
+    }
+
+    const updateData: any = {};
+    if (role) {
+      updateData.role = role;
+      if (!permissions) {
+        updateData.permissions = DEFAULT_ROLE_PERMISSIONS[role];
+      }
+    }
+    if (permissions) {
+      const permsObj = (targetMembership.permissions as any);
+      const existingPerms = permsObj?.toObject
+        ? permsObj.toObject()
+        : targetMembership.permissions || DEFAULT_ROLE_PERMISSIONS[role || targetMembership.role];
+      updateData.permissions = {
+        ...existingPerms,
+        ...permissions,
+      };
+    }
+
+    const updated = await workspaceRepository.updateMembership(workspaceId, targetUserId, updateData);
+    if (!updated) {
+      throw new NotFoundError("Membership record not found");
+    }
+    return updated;
+  }
+
+  async removeMember(
+    workspaceId: string,
+    targetUserId: string,
+    requestorId: string
+  ): Promise<void> {
+    const user = await mongoose.model("User").findById(requestorId);
+    const isSysAdmin = user?.isSystemAdmin;
+    const requestorMembership = await workspaceRepository.findMembership(workspaceId, requestorId);
+    const workspace = await workspaceRepository.findById(workspaceId);
+    const isOwner = workspace && (workspace.ownerId?.toString() === requestorId || (workspace.ownerId as any)?._id?.toString() === requestorId);
+
+    if (!isSysAdmin && !isOwner && (!requestorMembership || !["owner", "admin"].includes(requestorMembership.role))) {
+      throw new ForbiddenError("Only workspace owners or admins can remove members");
+    }
+
     const targetMembership = await workspaceRepository.findMembership(workspaceId, targetUserId);
     if (!targetMembership) {
       throw new NotFoundError("Member not found in workspace");
     }
     if (targetMembership.role === "owner") {
-      throw new ForbiddenError("Cannot modify the owner's role");
+      throw new ForbiddenError("The workspace owner cannot be removed from the workspace");
     }
 
-    // 3. Update membership role
-    const updated = await workspaceRepository.updateMembership(workspaceId, targetUserId, { role });
-    if (!updated) {
-      throw new NotFoundError("Membership record not found");
-    }
-    return updated;
+    await workspaceRepository.deleteMembership(workspaceId, targetUserId);
   }
 }
 

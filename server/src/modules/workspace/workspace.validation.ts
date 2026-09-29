@@ -27,6 +27,17 @@ export const updateWorkspaceSchema = z.object({
   }),
 });
 
+const permissionsObject = z.object({
+  canCreateTasks: z.boolean().optional(),
+  canEditTasks: z.boolean().optional(),
+  canDeleteTasks: z.boolean().optional(),
+  canManageLists: z.boolean().optional(),
+  canManageSpaces: z.boolean().optional(),
+  canInviteMembers: z.boolean().optional(),
+  canViewReports: z.boolean().optional(),
+  canManageClients: z.boolean().optional(),
+});
+
 export const inviteMemberSchema = z.object({
   body: z.object({
     email: z
@@ -36,6 +47,7 @@ export const inviteMemberSchema = z.object({
       .enum(["admin", "manager", "member", "guest"], {
         errorMap: () => ({ message: "Invalid workspace role" }),
       }),
+    permissions: permissionsObject.optional(),
   }),
 });
 
@@ -46,6 +58,9 @@ export const updateMemberRoleSchema = z.object({
     role: z
       .enum(["admin", "manager", "member", "guest"], {
         errorMap: () => ({ message: "Invalid workspace role" }),
-      }),
+      })
+      .optional(),
+    permissions: permissionsObject.optional(),
   }),
 });
+

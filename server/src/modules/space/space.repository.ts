@@ -7,6 +7,18 @@ export class SpaceRepository {
   }
 
   async findSpacesByWorkspace(workspaceId: string, userId: string): Promise<ISpace[]> {
+    try {
+      const UserModel = mongoose.model("User");
+      const user = await UserModel.findById(userId).lean().exec() as any;
+      if (user && user.isSystemAdmin) {
+        return SpaceModel.find({
+          workspaceId: new mongoose.Types.ObjectId(workspaceId),
+        }).exec();
+      }
+    } catch {
+      // Fallback
+    }
+
     // Find public spaces OR private spaces where user is allowed
     return SpaceModel.find({
       workspaceId: new mongoose.Types.ObjectId(workspaceId),

@@ -26,6 +26,7 @@ import { CreateSpaceModal } from "../components/CreateSpaceModal";
 import { CreateListModal } from "../components/CreateListModal";
 import { CreateTaskModal } from "../components/CreateTaskModal";
 import { InviteMembersModal } from "../components/InviteMembersModal";
+import { MemberPermissionsEditor } from "../components/MemberPermissionsEditor";
 import { ProfileModal } from "../components/ProfileModal";
 import arabProLogo from "../assets/arabpro_logo.png";
 import arabProIcon from "../assets/arabpro_icon.png";
@@ -58,6 +59,9 @@ import {
   UserCheck,
   Trash2,
   Activity,
+  Search,
+  Sliders,
+  FileEdit,
 } from "lucide-react";
 
 // Static reference to prevent empty array literals from re-allocating memory and triggering render loops
@@ -89,6 +93,8 @@ export const Dashboard: React.FC = () => {
   const location = useLocation();
 
   const [selectedTeamMember, setSelectedTeamMember] = useState<any>(null);
+  const [teamMemberTab, setTeamMemberTab] = useState<"workload" | "permissions">("permissions");
+  const [memberSearchQuery, setMemberSearchQuery] = useState("");
 
   // Selected task detail view modal state
   const [selectedTask, setSelectedTask] = useState<Task | null>(null);
@@ -194,7 +200,7 @@ export const Dashboard: React.FC = () => {
     : spaceId
     ? "kanban"
     : (tab as "kanban" | "team" | "dashboard" | "reports" | "gantt" | "calendar" | "goals" | "admin" | "clients") ||
-      (user?.isSystemAdmin ? "admin" : "kanban");
+      "kanban";
 
   const [searchParams] = useSearchParams();
   const adminSubTab = searchParams.get("sub") || "dashboard";
@@ -217,9 +223,13 @@ export const Dashboard: React.FC = () => {
 
   useEffect(() => {
     if (user?.isSystemAdmin && !workspaceId && !isAdminPath) {
-      navigate("/admin", { replace: true });
+      if (workspaces.length > 0) {
+        navigate(`/w/${workspaces[0]._id}`, { replace: true });
+      } else {
+        navigate("/admin", { replace: true });
+      }
     }
-  }, [user, workspaceId, isAdminPath, navigate]);
+  }, [user, workspaceId, isAdminPath, navigate, workspaces]);
 
   const { data: listsData } = useQuery({
     queryKey: ["lists", activeSpace?._id],
@@ -234,6 +244,24 @@ export const Dashboard: React.FC = () => {
     enabled: !!activeWorkspace?._id,
   });
   const members = membersData || EMPTY_ARRAY;
+
+  // Keep selectedTeamMember in sync with updated members data
+  useEffect(() => {
+    if (selectedTeamMember) {
+      const fresh = members.find((m: any) => m._id === selectedTeamMember._id);
+      if (fresh) setSelectedTeamMember(fresh);
+    }
+  }, [members]);
+
+  const filteredMembers = members.filter((m: any) => {
+    if (!memberSearchQuery.trim()) return true;
+    const q = memberSearchQuery.toLowerCase();
+    return (
+      m.userId?.fullName?.toLowerCase().includes(q) ||
+      m.userId?.email?.toLowerCase().includes(q) ||
+      m.role?.toLowerCase().includes(q)
+    );
+  });
 
   const { data: workspaceTasksData } = useQuery({
     queryKey: ["workspaceTasks", activeWorkspace?._id],
@@ -469,8 +497,8 @@ export const Dashboard: React.FC = () => {
   });
 
   const inviteMemberMutation = useMutation({
-    mutationFn: (data: { email: string; role: string }) =>
-      taskflowService.inviteWorkspaceMember(activeWorkspace!._id, data.email, data.role),
+    mutationFn: (data: { email: string; role: string; permissions?: any }) =>
+      taskflowService.inviteWorkspaceMember(activeWorkspace!._id, data.email, data.role, data.permissions),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["members", activeWorkspace?._id] });
       setIsInviteModalOpen(false);
@@ -482,14 +510,27 @@ export const Dashboard: React.FC = () => {
   });
 
   const updateMemberRoleMutation = useMutation({
-    mutationFn: (data: { userId: string; role: string }) =>
-      taskflowService.updateWorkspaceMemberRole(activeWorkspace!._id, data.userId, data.role),
+    mutationFn: (data: { userId: string; role?: string; permissions?: any }) =>
+      taskflowService.updateWorkspaceMemberRole(activeWorkspace!._id, data.userId, data.role, data.permissions),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["members", activeWorkspace?._id] });
       useToastStore.getState().addToast(t('workspaceMembersModal.roleChangeSuccess'), "success");
     },
     onError: (err: any) => {
       useToastStore.getState().addToast(err?.response?.data?.error?.message || t('workspaceMembersModal.roleChangeFailed'), "error");
+    },
+  });
+
+  const removeMemberMutation = useMutation({
+    mutationFn: (userId: string) =>
+      taskflowService.removeWorkspaceMember(activeWorkspace!._id, userId),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["members", activeWorkspace?._id] });
+      setSelectedTeamMember(null);
+      useToastStore.getState().addToast(t('workspaceMembersModal.memberRemovedSuccess', { defaultValue: "Member removed successfully" }), "success");
+    },
+    onError: (err: any) => {
+      useToastStore.getState().addToast(err?.response?.data?.error?.message || "Failed to remove member", "error");
     },
   });
 
@@ -573,7 +614,7 @@ export const Dashboard: React.FC = () => {
           </div>
 
           {/* Workspace Switcher */}
-          {!collapsed && !user?.isSystemAdmin && (
+          {!collapsed && (
             <div className="p-4 border-b border-zinc-200 dark:border-[#1f1233]">
               <label className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest block mb-2">
                 {t('sidebar.currentWorkspace')}
@@ -615,46 +656,24 @@ export const Dashboard: React.FC = () => {
           {/* Tab Navigation */}
           <div className={`px-2 py-3 border-b border-zinc-200 dark:border-[#1f1233] space-y-1 ${collapsed ? "flex flex-col items-center" : ""}`}>
             {[
-              ...(!user?.isSystemAdmin
-                ? [
-                    { id: "kanban", icon: Layers, label: t('sidebar.board', { defaultValue: "Kanban Board" }) },
-                    { id: "dashboard", icon: LayoutDashboard, label: t('sidebar.dashboard', { defaultValue: "Widgets Dashboard" }) },
-                    { id: "reports", icon: BarChart2, label: t('sidebar.reports', { defaultValue: "Reports & Analytics" }) },
-                    { id: "clients", icon: Briefcase, label: t('sidebar.clients', { defaultValue: "Client Projects" }) },
-                    { id: "gantt", icon: Clock, label: t('sidebar.gantt', { defaultValue: "Gantt Chart" }) },
-                    { id: "calendar", icon: Calendar, label: t('sidebar.calendar', { defaultValue: "Calendar View" }) },
-                    { id: "team", icon: Users, label: t('sidebar.team', { defaultValue: "Workspace Team" }) },
-                    { id: "goals", icon: Target, label: t('sidebar.goals', { defaultValue: "Strategic Goals & OKRs" }) },
-                  ]
-                : []),
-              ...(user?.isSystemAdmin
-                ? [
-                    { id: "admin-dashboard", icon: LayoutDashboard, label: t('sidebar.adminDashboard', { defaultValue: "Admin Dashboard" }) },
-                    { id: "admin-companies", icon: Building, label: t('sidebar.companiesDrilldown', { defaultValue: "Company Inspector" }) },
-                    { id: "admin-users", icon: UserCheck, label: t('sidebar.approvals', { defaultValue: "User Approvals" }) },
-                    { id: "admin-employee-reports", icon: Users, label: t('sidebar.employeeReports', { defaultValue: "Employee Reports" }) },
-                    { id: "admin-deleted", icon: Trash2, label: t('sidebar.deletedItems', { defaultValue: "Deleted Items" }) },
-                    { id: "admin-audit", icon: Activity, label: t('sidebar.auditLogs', { defaultValue: "System Audit Logs" }) },
-                  ]
-                : []),
+              { id: "kanban", icon: Layers, label: t('sidebar.board', { defaultValue: "Kanban Board" }) },
+              { id: "dashboard", icon: LayoutDashboard, label: t('sidebar.dashboard', { defaultValue: "Widgets Dashboard" }) },
+              { id: "reports", icon: BarChart2, label: t('sidebar.reports', { defaultValue: "Reports & Analytics" }) },
+              { id: "clients", icon: Briefcase, label: t('sidebar.clients', { defaultValue: "Client Projects" }) },
+              { id: "gantt", icon: Clock, label: t('sidebar.gantt', { defaultValue: "Gantt Chart" }) },
+              { id: "calendar", icon: Calendar, label: t('sidebar.calendar', { defaultValue: "Calendar View" }) },
+              { id: "team", icon: Users, label: t('sidebar.team', { defaultValue: "Workspace Team" }) },
+              { id: "goals", icon: Target, label: t('sidebar.goals', { defaultValue: "Strategic Goals & OKRs" }) },
             ].map((tab) => {
               const Icon = tab.icon;
-              const sub = tab.id.startsWith("admin-") ? tab.id.substring(6) : null;
-              const isActive = sub 
-                ? (activeTab === "admin" && adminSubTab === sub)
-                : (activeTab === tab.id);
+              const isActive = (activeTab === tab.id);
               
               return (
                 <button
                   key={tab.id}
                   onClick={() => {
                     if (isMobile) setIsMobileSidebarOpen(false);
-                    if (tab.id.startsWith("admin-")) {
-                      const targetSub = tab.id.substring(6);
-                      navigate(`/admin?sub=${targetSub}`);
-                    } else if (tab.id === "admin") {
-                      navigate("/admin");
-                    } else if (tab.id === "kanban") {
+                    if (tab.id === "kanban") {
                       if (spaces.length > 0) {
                         const targetSpaceId = activeSpace?._id || spaces[0]._id;
                         navigate(`/w/${activeWorkspace?._id}/space/${targetSpaceId}`);
@@ -679,10 +698,59 @@ export const Dashboard: React.FC = () => {
                 </button>
               );
             })}
+
+            {/* Admin Console Sub-navigation for Super Admin */}
+            {user?.isSystemAdmin && (
+              <div className="pt-2 mt-2 border-t border-zinc-200 dark:border-[#1f1233]/70 space-y-1">
+                {!collapsed && (
+                  <div className="px-3 py-1 flex items-center justify-between">
+                    <span className="text-[10px] font-bold text-[#843ec0] dark:text-[#b57ede] uppercase tracking-wider block">
+                      {isAr ? "إدارة المشرف العام" : "Super Admin"}
+                    </span>
+                  </div>
+                )}
+                {[
+                  { id: "admin-dashboard", icon: Shield, label: t('sidebar.adminDashboard', { defaultValue: "لوحة المشرف العام" }) },
+                  { id: "admin-companies", icon: Building, label: t('sidebar.companiesDrilldown', { defaultValue: "فحص وإدارة الشركات" }) },
+                  { id: "admin-users", icon: UserCheck, label: t('sidebar.approvals', { defaultValue: "إدارة المستخدمين والصلاحيات" }) },
+                  { id: "admin-employee-reports", icon: Users, label: t('sidebar.employeeReports', { defaultValue: "تقارير الموظفين" }) },
+                  { id: "admin-deleted", icon: Trash2, label: t('sidebar.deletedItems', { defaultValue: "سلة المحذوفات" }) },
+                  { id: "admin-audit", icon: Activity, label: t('sidebar.auditLogs', { defaultValue: "سجل العمليات" }) },
+                ].map((tab) => {
+                  const Icon = tab.icon;
+                  const sub = tab.id.startsWith("admin-") ? tab.id.substring(6) : null;
+                  const isActive = sub 
+                    ? (activeTab === "admin" && adminSubTab === sub)
+                    : (activeTab === tab.id);
+
+                  return (
+                    <button
+                      key={tab.id}
+                      onClick={() => {
+                        if (isMobile) setIsMobileSidebarOpen(false);
+                        const targetSub = tab.id.substring(6);
+                        navigate(`/admin?sub=${targetSub}`);
+                      }}
+                      className={`w-full flex items-center rounded-lg transition-all cursor-pointer ${
+                        collapsed ? "justify-center p-2.5" : "gap-2.5 py-1.5 px-3 text-start"
+                      } ${
+                        isActive
+                          ? "bg-[#b57ede]/20 border-s-4 border-[#843ec0] dark:border-[#b57ede] text-[#843ec0] dark:text-white font-bold"
+                          : "text-zinc-600 dark:text-zinc-400 hover:bg-zinc-100 dark:hover:bg-white/5 hover:text-zinc-900 dark:hover:text-white"
+                      }`}
+                      title={collapsed ? tab.label : undefined}
+                    >
+                      <Icon className={`h-4 w-4 shrink-0 ${isActive ? "text-[#843ec0] dark:text-[#b57ede]" : ""}`} />
+                      {!collapsed && <span className="text-xs truncate">{tab.label}</span>}
+                    </button>
+                  );
+                })}
+              </div>
+            )}
           </div>
 
           {/* Spaces Navigation */}
-          {!user?.isSystemAdmin && (
+          {activeWorkspace && (
             <div className="p-3 flex flex-col">
               <div className={`flex items-center justify-between mb-3 ${collapsed ? "justify-center" : ""}`}>
                 {!collapsed && (
@@ -819,7 +887,7 @@ export const Dashboard: React.FC = () => {
 
       {/* 2. MAIN BOARD WORKSPACE */}
       <main className="flex-1 flex flex-col min-w-0 overflow-hidden bg-[#f8fafc] dark:bg-[#000000]">
-        {user?.isSystemAdmin ? (
+        {isAdminPath || activeTab === "admin" ? (
           <div className="flex-1 flex flex-col overflow-hidden animate-fade-in text-start">
             {/* Header Toolbar */}
             <header className="h-16 border-b border-zinc-200 dark:border-[#1f1233] bg-white/90 dark:bg-[#0a0614]/85 backdrop-blur-md px-3 sm:px-4 py-3 flex items-center justify-between shrink-0 transition-theme relative z-20 no-print gap-2 text-zinc-900 dark:text-white">
@@ -848,6 +916,24 @@ export const Dashboard: React.FC = () => {
 
               {/* Actions on the right side of header for Admin */}
               <div className="flex items-center gap-2 sm:gap-4 shrink-0">
+                {/* Switch to Workspace Board button */}
+                <button
+                  onClick={() => {
+                    if (activeWorkspace?._id) {
+                      navigate(`/w/${activeWorkspace._id}`);
+                    } else if (workspaces.length > 0) {
+                      navigate(`/w/${workspaces[0]._id}`);
+                    } else {
+                      navigate("/");
+                    }
+                  }}
+                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-[#b57ede]/15 hover:bg-[#b57ede]/25 text-[#843ec0] dark:text-[#b57ede] border border-[#b57ede]/30 text-xs font-bold transition-all cursor-pointer"
+                  title={isAr ? "الانتقال للوحة مهام الشركات" : "Switch to Workspace Board"}
+                >
+                  <Layers className="h-3.5 w-3.5" />
+                  <span className="hidden sm:inline">{isAr ? "لوحة مهام الشركات" : "Workspace Board"}</span>
+                </button>
+
                 {/* Language Switcher */}
                 <div dir="ltr" className="flex items-center bg-zinc-100 dark:bg-black/60 p-0.5 rounded-lg border border-zinc-200 dark:border-[#261540] relative h-8 shrink-0 select-none">
                   <motion.div
@@ -1145,8 +1231,20 @@ export const Dashboard: React.FC = () => {
                   {theme === "light" ? <Moon className="h-4 w-4" /> : <Sun className="h-4 w-4 text-[#b57ede]" />}
                 </button>
 
-                {/* Hide workspace-specific items for Super Admin */}
-                {!user?.isSystemAdmin && (
+                {/* Super Admin Console Button */}
+                {user?.isSystemAdmin && (
+                  <button
+                    onClick={() => navigate("/admin")}
+                    className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-[#b57ede]/15 hover:bg-[#b57ede]/25 text-[#843ec0] dark:text-[#b57ede] border border-[#b57ede]/30 text-xs font-bold transition-all cursor-pointer shrink-0"
+                    title={isAr ? "الدخول للوحة المشرف العام" : "Go to Super Admin Console"}
+                  >
+                    <Shield className="h-3.5 w-3.5" />
+                    <span className="hidden sm:inline">{isAr ? "لوحة المشرف العام" : "Admin Console"}</span>
+                  </button>
+                )}
+
+                {/* Show workspace members & actions if in a workspace */}
+                {activeWorkspace && (
                   <>
                     {/* Scratchpad Trigger Button */}
                     <button
@@ -1193,8 +1291,8 @@ export const Dashboard: React.FC = () => {
               <div className="flex-1 flex flex-col md:flex-row overflow-hidden bg-zinc-50/50 dark:bg-zinc-950/20 transition-theme">
                 
                 {/* Left Panel: Members list */}
-                <div className="w-full md:w-80 border-e border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900/40 p-4 flex flex-col min-h-0 shrink-0 transition-theme">
-                  <div className="flex items-center justify-between mb-4">
+                <div className="w-full md:w-88 border-e border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900/40 p-4 flex flex-col min-h-0 shrink-0 transition-theme">
+                  <div className="flex items-center justify-between mb-3 shrink-0">
                     <h2 className="text-base font-bold flex items-center gap-2">
                       <Users className="h-4 w-4 text-purple-500" />
                       <span>{t('workspaceMembersModal.membersTab')}</span>
@@ -1202,69 +1300,113 @@ export const Dashboard: React.FC = () => {
                         {members.length}
                       </span>
                     </h2>
+
+                    {["owner", "admin"].includes(currentUserRole) && (
+                      <button
+                        onClick={handleOpenInviteModal}
+                        className="px-2.5 py-1.5 rounded-xl bg-purple-600 hover:bg-purple-700 text-white text-xs font-bold flex items-center gap-1.5 transition-all shadow-xs cursor-pointer shadow-purple-500/20"
+                      >
+                        <UserPlus className="h-3.5 w-3.5" />
+                        <span>{t('workspaceMembersModal.inviteBtn', { defaultValue: "Invite" })}</span>
+                      </button>
+                    )}
+                  </div>
+
+                  {/* Search Bar */}
+                  <div className="relative mb-3 shrink-0">
+                    <Search className="absolute start-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-zinc-400" />
+                    <input
+                      type="text"
+                      placeholder={t('workspaceMembersModal.searchMembers', { defaultValue: "Search members..." })}
+                      value={memberSearchQuery}
+                      onChange={(e) => setMemberSearchQuery(e.target.value)}
+                      className="w-full rounded-xl border border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-950/40 py-2 ps-8 pe-3 text-xs focus:outline-hidden focus:ring-1 focus:ring-purple-500 text-zinc-800 dark:text-zinc-200 placeholder-zinc-400"
+                    />
+                    {memberSearchQuery && (
+                      <button
+                        onClick={() => setMemberSearchQuery("")}
+                        className="absolute end-2.5 top-1/2 -translate-y-1/2 text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-200"
+                      >
+                        <X className="h-3.5 w-3.5" />
+                      </button>
+                    )}
                   </div>
 
                   <div className="flex-1 overflow-y-auto space-y-2 pr-1">
-                    {members.map((m: any) => {
-                      const isSelected = selectedTeamMember?._id === m._id;
-                      const memberTasks = workspaceTasks.filter((task: any) => 
-                        task.assignees?.some((assignee: any) => assignee._id === m.userId?._id || assignee === m.userId?._id)
-                      );
+                    {filteredMembers.length === 0 ? (
+                      <div className="text-center py-10 text-xs text-zinc-400">
+                        {t('workspaceMembersModal.noMembersFound', { defaultValue: "No members found" })}
+                      </div>
+                    ) : (
+                      filteredMembers.map((m: any) => {
+                        const isSelected = selectedTeamMember?._id === m._id;
+                        const memberTasks = workspaceTasks.filter((task: any) => 
+                          task.assignees?.some((assignee: any) => assignee._id === m.userId?._id || assignee === m.userId?._id)
+                        );
 
-                      return (
-                        <button
-                          key={m._id}
-                          onClick={() => setSelectedTeamMember(m)}
-                          className={`w-full flex items-center justify-between p-3 rounded-xl border text-start transition-all cursor-pointer ${
-                            isSelected
-                              ? "border-purple-500 bg-purple-500/5 shadow-xs"
-                              : "border-zinc-150 dark:border-zinc-800 bg-zinc-50/30 dark:bg-zinc-900/10 hover:bg-zinc-100/50 dark:hover:bg-zinc-800/40"
-                          }`}
-                        >
-                          <div className="flex items-center gap-2.5 min-w-0">
-                            <img
-                              src={m.userId?.avatarUrl || "https://api.dicebear.com/7.x/bottts/svg"}
-                              alt="avatar"
-                              className="h-10 w-10 rounded-full bg-zinc-800 border shrink-0"
-                            />
-                            <div className="min-w-0">
-                              <p className="text-sm font-bold truncate text-zinc-800 dark:text-zinc-200">
-                                {m.userId?.fullName}
-                              </p>
-                              <p className="text-xs text-zinc-450 truncate">{m.userId?.email}</p>
-                              <div className="flex items-center gap-1.5 mt-1">
-                                <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-zinc-200/60 dark:bg-zinc-800 text-zinc-500 dark:text-zinc-400 capitalize">
-                                  {t(`roles.${m.role}`)}
-                                </span>
+                        return (
+                          <button
+                            key={m._id}
+                            onClick={() => setSelectedTeamMember(m)}
+                            className={`w-full flex items-center justify-between p-3 rounded-xl border text-start transition-all cursor-pointer ${
+                              isSelected
+                                ? "border-purple-500 bg-purple-500/10 shadow-xs ring-1 ring-purple-500/50"
+                                : "border-zinc-150 dark:border-zinc-800 bg-zinc-50/30 dark:bg-zinc-900/10 hover:bg-zinc-100/50 dark:hover:bg-zinc-800/40"
+                            }`}
+                          >
+                            <div className="flex items-center gap-2.5 min-w-0">
+                              <img
+                                src={m.userId?.avatarUrl || "https://api.dicebear.com/7.x/bottts/svg"}
+                                alt="avatar"
+                                className="h-10 w-10 rounded-full bg-zinc-800 border shrink-0"
+                              />
+                              <div className="min-w-0">
+                                <p className="text-sm font-bold truncate text-zinc-800 dark:text-zinc-200">
+                                  {m.userId?.fullName}
+                                </p>
+                                <p className="text-xs text-zinc-450 truncate">{m.userId?.email}</p>
+                                <div className="flex items-center gap-1.5 mt-1">
+                                  <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded capitalize ${
+                                    m.role === 'owner'
+                                      ? 'bg-amber-500/20 text-amber-600 dark:text-amber-400'
+                                      : m.role === 'admin'
+                                      ? 'bg-purple-500/20 text-purple-600 dark:text-purple-400'
+                                      : m.role === 'manager'
+                                      ? 'bg-blue-500/20 text-blue-600 dark:text-blue-400'
+                                      : 'bg-zinc-200/60 dark:bg-zinc-800 text-zinc-500 dark:text-zinc-400'
+                                  }`}>
+                                    {t(`roles.${m.role}`)}
+                                  </span>
+                                </div>
                               </div>
                             </div>
-                          </div>
 
-                          <div className="shrink-0 flex flex-col items-end gap-1 ms-2">
-                            <span className="text-xs font-bold text-zinc-400 dark:text-zinc-500">
-                              {memberTasks.length} {t('tasksCount', { defaultValue: "Tasks" })}
-                            </span>
-                            <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded-full select-none capitalize ${
-                              m.status === 'active' 
-                                ? 'bg-green-500/10 text-green-500' 
-                                : 'bg-amber-500/10 text-amber-500'
-                            }`}>
-                              {m.status}
-                            </span>
-                          </div>
-                        </button>
-                      );
-                    })}
+                            <div className="shrink-0 flex flex-col items-end gap-1 ms-2">
+                              <span className="text-xs font-bold text-zinc-400 dark:text-zinc-500">
+                                {memberTasks.length} {t('tasksCount', { defaultValue: "Tasks" })}
+                              </span>
+                              <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded-full select-none capitalize ${
+                                m.status === 'active' 
+                                  ? 'bg-green-500/10 text-green-500' 
+                                  : 'bg-amber-500/10 text-amber-500'
+                              }`}>
+                                {m.status}
+                              </span>
+                            </div>
+                          </button>
+                        );
+                      })
+                    )}
                   </div>
                 </div>
 
-                {/* Right Panel: Assigned Tasks */}
-                <div className="flex-1 flex flex-col min-w-0 overflow-hidden p-6">
+                {/* Right Panel: Member Details, Permissions & Assigned Tasks */}
+                <div className="flex-1 flex flex-col min-w-0 overflow-hidden p-4 sm:p-6">
                   {selectedTeamMember ? (
                     <div className="h-full flex flex-col min-h-0 bg-white dark:bg-zinc-900 border dark:border-zinc-800 rounded-2xl shadow-xs transition-theme">
                       
                       {/* Member profile header card */}
-                      <div className="p-6 border-b dark:border-zinc-800 flex flex-col sm:flex-row items-center justify-between gap-4 bg-zinc-50/20 dark:bg-zinc-950/10 shrink-0">
+                      <div className="p-5 sm:p-6 border-b dark:border-zinc-800 flex flex-col sm:flex-row items-center justify-between gap-4 bg-zinc-50/20 dark:bg-zinc-950/10 shrink-0">
                         <div className="flex flex-col sm:flex-row items-center gap-4 text-center sm:text-start">
                           <img
                             src={selectedTeamMember.userId?.avatarUrl || "https://api.dicebear.com/7.x/bottts/svg"}
@@ -1272,12 +1414,27 @@ export const Dashboard: React.FC = () => {
                             className="h-16 w-16 rounded-full bg-zinc-800 border-2 border-purple-500 shadow-sm"
                           />
                           <div>
-                            <h3 className="text-lg font-bold text-zinc-800 dark:text-zinc-100">
-                              {selectedTeamMember.userId?.fullName}
-                            </h3>
+                            <div className="flex items-center gap-2 justify-center sm:justify-start">
+                              <h3 className="text-lg font-bold text-zinc-800 dark:text-zinc-100">
+                                {selectedTeamMember.userId?.fullName}
+                              </h3>
+                              {(selectedTeamMember.userId?._id || selectedTeamMember.userId) === user?.id && (
+                                <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-purple-500/10 text-purple-600 dark:text-purple-400">
+                                  (You)
+                                </span>
+                              )}
+                            </div>
                             <p className="text-sm text-zinc-450">{selectedTeamMember.userId?.email}</p>
                             <div className="flex flex-wrap gap-2 mt-2 justify-center sm:justify-start">
-                              <span className="text-xs font-bold px-2 py-0.5 rounded-full bg-purple-150/50 dark:bg-purple-950/30 text-purple-650 dark:text-purple-400 capitalize">
+                              <span className={`text-xs font-bold px-2.5 py-0.5 rounded-full capitalize ${
+                                selectedTeamMember.role === 'owner'
+                                  ? 'bg-amber-500/20 text-amber-500 border border-amber-500/30'
+                                  : selectedTeamMember.role === 'admin'
+                                  ? 'bg-purple-500/20 text-purple-400 border border-purple-500/30'
+                                  : selectedTeamMember.role === 'manager'
+                                  ? 'bg-blue-500/20 text-blue-400 border border-blue-500/30'
+                                  : 'bg-zinc-200 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-400'
+                              }`}>
                                 {t(`roles.${selectedTeamMember.role}`)}
                               </span>
                               <span className={`text-xs font-bold px-2 py-0.5 rounded-full capitalize ${
@@ -1291,6 +1448,7 @@ export const Dashboard: React.FC = () => {
                           </div>
                         </div>
 
+                        {/* Quick Task Stats */}
                         <div className="flex gap-6 text-center shrink-0">
                           <div>
                             <p className="text-2xl font-black text-purple-600 dark:text-purple-400">
@@ -1316,62 +1474,121 @@ export const Dashboard: React.FC = () => {
                         </div>
                       </div>
 
-                      {/* Member's Tasks List */}
-                      <div className="flex-1 overflow-y-auto p-6 space-y-4">
-                        <h4 className="text-sm font-bold text-zinc-500 uppercase tracking-wider mb-2">
-                          {t('stats.assignedTasksList', { defaultValue: "Assigned Tasks" })}
-                        </h4>
-                        
-                        {workspaceTasks.filter((task: any) => 
-                          task.assignees?.some((assignee: any) => assignee._id === selectedTeamMember.userId?._id || assignee === selectedTeamMember.userId?._id)
-                        ).length === 0 ? (
-                          <div className="text-center py-12">
-                            <Layers className="h-12 w-12 text-zinc-350 dark:text-zinc-700 mx-auto mb-3" />
-                            <p className="text-sm text-zinc-500">{t('stats.noAssignedTasks', { defaultValue: "No tasks assigned to this member yet." })}</p>
-                          </div>
-                        ) : (
-                          <div className="space-y-2.5">
-                            {workspaceTasks.filter((task: any) => 
-                              task.assignees?.some((assignee: any) => assignee._id === selectedTeamMember.userId?._id || assignee === selectedTeamMember.userId?._id)
-                            ).map((task: any) => (
-                              <div
-                                key={task._id}
-                                onClick={() => setSelectedTask(task)}
-                                className="group flex items-center justify-between p-4 rounded-xl border border-zinc-150 dark:border-zinc-800 bg-zinc-50/20 dark:bg-zinc-950/5 hover:border-purple-500/50 hover:bg-white dark:hover:bg-zinc-850/30 transition-all cursor-pointer"
-                              >
-                                <div className="min-w-0 space-y-1">
-                                  <h5 className="text-sm font-bold text-zinc-800 dark:text-zinc-100 group-hover:text-purple-600 dark:group-hover:text-purple-400 transition-colors truncate">
-                                    {task.title}
-                                  </h5>
-                                  <p className="text-xs text-zinc-500 truncate max-w-lg">
-                                    {task.description || t('taskModal.noDescription')}
-                                  </p>
-                                </div>
+                      {/* Tab Navigation: Permissions vs Tasks */}
+                      <div className="flex items-center gap-2 px-6 pt-2 border-b dark:border-zinc-800 shrink-0 bg-zinc-50/40 dark:bg-zinc-950/20">
+                        <button
+                          type="button"
+                          onClick={() => setTeamMemberTab("permissions")}
+                          className={`px-4 py-2.5 text-xs font-bold border-b-2 flex items-center gap-1.5 transition-all cursor-pointer ${
+                            teamMemberTab === "permissions"
+                              ? "border-purple-500 text-purple-600 dark:text-purple-400"
+                              : "border-transparent text-zinc-500 hover:text-zinc-800 dark:hover:text-zinc-200"
+                          }`}
+                        >
+                          <Sliders className="h-3.5 w-3.5" />
+                          <span>{t('workspaceMembersModal.permissionsTab', { defaultValue: "Roles & Permissions" })}</span>
+                        </button>
 
-                                <div className="shrink-0 flex items-center gap-3 ms-4">
-                                  <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full select-none capitalize ${getPriorityColor(task.priority)}`}>
-                                    {t(`priorities.${task.priority}`)}
-                                  </span>
-                                  <span className="text-[10px] font-bold px-2.5 py-0.5 rounded-md bg-zinc-200 dark:bg-zinc-800 text-zinc-500 dark:text-zinc-400 capitalize">
-                                    {task.status}
-                                  </span>
-                                </div>
-                              </div>
-                            ))}
-                          </div>
-                        )}
+                        <button
+                          type="button"
+                          onClick={() => setTeamMemberTab("workload")}
+                          className={`px-4 py-2.5 text-xs font-bold border-b-2 flex items-center gap-1.5 transition-all cursor-pointer ${
+                            teamMemberTab === "workload"
+                              ? "border-purple-500 text-purple-600 dark:text-purple-400"
+                              : "border-transparent text-zinc-500 hover:text-zinc-800 dark:hover:text-zinc-200"
+                          }`}
+                        >
+                          <FileEdit className="h-3.5 w-3.5" />
+                          <span>{t('workspaceMembersModal.workloadTab', { defaultValue: "Workload & Tasks" })}</span>
+                        </button>
                       </div>
+
+                      {/* Tab Body */}
+                      {teamMemberTab === "permissions" ? (
+                        <MemberPermissionsEditor
+                          member={selectedTeamMember}
+                          currentUserRole={currentUserRole}
+                          currentUserId={user?.id}
+                          onSave={(userId, role, perms) => {
+                            updateMemberRoleMutation.mutate({ userId, role, permissions: perms });
+                          }}
+                          onRemove={(userId) => {
+                            removeMemberMutation.mutate(userId);
+                          }}
+                          isSaving={updateMemberRoleMutation.isPending}
+                          isRemoving={removeMemberMutation.isPending}
+                        />
+                      ) : (
+                        /* Member's Tasks List */
+                        <div className="flex-1 overflow-y-auto p-6 space-y-4">
+                          <h4 className="text-sm font-bold text-zinc-500 uppercase tracking-wider mb-2">
+                            {t('stats.assignedTasksList', { defaultValue: "Assigned Tasks" })}
+                          </h4>
+                          
+                          {workspaceTasks.filter((task: any) => 
+                            task.assignees?.some((assignee: any) => assignee._id === selectedTeamMember.userId?._id || assignee === selectedTeamMember.userId?._id)
+                          ).length === 0 ? (
+                            <div className="text-center py-12">
+                              <Layers className="h-12 w-12 text-zinc-350 dark:text-zinc-700 mx-auto mb-3" />
+                              <p className="text-sm text-zinc-500">{t('stats.noAssignedTasks', { defaultValue: "No tasks assigned to this member yet." })}</p>
+                            </div>
+                          ) : (
+                            <div className="space-y-2.5">
+                              {workspaceTasks.filter((task: any) => 
+                                task.assignees?.some((assignee: any) => assignee._id === selectedTeamMember.userId?._id || assignee === selectedTeamMember.userId?._id)
+                              ).map((task: any) => (
+                                <div
+                                  key={task._id}
+                                  onClick={() => setSelectedTask(task)}
+                                  className="group flex items-center justify-between p-4 rounded-xl border border-zinc-150 dark:border-zinc-800 bg-zinc-50/20 dark:bg-zinc-950/5 hover:border-purple-500/50 hover:bg-white dark:hover:bg-zinc-850/30 transition-all cursor-pointer"
+                                >
+                                  <div className="min-w-0 space-y-1">
+                                    <h5 className="text-sm font-bold text-zinc-800 dark:text-zinc-100 group-hover:text-purple-600 dark:group-hover:text-purple-400 transition-colors truncate">
+                                      {task.title}
+                                    </h5>
+                                    <p className="text-xs text-zinc-500 truncate max-w-lg">
+                                      {task.description || t('taskModal.noDescription')}
+                                    </p>
+                                  </div>
+
+                                  <div className="shrink-0 flex items-center gap-3 ms-4">
+                                    <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full select-none capitalize ${getPriorityColor(task.priority)}`}>
+                                      {t(`priorities.${task.priority}`)}
+                                    </span>
+                                    <span className="text-[10px] font-bold px-2.5 py-0.5 rounded-md bg-zinc-200 dark:bg-zinc-800 text-zinc-500 dark:text-zinc-400 capitalize">
+                                      {task.status}
+                                    </span>
+                                  </div>
+                                </div>
+                              ))}
+                            </div>
+                          )}
+                        </div>
+                      )}
 
                     </div>
                   ) : (
-                    <div className="h-full flex flex-col items-center justify-center border-2 border-dashed border-zinc-200 dark:border-zinc-800 rounded-2xl p-8 text-center bg-white/20 dark:bg-zinc-900/10 transition-theme">
-                      <Users className="h-16 w-16 text-purple-500/50 mb-4" />
-                      <h3 className="text-base font-bold text-zinc-800 dark:text-zinc-150 mb-1">
-                        {t('stats.selectMemberTitle', { defaultValue: "Select a Team Collaborator" })}
-                      </h3>
-                      <p className="text-sm text-zinc-500 max-w-sm">
-                        {t('stats.selectMemberDesc', { defaultValue: "Click on any team member from the left panel to analyze their workload and assigned tasks." })}
-                      </p>
+                    <div className="h-full flex flex-col items-center justify-center border-2 border-dashed border-zinc-200 dark:border-zinc-800 rounded-2xl p-8 text-center bg-white/20 dark:bg-zinc-900/10 transition-theme space-y-4">
+                      <div className="p-4 rounded-2xl bg-purple-500/10 text-purple-600 dark:text-purple-400">
+                        <Users className="h-12 w-12" />
+                      </div>
+                      <div className="max-w-sm">
+                        <h3 className="text-base font-bold text-zinc-800 dark:text-zinc-150 mb-1">
+                          {t('workspaceMembersModal.title', { defaultValue: "Workspace Team & Permissions" })}
+                        </h3>
+                        <p className="text-xs text-zinc-500 leading-relaxed">
+                          {t('stats.selectMemberDesc', { defaultValue: "Click on any team member from the left panel to analyze their workload and manage their permissions." })}
+                        </p>
+                      </div>
+                      {["owner", "admin"].includes(currentUserRole) && (
+                        <button
+                          onClick={handleOpenInviteModal}
+                          className="px-5 py-2.5 rounded-xl bg-purple-600 hover:bg-purple-700 text-white text-xs font-bold flex items-center gap-2 transition-all shadow-md cursor-pointer shadow-purple-500/25"
+                        >
+                          <UserPlus className="h-4 w-4" />
+                          <span>{t('workspaceMembersModal.inviteBtn', { defaultValue: "Invite Collaborator" })}</span>
+                        </button>
+                      )}
                     </div>
                   )}
                 </div>
@@ -1550,8 +1767,9 @@ export const Dashboard: React.FC = () => {
         members={members}
         currentUserRole={currentUserRole}
         currentUserId={user?.id}
-        onInvite={(email, role) => inviteMemberMutation.mutate({ email, role })}
+        onInvite={(email, role, permissions) => inviteMemberMutation.mutate({ email, role, permissions })}
         onUpdateRole={(userId, role) => updateMemberRoleMutation.mutate({ userId, role })}
+        onRemoveMember={(userId) => removeMemberMutation.mutate(userId)}
         isInvitePending={inviteMemberMutation.isPending}
       />
 
