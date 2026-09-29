@@ -6,16 +6,14 @@ import {
   ChevronDown,
   ChevronUp,
   UserPlus,
-  Shield,
-  Search,
   Check,
   Trash2,
   Sliders,
-  UserCheck,
 } from "lucide-react";
 import { taskflowService } from "../services/taskflowService";
 import type { WorkspacePermissions } from "../services/taskflowService";
 import { DEFAULT_PERMISSIONS_BY_ROLE } from "./MemberPermissionsEditor";
+import { useConfirmStore } from "../stores/useConfirmStore";
 
 interface InviteMembersModalProps {
   isOpen: boolean;

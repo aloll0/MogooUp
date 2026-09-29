@@ -2,9 +2,6 @@ import React, { useState, useEffect } from "react";
 import { useTranslation } from "react-i18next";
 import {
   ShieldCheck,
-  CheckCircle2,
-  XCircle,
-  AlertTriangle,
   RotateCcw,
   Trash2,
   Save,
@@ -13,11 +10,7 @@ import {
   Shield,
   Layers,
   Users,
-  BarChart2,
-  Briefcase,
   FileEdit,
-  Trash,
-  PlusCircle,
   Sliders,
 } from "lucide-react";
 import type { WorkspaceMember, WorkspacePermissions } from "../services/taskflowService";
@@ -116,7 +109,7 @@ export const MemberPermissionsEditor: React.FC<MemberPermissionsEditorProps> = (
 
   const isOwner = member.role === "owner";
   const isSelf = (member.userId?._id || member.userId) === currentUserId;
-  const canManage = ["owner", "admin"].includes(currentUserRole) && !isOwner;
+  const canManage = ["owner", "admin"].includes(currentUserRole) && !isOwner && !isSelf;
 
   const handleRoleChange = (newRole: string) => {
     if (!canManage) return;

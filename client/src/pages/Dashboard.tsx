@@ -1030,18 +1030,7 @@ export const Dashboard: React.FC = () => {
                 >
                   <Menu className="h-5 w-5" />
                 </button>
-                {activeTab === "admin" ? (
-                  <>
-                    <Shield className="h-5 w-5 text-[#843ec0] dark:text-[#b57ede] shrink-0" />
-                    <h1 className="text-sm sm:text-lg md:text-xl font-bold tracking-tight truncate text-zinc-900 dark:text-white">
-                      {adminSubTab === "dashboard" ? "Admin Analytics Overview" :
-                       adminSubTab === "companies" ? "Workspace & Company Inspector" :
-                       adminSubTab === "users" ? "User Access Verification" :
-                       adminSubTab === "deleted" ? "Soft-Deleted Task Recovery" :
-                       "Immutable System Audit Logs"}
-                    </h1>
-                  </>
-                ) : activeTab === "clients" ? (
+                {activeTab === "clients" ? (
                   <>
                     <Briefcase className="h-5 w-5 text-[#843ec0] dark:text-[#b57ede] shrink-0" />
                     <h1 className="text-sm sm:text-lg md:text-xl font-bold tracking-tight truncate text-zinc-900 dark:text-white">{t('sidebar.clients', { defaultValue: "Client Projects" })}</h1>
@@ -1594,14 +1583,6 @@ export const Dashboard: React.FC = () => {
                 </div>
 
               </div>
-            ) : activeTab === "admin" ? (
-              <Suspense fallback={
-                <div className="flex-1 flex items-center justify-center p-8 bg-zinc-50/50 dark:bg-zinc-950/20">
-                  <Loader2 className="h-8 w-8 animate-spin text-purple-500" />
-                </div>
-              }>
-                <AdminPanel activeSubTab={adminSubTab as any} />
-              </Suspense>
             ) : activeTab === "clients" ? (
               <Suspense fallback={
                 <div className="flex-1 flex items-center justify-center p-8 bg-zinc-50/50 dark:bg-zinc-950/20">
