@@ -31,6 +31,8 @@ router.put("/change-password", authMiddleware, validateRequest(changePasswordSch
 router.get("/admin/users", authMiddleware, adminMiddleware, authController.getAdminUsers);
 router.put("/admin/users/:userId/approve", authMiddleware, adminMiddleware, authController.approveUser);
 router.put("/admin/users/:userId/suspend", authMiddleware, adminMiddleware, authController.suspendUser);
+router.delete("/admin/users/:userId", authMiddleware, adminMiddleware, authController.deleteUser);
+router.put("/admin/users/:userId/role", authMiddleware, adminMiddleware, authController.toggleSystemAdmin);
 router.put("/admin/users/:userId/change-password", authMiddleware, adminMiddleware, validateRequest(adminChangePasswordSchema), authController.adminChangePassword);
 router.get("/admin/workspaces", authMiddleware, adminMiddleware, authController.getAdminWorkspaces);
 

@@ -11,9 +11,12 @@ router.use(authMiddleware);
 
 router.post("/", validateRequest(createWorkspaceSchema), workspaceController.create);
 router.get("/", workspaceController.list);
+router.get("/users/search", workspaceController.searchUsers);
 router.get("/slug/:slug", workspaceController.getBySlug);
 router.get("/:workspaceId/members", workspaceController.getMembers);
 router.post("/:workspaceId/invite", validateRequest(inviteMemberSchema), workspaceController.invite);
 router.put("/:workspaceId/members", validateRequest(updateMemberRoleSchema), workspaceController.updateMemberRole);
+router.delete("/:workspaceId/members/:userId", workspaceController.removeMember);
+router.delete("/:workspaceId", workspaceController.deleteWorkspace);
 
 export default router;

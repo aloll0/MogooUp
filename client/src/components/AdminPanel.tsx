@@ -19,9 +19,13 @@ import {
   ChevronLeft,
   X,
   Printer,
-  FileText
+  FileText,
+  Trash2,
+  ExternalLink,
+  UserMinus
 } from "lucide-react";
 import { useToastStore } from "../stores/useToastStore";
+import { useConfirmStore } from "../stores/useConfirmStore";
 
 interface AdminPanelProps {
   activeSubTab?: "dashboard" | "companies" | "users" | "deleted" | "audit" | "employee-reports";
@@ -193,6 +197,126 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ activeSubTab }) => {
       useToastStore.getState().addToast(err?.response?.data?.error?.message || "Failed to restore task", "error");
     }
   });
+
+  const deleteWorkspaceMutation = useMutation({
+    mutationFn: (workspaceId: string) => taskflowService.deleteWorkspace(workspaceId),
+    onSuccess: (_, deletedWsId) => {
+      queryClient.setQueryData(["adminCompanies"], (old: any) =>
+        Array.isArray(old) ? old.filter((w: any) => w._id !== deletedWsId) : []
+      );
+      queryClient.setQueryData(["workspaces"], (old: any) =>
+        Array.isArray(old) ? old.filter((w: any) => w._id !== deletedWsId) : []
+      );
+      queryClient.invalidateQueries({ queryKey: ["adminCompanies"] });
+      queryClient.invalidateQueries({ queryKey: ["adminGlobalStats"] });
+      queryClient.invalidateQueries({ queryKey: ["workspaces"] });
+      setSelectedCompanyId(null);
+      useToastStore.getState().addToast(
+        isAr ? "تم حذف مساحة العمل بالكامل بنجاح" : "Workspace deleted successfully",
+        "success"
+      );
+    },
+    onError: (err: any) => {
+      useToastStore.getState().addToast(err?.response?.data?.error?.message || "Failed to delete workspace", "error");
+    },
+  });
+
+  const deleteUserMutation = useMutation({
+    mutationFn: (userId: string) => taskflowService.deleteUser(userId),
+    onSuccess: (_, deletedUserId) => {
+      queryClient.setQueryData(["adminUsers"], (old: any) =>
+        Array.isArray(old) ? old.filter((u: any) => u._id !== deletedUserId) : []
+      );
+      queryClient.invalidateQueries({ queryKey: ["adminUsers"] });
+      queryClient.invalidateQueries({ queryKey: ["adminGlobalStats"] });
+      queryClient.invalidateQueries({ queryKey: ["adminCompanies"] });
+      queryClient.invalidateQueries({ queryKey: ["workspaces"] });
+      useToastStore.getState().addToast(
+        isAr ? "تم حذف المستخدم نهائياً بنجاح" : "User deleted permanently",
+        "success"
+      );
+    },
+    onError: (err: any) => {
+      useToastStore.getState().addToast(err?.response?.data?.error?.message || "Failed to delete user", "error");
+    },
+  });
+
+  const toggleSystemAdminMutation = useMutation({
+    mutationFn: ({ userId, isSystemAdmin }: { userId: string; isSystemAdmin: boolean }) =>
+      taskflowService.toggleSystemAdmin(userId, isSystemAdmin),
+    onSuccess: (updatedUser) => {
+      queryClient.invalidateQueries({ queryKey: ["adminUsers"] });
+      useToastStore.getState().addToast(
+        isAr
+          ? (updatedUser.isSystemAdmin ? "تمت ترقية المستخدم لمشرف عام" : "تمت إزالة صلاحية المشرف العام")
+          : (updatedUser.isSystemAdmin ? "Promoted to Super Admin" : "Demoted from Super Admin"),
+        "success"
+      );
+    },
+    onError: (err: any) => {
+      useToastStore.getState().addToast(err?.response?.data?.error?.message || "Failed to update role", "error");
+    },
+  });
+
+  const updateMemberRoleMutation = useMutation({
+    mutationFn: ({ workspaceId, userId, role }: { workspaceId: string; userId: string; role: string }) =>
+      taskflowService.updateWorkspaceMemberRole(workspaceId, userId, role),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["adminCompanies"] });
+      queryClient.invalidateQueries({ queryKey: ["members"] });
+      useToastStore.getState().addToast(
+        isAr ? "تم تحديث دور العضو بنجاح" : "Member role updated successfully",
+        "success"
+      );
+    },
+    onError: (err: any) => {
+      useToastStore.getState().addToast(err?.response?.data?.error?.message || "Failed to update role", "error");
+    },
+  });
+
+  const removeMemberMutation = useMutation({
+    mutationFn: ({ workspaceId, userId }: { workspaceId: string; userId: string }) =>
+      taskflowService.removeWorkspaceMember(workspaceId, userId),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["adminCompanies"] });
+      queryClient.invalidateQueries({ queryKey: ["members"] });
+      useToastStore.getState().addToast(
+        isAr ? "تمت إزالة العضو من مساحة العمل بنجاح" : "Member removed successfully",
+        "success"
+      );
+    },
+    onError: (err: any) => {
+      useToastStore.getState().addToast(err?.response?.data?.error?.message || "Failed to remove member", "error");
+    },
+  });
+
+  const handleConfirmDeleteWorkspace = async (workspaceId: string, name: string) => {
+    const ok = await useConfirmStore.getState().show({
+      title: isAr ? `حذف شركة ومساحة عمل "${name}"` : `Delete Workspace "${name}"`,
+      message: isAr
+        ? `هل أنت متأكد من حذف هذه الشركة ومساحات عملها وكافة مهامها وقوائمها ومشاريعها نهائياً؟ هذا الإجراء فوري ولا يمكن التراجع عنه.`
+        : `Are you sure you want to permanently delete workspace "${name}" and all of its spaces, lists, tasks, and client projects? This cannot be undone.`,
+      confirmText: isAr ? "نعم، حذف نهائي" : "Yes, Delete Permanently",
+      cancelText: isAr ? "إلغاء" : "Cancel",
+    });
+    if (ok) {
+      deleteWorkspaceMutation.mutate(workspaceId);
+    }
+  };
+
+  const handleConfirmDeleteUser = async (userId: string, fullName: string) => {
+    const ok = await useConfirmStore.getState().show({
+      title: isAr ? `حذف حساب المستخدم "${fullName}"` : `Delete User "${fullName}"`,
+      message: isAr
+        ? `هل أنت متأكد من حذف هذا الحساب نهائياً من منصة عرب برو؟ سيتم إزالته من جميع مساحات العمل والمهام المسندة إليه.`
+        : `Are you sure you want to permanently delete user "${fullName}"? They will be removed from all workspaces and assignments.`,
+      confirmText: isAr ? "نعم، حذف نهائي" : "Yes, Delete User",
+      cancelText: isAr ? "إلغاء" : "Cancel",
+    });
+    if (ok) {
+      deleteUserMutation.mutate(userId);
+    }
+  };
 
   // Filters
   const filteredUsers = users.filter((u: any) => 
@@ -521,6 +645,23 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ activeSubTab }) => {
                           <h3 className="font-extrabold text-sm text-zinc-900 dark:text-white">{ws.name}</h3>
                           <p className="text-[10px] text-zinc-450 font-mono mt-0.5">slug: {ws.slug}</p>
                         </div>
+                        <div className="flex items-center gap-1.5" onClick={(e) => e.stopPropagation()}>
+                          <button
+                            onClick={() => navigate(`/w/${ws._id}`)}
+                            className="flex items-center gap-1 px-2.5 py-1 rounded-lg bg-purple-600 hover:bg-purple-700 text-white text-[11px] font-bold transition-all shadow-xs cursor-pointer"
+                            title={isAr ? "دخول وإدارة الشركة" : "Open Workspace"}
+                          >
+                            <ExternalLink className="h-3 w-3" />
+                            <span>{isAr ? "دخول" : "Open"}</span>
+                          </button>
+                          <button
+                            onClick={() => handleConfirmDeleteWorkspace(ws._id, ws.name)}
+                            className="p-1.5 rounded-lg hover:bg-red-500/15 text-zinc-400 hover:text-red-500 transition-colors cursor-pointer"
+                            title={isAr ? "حذف الشركة بالكامل" : "Delete Workspace"}
+                          >
+                            <Trash2 className="h-3.5 w-3.5" />
+                          </button>
+                        </div>
                       </div>
 
                       <div className="grid grid-cols-3 gap-2.5 text-center mb-4">
@@ -553,7 +694,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ activeSubTab }) => {
               <div className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-2xl p-6 shadow-xs space-y-6">
                 
                 {/* Panel Header */}
-                <div className="flex items-center justify-between border-b dark:border-zinc-800 pb-4 gap-4">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between border-b dark:border-zinc-800 pb-4 gap-4">
                   <div className="flex items-center gap-3">
                     <button 
                       onClick={() => setSelectedCompanyId(null)}
@@ -562,14 +703,35 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ activeSubTab }) => {
                       <ChevronLeft className="h-5 w-5" />
                     </button>
                     <div>
-                      <h3 className="text-base font-extrabold text-zinc-900 dark:text-white">{selectedCompanyObj.name}</h3>
+                      <h3 className="text-base font-extrabold text-zinc-900 dark:text-white flex items-center gap-2">
+                        <span>{selectedCompanyObj.name}</span>
+                        <span className="text-[10px] font-mono text-zinc-400 font-normal">({selectedCompanyObj.slug})</span>
+                      </h3>
                       <p className="text-xs text-zinc-400 mt-0.5">{isAr ? "شاشة فحص وتدقيق الشركة" : "Workspace Inspection Sheet"}</p>
                     </div>
                   </div>
 
-                  <span className="text-xs font-bold bg-purple-500/10 text-purple-600 dark:text-purple-400 px-3 py-1 rounded-lg">
-                    {isAr ? "أنشئت بواسطة: " : "Created by: "} {selectedCompanyObj.owner?.fullName || (isAr ? "غير معروف" : "Unknown")} {selectedCompanyObj.owner?.email ? `(${selectedCompanyObj.owner.email})` : ""}
-                  </span>
+                  <div className="flex flex-wrap items-center gap-2">
+                    <button
+                      onClick={() => navigate(`/w/${selectedCompanyObj._id}`)}
+                      className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-purple-600 hover:bg-purple-700 text-white text-xs font-bold transition-all shadow-sm cursor-pointer"
+                    >
+                      <ExternalLink className="h-3.5 w-3.5" />
+                      <span>{isAr ? "دخول وإدارة الشركة" : "Open & Manage Company"}</span>
+                    </button>
+
+                    <button
+                      onClick={() => handleConfirmDeleteWorkspace(selectedCompanyObj._id, selectedCompanyObj.name)}
+                      className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-red-200/50 hover:bg-red-600 hover:text-white text-red-500 text-xs font-bold transition-all cursor-pointer"
+                    >
+                      <Trash2 className="h-3.5 w-3.5" />
+                      <span>{isAr ? "حذف الشركة نهائياً" : "Delete Workspace"}</span>
+                    </button>
+
+                    <span className="text-xs font-bold bg-purple-500/10 text-purple-600 dark:text-purple-400 px-3 py-1 rounded-lg">
+                      {isAr ? "المالك: " : "Owner: "} {selectedCompanyObj.owner?.fullName || (isAr ? "غير معروف" : "Unknown")}
+                    </span>
+                  </div>
                 </div>
 
                 {/* Grid stats */}
@@ -627,21 +789,67 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ activeSubTab }) => {
                     <div className="space-y-2">
                       <label className="text-[10px] font-bold uppercase text-zinc-400">{isAr ? "أعضاء الفريق النشطين" : "Active Collaborators"}</label>
                       <div className="space-y-2 max-h-60 overflow-y-auto pr-1 custom-scrollbar">
-                        {selectedCompanyObj.members?.map((m: any) => (
-                          <div key={m._id} className="flex items-center gap-2.5 p-2 bg-zinc-50/50 dark:bg-zinc-850/20 rounded-xl border dark:border-zinc-800/80">
-                            <img
-                              src={m.userId?.avatarUrl || "https://api.dicebear.com/7.x/bottts/svg"}
-                              alt="Avatar"
-                              className="h-7 w-7 rounded-full bg-zinc-800 border"
-                            />
-                            <div className="min-w-0">
-                              <span className="font-bold text-xs text-zinc-800 dark:text-zinc-150 block truncate">{m.userId?.fullName}</span>
-                              <span className="text-[9px] text-zinc-500 dark:text-zinc-400 uppercase font-semibold">
-                                {m.role === "owner" ? (isAr ? "منشئ الشركة" : "Creator") : (isAr && m.role === "admin" ? "مدير" : isAr && m.role === "member" ? "عضو" : m.role)} • {m.status}
-                              </span>
+                        {selectedCompanyObj.members?.map((m: any) => {
+                          const memberUserId = m.userId?._id || m.userId;
+                          const isOwner = m.role === "owner";
+                          return (
+                            <div key={m._id} className="flex items-center justify-between gap-2 p-2 bg-zinc-50/50 dark:bg-zinc-850/20 rounded-xl border dark:border-zinc-800/80">
+                              <div className="flex items-center gap-2 min-w-0 flex-1">
+                                <img
+                                  src={m.userId?.avatarUrl || "https://api.dicebear.com/7.x/bottts/svg"}
+                                  alt="Avatar"
+                                  className="h-7 w-7 rounded-full bg-zinc-800 border shrink-0"
+                                />
+                                <div className="min-w-0">
+                                  <span className="font-bold text-xs text-zinc-800 dark:text-zinc-150 block truncate">{m.userId?.fullName || (isAr ? "مستخدم" : "User")}</span>
+                                  <span className="text-[9px] text-zinc-500 dark:text-zinc-400 truncate block">
+                                    {m.userId?.email || ""}
+                                  </span>
+                                </div>
+                              </div>
+
+                              <div className="flex items-center gap-1.5 shrink-0">
+                                {isOwner ? (
+                                  <span className="text-[10px] font-bold px-2 py-0.5 rounded bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/20">
+                                    {isAr ? "المنشئ / المالك" : "Owner"}
+                                  </span>
+                                ) : (
+                                  <select
+                                    value={m.role}
+                                    onChange={(e) => {
+                                      updateMemberRoleMutation.mutate({
+                                        workspaceId: selectedCompanyObj._id,
+                                        userId: memberUserId,
+                                        role: e.target.value
+                                      });
+                                    }}
+                                    className="bg-white dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 text-[10px] font-bold rounded-lg px-2 py-1 text-zinc-800 dark:text-zinc-200 cursor-pointer focus:outline-hidden focus:ring-1 focus:ring-purple-500"
+                                  >
+                                    <option value="admin">{isAr ? "مدير (Admin)" : "Admin"}</option>
+                                    <option value="manager">{isAr ? "مشرف (Manager)" : "Manager"}</option>
+                                    <option value="member">{isAr ? "عضو (Member)" : "Member"}</option>
+                                    <option value="guest">{isAr ? "زائر (Guest)" : "Guest"}</option>
+                                  </select>
+                                )}
+
+                                {!isOwner && (
+                                  <button
+                                    onClick={() => {
+                                      removeMemberMutation.mutate({
+                                        workspaceId: selectedCompanyObj._id,
+                                        userId: memberUserId
+                                      });
+                                    }}
+                                    className="p-1 text-zinc-400 hover:text-red-500 hover:bg-red-500/10 rounded-md transition-colors cursor-pointer"
+                                    title={isAr ? "إزالة العضو من الشركة" : "Remove member from workspace"}
+                                  >
+                                    <UserMinus className="h-3.5 w-3.5" />
+                                  </button>
+                                )}
+                              </div>
                             </div>
-                          </div>
-                        ))}
+                          );
+                        })}
                       </div>
                     </div>
                   </div>
@@ -735,36 +943,65 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ activeSubTab }) => {
                       <td className="p-4 text-zinc-400 font-medium">
                         {new Date(u.createdAt).toLocaleDateString()}
                       </td>
-                      <td className="p-4 text-right flex items-center justify-end gap-2">
+                      <td className="p-4 text-right flex items-center justify-end gap-1.5">
                         {/* Reset Password Button */}
                         <button
                           onClick={() => setSelectedUserForReset(u)}
                           className="px-2.5 py-1.5 rounded-lg border border-purple-200/50 hover:bg-purple-600 hover:text-white dark:border-purple-800/40 text-purple-600 dark:text-purple-400 font-bold transition-all text-[11px] cursor-pointer"
                         >
-                          {isAr ? "تعيين كلمة المرور" : "Reset Password"}
+                          {isAr ? "كلمة المرور" : "Password"}
                         </button>
 
+                        {/* Super Admin Toggle Button */}
                         {u.isSystemAdmin ? (
-                          <span className="text-[10px] font-bold text-purple-650 bg-purple-500/10 px-2 py-0.5 rounded-md">
-                            {isAr ? "مدير النظام" : "Super Admin"}
-                          </span>
-                        ) : u.isApproved ? (
+                          <button
+                            onClick={() => toggleSystemAdminMutation.mutate({ userId: u._id, isSystemAdmin: false })}
+                            disabled={toggleSystemAdminMutation.isPending}
+                            className="px-2 py-1.5 rounded-lg bg-purple-500/15 hover:bg-red-500/20 text-[#843ec0] dark:text-[#b57ede] hover:text-red-500 font-bold transition-all text-[11px] cursor-pointer flex items-center gap-1"
+                            title={isAr ? "إلغاء صلاحية المشرف العام" : "Demote from Super Admin"}
+                          >
+                            <Shield className="h-3 w-3" />
+                            <span>{isAr ? "مشرف عام" : "Super Admin"}</span>
+                          </button>
+                        ) : (
+                          <button
+                            onClick={() => toggleSystemAdminMutation.mutate({ userId: u._id, isSystemAdmin: true })}
+                            disabled={toggleSystemAdminMutation.isPending}
+                            className="px-2 py-1.5 rounded-lg border border-zinc-200 dark:border-zinc-700 hover:border-purple-500 text-zinc-500 hover:text-purple-600 font-semibold transition-all text-[11px] cursor-pointer"
+                            title={isAr ? "ترقية إلى مشرف عام" : "Promote to Super Admin"}
+                          >
+                            + {isAr ? "ترقية لمشرف" : "Make Admin"}
+                          </button>
+                        )}
+
+                        {/* Account Approval / Suspend */}
+                        {u.isApproved ? (
                           <button
                             onClick={() => suspendUserMutation.mutate(u._id)}
                             disabled={suspendUserMutation.isPending}
-                            className="px-2.5 py-1.5 rounded-lg border border-red-200/50 hover:bg-red-500 hover:text-white text-red-500 font-bold transition-all text-[11px] cursor-pointer"
+                            className="px-2.5 py-1.5 rounded-lg border border-amber-200/50 hover:bg-amber-500 hover:text-white text-amber-500 font-bold transition-all text-[11px] cursor-pointer"
                           >
-                            {isAr ? "تعليق الحساب" : "Suspend Access"}
+                            {isAr ? "تعليق" : "Suspend"}
                           </button>
                         ) : (
                           <button
                             onClick={() => approveUserMutation.mutate(u._id)}
                             disabled={approveUserMutation.isPending}
-                            className="px-3 py-1.5 rounded-lg bg-green-600 hover:bg-green-700 text-white font-bold transition-all text-[11px] shadow-sm cursor-pointer"
+                            className="px-2.5 py-1.5 rounded-lg bg-green-600 hover:bg-green-700 text-white font-bold transition-all text-[11px] shadow-sm cursor-pointer"
                           >
-                            {isAr ? "تأكيد وتفعيل" : "Approve Account"}
+                            {isAr ? "تأكيد" : "Approve"}
                           </button>
                         )}
+
+                        {/* Delete User Permanently */}
+                        <button
+                          onClick={() => handleConfirmDeleteUser(u._id, u.fullName)}
+                          disabled={deleteUserMutation.isPending}
+                          className="p-1.5 rounded-lg border border-red-200/50 hover:bg-red-600 text-red-500 hover:text-white transition-all cursor-pointer shrink-0"
+                          title={isAr ? "حذف المستخدم نهائياً من المنصة" : "Delete user permanently"}
+                        >
+                          <Trash2 className="h-3.5 w-3.5" />
+                        </button>
                       </td>
                     </tr>
                   ))}

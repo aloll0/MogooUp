@@ -10,6 +10,17 @@ export interface Workspace {
   createdAt: string;
 }
 
+export interface WorkspacePermissions {
+  canCreateTasks: boolean;
+  canEditTasks: boolean;
+  canDeleteTasks: boolean;
+  canManageLists: boolean;
+  canManageSpaces: boolean;
+  canInviteMembers: boolean;
+  canViewReports: boolean;
+  canManageClients: boolean;
+}
+
 export interface WorkspaceMember {
   _id: string;
   workspaceId: string;
@@ -21,6 +32,7 @@ export interface WorkspaceMember {
   };
   role: "owner" | "admin" | "manager" | "member" | "guest";
   status: "active" | "invited" | "suspended";
+  permissions?: WorkspacePermissions;
 }
 
 // Client Project interfaces
@@ -224,19 +236,43 @@ export const taskflowService = {
     return response.data.data.workspace;
   },
 
+  deleteWorkspace: async (workspaceId: string): Promise<void> => {
+    await api.delete(`/workspaces/${workspaceId}`);
+  },
+
+  searchUsers: async (query: string): Promise<any[]> => {
+    const response = await api.get(`/workspaces/users/search`, { params: { q: query } });
+    return response.data.data.users;
+  },
+
   getWorkspaceMembers: async (workspaceId: string): Promise<WorkspaceMember[]> => {
     const response = await api.get(`/workspaces/${workspaceId}/members`);
     return response.data.data.members;
   },
 
-  inviteWorkspaceMember: async (workspaceId: string, email: string, role: string): Promise<any> => {
-    const response = await api.post(`/workspaces/${workspaceId}/invite`, { email, role });
+  inviteWorkspaceMember: async (
+    workspaceId: string,
+    email: string,
+    role: string,
+    permissions?: Partial<WorkspacePermissions>
+  ): Promise<any> => {
+    const response = await api.post(`/workspaces/${workspaceId}/invite`, { email, role, permissions });
     return response.data.data;
   },
 
-  updateWorkspaceMemberRole: async (workspaceId: string, userId: string, role: string): Promise<any> => {
-    const response = await api.put(`/workspaces/${workspaceId}/members`, { userId, role });
+  updateWorkspaceMemberRole: async (
+    workspaceId: string,
+    userId: string,
+    role?: string,
+    permissions?: Partial<WorkspacePermissions>
+  ): Promise<any> => {
+    const response = await api.put(`/workspaces/${workspaceId}/members`, { userId, role, permissions });
     return response.data.data;
+  },
+
+  removeWorkspaceMember: async (workspaceId: string, userId: string): Promise<any> => {
+    const response = await api.delete(`/workspaces/${workspaceId}/members/${userId}`);
+    return response.data;
   },
 
   // Spaces
@@ -406,6 +442,15 @@ export const taskflowService = {
 
   suspendUser: async (userId: string): Promise<any> => {
     const response = await api.put(`/auth/admin/users/${userId}/suspend`);
+    return response.data.data.user;
+  },
+
+  deleteUser: async (userId: string): Promise<void> => {
+    await api.delete(`/auth/admin/users/${userId}`);
+  },
+
+  toggleSystemAdmin: async (userId: string, isSystemAdmin: boolean): Promise<any> => {
+    const response = await api.put(`/auth/admin/users/${userId}/role`, { isSystemAdmin });
     return response.data.data.user;
   },
 

@@ -227,6 +227,65 @@ export class AuthController {
     }
   };
 
+  deleteUser = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+    try {
+      const { userId } = req.params;
+      const adminId = req.user!.userId;
+
+      if (userId === adminId) {
+        res.status(400).json({ success: false, error: { message: "Cannot delete your own admin account" } });
+        return;
+      }
+
+      const user = await UserModel.findById(userId);
+      if (!user) {
+        res.status(404).json({ success: false, error: { message: "User not found" } });
+        return;
+      }
+
+      // Delete user's memberships
+      await mongoose.model("Membership").deleteMany({ userId });
+      // Remove from task assignees
+      await mongoose.model("Task").updateMany({ assignees: userId }, { $pull: { assignees: userId } });
+      // Delete user document
+      await UserModel.findByIdAndDelete(userId);
+
+      res.status(200).json({
+        success: true,
+        message: "User deleted successfully",
+      });
+    } catch (error) {
+      next(error);
+    }
+  };
+
+  toggleSystemAdmin = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+    try {
+      const { userId } = req.params;
+      const { isSystemAdmin } = req.body;
+      const adminId = req.user!.userId;
+
+      if (userId === adminId && isSystemAdmin === false) {
+        res.status(400).json({ success: false, error: { message: "Cannot revoke your own super admin rights" } });
+        return;
+      }
+
+      const user = await UserModel.findByIdAndUpdate(
+        userId,
+        { isSystemAdmin: !!isSystemAdmin },
+        { new: true }
+      );
+
+      res.status(200).json({
+        success: true,
+        message: "User admin role updated successfully",
+        data: { user },
+      });
+    } catch (error) {
+      next(error);
+    }
+  };
+
   getAdminWorkspaces = async (_req: Request, res: Response, next: NextFunction): Promise<void> => {
     try {
       const workspaces = await WorkspaceModel.find({})
