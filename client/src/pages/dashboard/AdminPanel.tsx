@@ -277,9 +277,6 @@ export const AdminPanel: React.FC = () => {
                       <h3 className="font-extrabold text-sm text-zinc-900 dark:text-zinc-50">{ws.name}</h3>
                       <p className="text-[10px] text-zinc-450 font-semibold font-mono mt-0.5">slug: {ws.slug}</p>
                     </div>
-                    <span className="text-[10px] font-bold px-2 py-0.5 rounded-md bg-purple-500/10 text-purple-650 dark:text-purple-400 border border-purple-500/20">
-                      Owner: {ws.owner?.fullName || "Unowned"}
-                    </span>
                   </div>
 
                   {/* Spaces / Departments */}
