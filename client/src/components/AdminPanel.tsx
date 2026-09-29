@@ -288,7 +288,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ activeSubTab }) => {
           <input
             type="text"
             placeholder={
-              activeTab === "companies" ? (isAr ? "البحث عن الشركات والملاك..." : "Search companies / owners...") :
+              activeTab === "companies" ? (isAr ? "البحث عن الشركات..." : "Search companies...") :
               activeTab === "users" ? (isAr ? "البحث عن مستخدمي المنصة..." : "Search platform users...") :
               activeTab === "employee-reports" ? (isAr ? "البحث عن الموظفين..." : "Search employees...") :
               activeTab === "deleted" ? (isAr ? "البحث عن المهام المحذوفة..." : "Search deleted tasks...") : (isAr ? "البحث في السجلات التاريخية..." : "Search log history...")
@@ -521,9 +521,6 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ activeSubTab }) => {
                           <h3 className="font-extrabold text-sm text-zinc-900 dark:text-white">{ws.name}</h3>
                           <p className="text-[10px] text-zinc-450 font-mono mt-0.5">slug: {ws.slug}</p>
                         </div>
-                        <span className="text-[10px] font-bold px-2 py-0.5 rounded-md bg-purple-500/10 text-purple-600 dark:text-purple-400 border border-purple-500/20 max-w-[120px] truncate">
-                          {isAr ? "المالك: " : "Owner: "} {ws.owner?.fullName || (isAr ? "غير محدد" : "Unowned")}
-                        </span>
                       </div>
 
                       <div className="grid grid-cols-3 gap-2.5 text-center mb-4">
@@ -571,7 +568,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ activeSubTab }) => {
                   </div>
 
                   <span className="text-xs font-bold bg-purple-500/10 text-purple-600 dark:text-purple-400 px-3 py-1 rounded-lg">
-                    {isAr ? "المالك: " : "Owner: "} {selectedCompanyObj.owner?.fullName || (isAr ? "غير معروف" : "Unowned")} ({selectedCompanyObj.owner?.email})
+                    {isAr ? "أنشئت بواسطة: " : "Created by: "} {selectedCompanyObj.owner?.fullName || (isAr ? "غير معروف" : "Unknown")} {selectedCompanyObj.owner?.email ? `(${selectedCompanyObj.owner.email})` : ""}
                   </span>
                 </div>
 
@@ -639,7 +636,9 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ activeSubTab }) => {
                             />
                             <div className="min-w-0">
                               <span className="font-bold text-xs text-zinc-800 dark:text-zinc-150 block truncate">{m.userId?.fullName}</span>
-                              <span className="text-[9px] text-zinc-500 dark:text-zinc-400 uppercase font-semibold">{m.role} • {m.status}</span>
+                              <span className="text-[9px] text-zinc-500 dark:text-zinc-400 uppercase font-semibold">
+                                {m.role === "owner" ? (isAr ? "منشئ الشركة" : "Creator") : (isAr && m.role === "admin" ? "مدير" : isAr && m.role === "member" ? "عضو" : m.role)} • {m.status}
+                              </span>
                             </div>
                           </div>
                         ))}
