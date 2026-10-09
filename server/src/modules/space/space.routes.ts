@@ -12,5 +12,6 @@ router.use(authMiddleware);
 router.post("/", validateRequest(createSpaceSchema), spaceController.create);
 router.get("/workspace/:workspaceId", spaceController.list);
 router.delete("/:spaceId", spaceController.delete);
+router.post("/:spaceId/request-access", spaceController.requestAccess);
 
 export default router;

@@ -13,6 +13,7 @@ router.get("/stats", adminController.getStats);
 router.get("/performance", adminController.getPerformance);
 router.get("/deleted-tasks", adminController.getDeletedTasks);
 router.put("/deleted-tasks/:taskId/restore", adminController.restoreTask);
+router.delete("/deleted-tasks/:taskId/permanent", adminController.permanentlyDeleteTask);
 router.get("/companies", adminController.getCompanies);
 router.get("/employees/:userId/report", adminController.getEmployeeReport);
 

@@ -11,14 +11,33 @@ export interface Workspace {
 }
 
 export interface WorkspacePermissions {
+  // Tasks
   canCreateTasks: boolean;
   canEditTasks: boolean;
   canDeleteTasks: boolean;
-  canManageLists: boolean;
+  canChangeTaskStatus: boolean;
+  canAssignTasks: boolean;
+  canCommentOnTasks: boolean;
+  canDeleteComments: boolean;
+  // Spaces & Lists
+  canCreateSpaces: boolean;
   canManageSpaces: boolean;
+  canDeleteSpaces: boolean;
+  canManageLists: boolean;
+  // Team
   canInviteMembers: boolean;
-  canViewReports: boolean;
+  canManageRoles: boolean;
+  canRemoveMembers: boolean;
+  // Clients
+  canViewClients: boolean;
   canManageClients: boolean;
+  canDeleteClients: boolean;
+  // Analytics & Goals
+  canViewReports: boolean;
+  canExportData: boolean;
+  canManageGoals: boolean;
+  // Settings
+  canManageWorkspaceSettings: boolean;
 }
 
 export interface WorkspaceMember {
@@ -33,6 +52,7 @@ export interface WorkspaceMember {
   role: "owner" | "admin" | "manager" | "member" | "guest";
   status: "active" | "invited" | "suspended";
   permissions?: WorkspacePermissions;
+  allowedSpaces?: string[];
 }
 
 // Client Project interfaces
@@ -42,12 +62,22 @@ export interface ClientProjectService {
   note?: string;
 }
 
+export interface ClientProjectDocument {
+  _id?: string;
+  name: string;
+  url: string;
+  size: number;
+  fileType?: string;
+  uploadedAt?: string;
+}
+
 export interface ClientProject {
   _id: string;
   workspaceId: string;
   clientName: string;
   description?: string;
   services: ClientProjectService[];
+  documents?: ClientProjectDocument[];
   notes?: string;
   createdAt: string;
   updatedAt: string;
@@ -62,6 +92,8 @@ export interface Space {
   color?: string;
   isPrivate: boolean;
   allowedMembers: string[];
+  isLocked?: boolean;
+  hasAccess?: boolean;
 }
 
 // List interfaces
@@ -254,9 +286,10 @@ export const taskflowService = {
     workspaceId: string,
     email: string,
     role: string,
-    permissions?: Partial<WorkspacePermissions>
+    permissions?: Partial<WorkspacePermissions>,
+    allowedSpaces?: string[]
   ): Promise<any> => {
-    const response = await api.post(`/workspaces/${workspaceId}/invite`, { email, role, permissions });
+    const response = await api.post(`/workspaces/${workspaceId}/invite`, { email, role, permissions, allowedSpaces });
     return response.data.data;
   },
 
@@ -264,9 +297,10 @@ export const taskflowService = {
     workspaceId: string,
     userId: string,
     role?: string,
-    permissions?: Partial<WorkspacePermissions>
+    permissions?: Partial<WorkspacePermissions>,
+    allowedSpaces?: string[]
   ): Promise<any> => {
-    const response = await api.put(`/workspaces/${workspaceId}/members`, { userId, role, permissions });
+    const response = await api.put(`/workspaces/${workspaceId}/members`, { userId, role, permissions, allowedSpaces });
     return response.data.data;
   },
 
@@ -295,6 +329,10 @@ export const taskflowService = {
 
   deleteSpace: async (spaceId: string): Promise<void> => {
     await api.delete(`/spaces/${spaceId}`);
+  },
+
+  requestSpaceAccess: async (spaceId: string): Promise<void> => {
+    await api.post(`/spaces/${spaceId}/request-access`);
   },
 
   // Lists
@@ -495,8 +533,10 @@ export const taskflowService = {
     return response.data.data.performance;
   },
 
-  getAdminDeletedTasks: async (): Promise<Task[]> => {
-    const response = await api.get("/admin/deleted-tasks");
+  getAdminDeletedTasks: async (workspaceId?: string): Promise<Task[]> => {
+    const response = await api.get("/admin/deleted-tasks", {
+      params: workspaceId ? { workspaceId } : undefined,
+    });
     return response.data.data.tasks;
   },
 
@@ -505,8 +545,14 @@ export const taskflowService = {
     return response.data.data.task;
   },
 
-  getGlobalActivities: async (): Promise<ActivityLog[]> => {
-    const response = await api.get("/activities/system");
+  permanentlyDeleteTask: async (taskId: string): Promise<void> => {
+    await api.delete(`/admin/deleted-tasks/${taskId}/permanent`);
+  },
+
+  getGlobalActivities: async (workspaceId?: string): Promise<ActivityLog[]> => {
+    const response = await api.get("/activities/system", {
+      params: workspaceId ? { workspaceId } : undefined,
+    });
     return response.data.data.activities;
   },
 

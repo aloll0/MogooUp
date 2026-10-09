@@ -1,15 +1,39 @@
 import React, { useState, useEffect, useRef } from "react";
-import { Plus, Trash2, Printer, Check, Loader2, Search, PlusCircle, AlertCircle } from "lucide-react";
+import { 
+  Plus, 
+  Trash2, 
+  Printer, 
+  Check, 
+  Loader2, 
+  Search, 
+  PlusCircle, 
+  AlertCircle,
+  FileText,
+  Upload,
+  Download,
+  Eye,
+  Paperclip,
+  X
+} from "lucide-react";
 import { taskflowService } from "../services/taskflowService";
-import type { ClientProject, ClientProjectService } from "../services/taskflowService";
+import type { ClientProject, ClientProjectService, ClientProjectDocument } from "../services/taskflowService";
 import html2pdf from "html2pdf.js";
 import { useTranslation } from "react-i18next";
 import { useConfirmStore } from "../stores/useConfirmStore";
+import { useToastStore } from "../stores/useToastStore";
 
 interface ClientProjectsTabProps {
   workspaceId: string;
   currentUserRole: string;
 }
+
+const formatFileSize = (bytes: number): string => {
+  if (!bytes || bytes === 0) return "0 B";
+  const k = 1024;
+  const sizes = ["B", "KB", "MB", "GB"];
+  const i = Math.floor(Math.log(bytes) / Math.log(k));
+  return parseFloat((bytes / Math.pow(k, i)).toFixed(1)) + " " + sizes[i];
+};
 
 export const ClientProjectsTab: React.FC<ClientProjectsTabProps> = ({
   workspaceId,
@@ -18,17 +42,23 @@ export const ClientProjectsTab: React.FC<ClientProjectsTabProps> = ({
   const { i18n } = useTranslation();
   const isAr = i18n.language === "ar";
   const printContainerRef = useRef<HTMLDivElement>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const modalFileInputRef = useRef<HTMLInputElement>(null);
+
   const [clients, setClients] = useState<ClientProject[]>([]);
   const [selectedClient, setSelectedClient] = useState<ClientProject | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
   const [isExporting, setIsExporting] = useState(false);
+  const [isUploadingDocument, setIsUploadingDocument] = useState(false);
 
   // New Client Form Modal State
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [newClientName, setNewClientName] = useState("");
   const [newClientDesc, setNewClientDesc] = useState("");
   const [newClientNotes, setNewClientNotes] = useState("");
+  const [newClientDocuments, setNewClientDocuments] = useState<ClientProjectDocument[]>([]);
+  const [isModalUploadingDoc, setIsModalUploadingDoc] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   // Custom Service input state
@@ -69,6 +99,7 @@ export const ClientProjectsTab: React.FC<ClientProjectsTabProps> = ({
         clientName: newClientName.trim(),
         description: newClientDesc.trim(),
         notes: newClientNotes.trim(),
+        documents: newClientDocuments,
       });
       setClients([newClient, ...clients]);
       setSelectedClient(newClient);
@@ -76,11 +107,182 @@ export const ClientProjectsTab: React.FC<ClientProjectsTabProps> = ({
       setNewClientName("");
       setNewClientDesc("");
       setNewClientNotes("");
+      setNewClientDocuments([]);
+      useToastStore.getState().addToast(
+        isAr ? "تم إنشاء مشروع العميل بنجاح" : "Client project created successfully",
+        "success"
+      );
     } catch (error) {
       console.error("Failed to create client project:", error);
+      useToastStore.getState().addToast(
+        isAr ? "حدث خطأ أثناء إنشاء مشروع العميل" : "Failed to create client project",
+        "error"
+      );
     } finally {
       setIsSubmitting(false);
     }
+  };
+
+  // Upload document for selected client
+  const handleUploadDocument = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file || !selectedClient || !isManager) return;
+
+    if (file.size > 30 * 1024 * 1024) {
+      useToastStore.getState().addToast(
+        isAr ? "حجم الملف كبير جداً (الحد الأقصى 30 ميجابايت)" : "File size too large (max 30MB)",
+        "error"
+      );
+      e.target.value = "";
+      return;
+    }
+
+    try {
+      setIsUploadingDocument(true);
+      const reader = new FileReader();
+      reader.onload = async () => {
+        try {
+          const base64Data = reader.result as string;
+          const newDoc: ClientProjectDocument = {
+            name: file.name,
+            url: base64Data,
+            size: file.size,
+            fileType: file.type || "application/pdf",
+            uploadedAt: new Date().toISOString(),
+          };
+
+          const currentDocs = selectedClient.documents || [];
+          const updatedDocs = [...currentDocs, newDoc];
+
+          const updatedClient = {
+            ...selectedClient,
+            documents: updatedDocs,
+          };
+
+          setSelectedClient(updatedClient);
+          setClients(clients.map((c) => (c._id === selectedClient._id ? updatedClient : c)));
+
+          await taskflowService.updateClientProject(workspaceId, selectedClient._id, {
+            documents: updatedDocs,
+          });
+
+          useToastStore.getState().addToast(
+            isAr ? `تم رفع ملف البريف "${file.name}" بنجاح` : `Brief file "${file.name}" uploaded successfully`,
+            "success"
+          );
+        } catch (err) {
+          console.error("Failed to upload document:", err);
+          useToastStore.getState().addToast(
+            isAr ? "حدث خطأ أثناء رفع الملف" : "Failed to upload document",
+            "error"
+          );
+        } finally {
+          setIsUploadingDocument(false);
+          if (fileInputRef.current) fileInputRef.current.value = "";
+        }
+      };
+      reader.readAsDataURL(file);
+    } catch (err) {
+      setIsUploadingDocument(false);
+      console.error(err);
+    }
+  };
+
+  // Delete document
+  const handleDeleteDocument = async (docIndex: number) => {
+    if (!selectedClient || !isManager) return;
+    const docToDelete = (selectedClient.documents || [])[docIndex];
+    if (!docToDelete) return;
+
+    const confirmed = await useConfirmStore.getState().show({
+      title: isAr ? `حذف ملف البريف "${docToDelete.name}"` : `Delete Document "${docToDelete.name}"`,
+      message: isAr
+        ? `هل أنت متأكد من حذف هذا الملف نهائياً من مشروع العميل؟`
+        : `Are you sure you want to delete this document from the client project?`,
+      confirmText: isAr ? "حذف" : "Delete",
+      cancelText: isAr ? "إلغاء" : "Cancel",
+    });
+
+    if (!confirmed) return;
+
+    const updatedDocs = (selectedClient.documents || []).filter((_, idx) => idx !== docIndex);
+    const updatedClient = {
+      ...selectedClient,
+      documents: updatedDocs,
+    };
+
+    setSelectedClient(updatedClient);
+    setClients(clients.map((c) => (c._id === selectedClient._id ? updatedClient : c)));
+
+    try {
+      await taskflowService.updateClientProject(workspaceId, selectedClient._id, {
+        documents: updatedDocs,
+      });
+      useToastStore.getState().addToast(
+        isAr ? "تم حذف الملف بنجاح" : "Document deleted successfully",
+        "success"
+      );
+    } catch (error) {
+      console.error("Failed to delete document:", error);
+    }
+  };
+
+  // Download document
+  const handleDownloadDocument = (doc: ClientProjectDocument) => {
+    const link = document.createElement("a");
+    link.href = doc.url;
+    link.download = doc.name;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
+
+  // Preview document in new window
+  const handlePreviewDocument = (doc: ClientProjectDocument) => {
+    const newWindow = window.open();
+    if (newWindow) {
+      newWindow.document.write(
+        `<html><head><title>${doc.name}</title></head><body style="margin:0;background:#1e1e24;"><iframe src="${doc.url}" style="border:none;width:100vw;height:100vh;"></iframe></body></html>`
+      );
+    } else {
+      handleDownloadDocument(doc);
+    }
+  };
+
+  // Handle document upload inside modal
+  const handleModalUploadDocument = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    if (file.size > 30 * 1024 * 1024) {
+      useToastStore.getState().addToast(
+        isAr ? "حجم الملف كبير جداً (الحد الأقصى 30 ميجابايت)" : "File size too large (max 30MB)",
+        "error"
+      );
+      e.target.value = "";
+      return;
+    }
+
+    setIsModalUploadingDoc(true);
+    const reader = new FileReader();
+    reader.onload = () => {
+      const base64Data = reader.result as string;
+      const newDoc: ClientProjectDocument = {
+        name: file.name,
+        url: base64Data,
+        size: file.size,
+        fileType: file.type || "application/pdf",
+        uploadedAt: new Date().toISOString(),
+      };
+      setNewClientDocuments((prev) => [...prev, newDoc]);
+      setIsModalUploadingDoc(false);
+      if (modalFileInputRef.current) modalFileInputRef.current.value = "";
+    };
+    reader.readAsDataURL(file);
+  };
+
+  const handleRemoveModalDocument = (index: number) => {
+    setNewClientDocuments((prev) => prev.filter((_, idx) => idx !== index));
   };
 
   // Toggle checklist checkbox handler
@@ -457,7 +659,7 @@ export const ClientProjectsTab: React.FC<ClientProjectsTabProps> = ({
                       key={idx}
                       className={`flex flex-col gap-2 p-3.5 rounded-xl border transition-all ${
                         service.isChecked
-                          ? "bg-green-500/[0.03] dark:bg-green-500/[0.02] border-green-500/30"
+                          ? "bg-green-500/3 dark:bg-green-500/2 border-green-500/30"
                           : "bg-zinc-50 dark:bg-zinc-900 border-zinc-200 dark:border-zinc-800 hover:border-zinc-300 dark:hover:border-zinc-700"
                       }`}
                     >
@@ -477,7 +679,7 @@ export const ClientProjectsTab: React.FC<ClientProjectsTabProps> = ({
                                 : "border-zinc-300 dark:border-zinc-700"
                             }`}
                           >
-                            {service.isChecked && <Check className="h-3 w-3 stroke-[3]" />}
+                            {service.isChecked && <Check className="h-3 w-3 stroke-3" />}
                           </div>
                           <span className={`text-xs font-bold truncate ${service.isChecked ? "text-green-700 dark:text-green-450" : "text-zinc-650 dark:text-zinc-300"}`}>
                             {service.name}
@@ -537,6 +739,142 @@ export const ClientProjectsTab: React.FC<ClientProjectsTabProps> = ({
                 )}
               </div>
 
+              {/* PDF & Brief Documents Section */}
+              <div className="space-y-3 pt-3 border-t dark:border-zinc-800/80">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                  <div>
+                    <h4 className="text-sm font-bold text-zinc-800 dark:text-zinc-200 flex items-center gap-2">
+                      <FileText className="h-4 w-4 text-purple-600" />
+                      <span>{isAr ? "أوراق ومستندات البريف (PDF & Documents)" : "Brief Documents & PDF Attachments"}</span>
+                      <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-purple-500/10 text-purple-600 dark:text-purple-400 border border-purple-500/20">
+                        {selectedClient.documents?.length || 0}
+                      </span>
+                    </h4>
+                    <p className="text-[11px] text-zinc-500 dark:text-zinc-400 mt-0.5">
+                      {isAr 
+                        ? "ارفع ملفات البريف، المواصفات، أو أي أوراق ومستندات PDF خاصة بالعميل للرجوع إليها في أي وقت."
+                        : "Upload client brief files, PDF documents, or contract specifications for easy reference."}
+                    </p>
+                  </div>
+
+                  {isManager && (
+                    <div className="shrink-0">
+                      <input
+                        type="file"
+                        ref={fileInputRef}
+                        onChange={handleUploadDocument}
+                        accept=".pdf,.doc,.docx,.png,.jpg,.jpeg,.zip"
+                        className="hidden"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => fileInputRef.current?.click()}
+                        disabled={isUploadingDocument}
+                        className="flex items-center gap-1.5 px-3.5 py-2 bg-purple-600 hover:bg-purple-700 text-white rounded-xl text-xs font-bold transition-all shadow-sm cursor-pointer disabled:opacity-50"
+                      >
+                        {isUploadingDocument ? (
+                          <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                        ) : (
+                          <Upload className="h-3.5 w-3.5" />
+                        )}
+                        <span>{isAr ? "رفع ملف / بريف PDF" : "Upload Brief PDF"}</span>
+                      </button>
+                    </div>
+                  )}
+                </div>
+
+                {/* Uploaded Documents List / Grid */}
+                {selectedClient.documents && selectedClient.documents.length > 0 ? (
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    {selectedClient.documents.map((doc, idx) => {
+                      const isPdf = doc.name.toLowerCase().endsWith(".pdf") || doc.fileType?.includes("pdf");
+                      return (
+                        <div
+                          key={doc._id || idx}
+                          className="flex items-center justify-between gap-3 p-3.5 rounded-xl border border-zinc-200 dark:border-zinc-800 bg-zinc-50/70 dark:bg-zinc-850/40 hover:border-purple-500/30 transition-all group"
+                        >
+                          <div className="flex items-center gap-2.5 min-w-0 flex-1">
+                            <div className={`p-2 rounded-lg shrink-0 ${isPdf ? "bg-red-500/10 text-red-500 border border-red-500/20" : "bg-purple-500/10 text-purple-500 border border-purple-500/20"}`}>
+                              <FileText className="h-4 w-4" />
+                            </div>
+                            <div className="min-w-0 flex-1">
+                              <p className="font-bold text-xs text-zinc-850 dark:text-zinc-200 truncate" title={doc.name}>
+                                {doc.name}
+                              </p>
+                              <div className="flex items-center gap-2 text-[10px] text-zinc-400 mt-0.5">
+                                <span className="font-semibold uppercase">{isPdf ? "PDF" : "DOC"}</span>
+                                <span>•</span>
+                                <span>{formatFileSize(doc.size)}</span>
+                                {doc.uploadedAt && (
+                                  <>
+                                    <span>•</span>
+                                    <span>{new Date(doc.uploadedAt).toLocaleDateString(i18n.language)}</span>
+                                  </>
+                                )}
+                              </div>
+                            </div>
+                          </div>
+
+                          {/* Action Buttons */}
+                          <div className="flex items-center gap-1 shrink-0">
+                            <button
+                              type="button"
+                              onClick={() => handlePreviewDocument(doc)}
+                              className="p-1.5 hover:bg-zinc-200 dark:hover:bg-zinc-800 text-zinc-600 dark:text-zinc-300 rounded-lg transition-colors cursor-pointer"
+                              title={isAr ? "معاينة الملف" : "Preview"}
+                            >
+                              <Eye className="h-3.5 w-3.5" />
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => handleDownloadDocument(doc)}
+                              className="p-1.5 hover:bg-zinc-200 dark:hover:bg-zinc-800 text-zinc-600 dark:text-zinc-300 rounded-lg transition-colors cursor-pointer"
+                              title={isAr ? "تحميل الملف" : "Download"}
+                            >
+                              <Download className="h-3.5 w-3.5" />
+                            </button>
+                            {isManager && (
+                              <button
+                                type="button"
+                                onClick={() => handleDeleteDocument(idx)}
+                                className="p-1.5 hover:bg-red-500/10 text-zinc-400 hover:text-red-500 rounded-lg transition-colors cursor-pointer"
+                                title={isAr ? "حذف الملف" : "Delete"}
+                              >
+                                <Trash2 className="h-3.5 w-3.5" />
+                              </button>
+                            )}
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                ) : (
+                  <div
+                    onClick={() => isManager && fileInputRef.current?.click()}
+                    className={`border-2 border-dashed border-zinc-200 dark:border-zinc-800/80 rounded-2xl p-6 text-center space-y-2 transition-all ${
+                      isManager ? "hover:border-purple-500/40 hover:bg-purple-500/2 cursor-pointer" : ""
+                    }`}
+                  >
+                    <div className="h-10 w-10 mx-auto rounded-full bg-purple-500/10 text-purple-500 flex items-center justify-center">
+                      <Paperclip className="h-5 w-5" />
+                    </div>
+                    <p className="text-xs font-bold text-zinc-700 dark:text-zinc-300">
+                      {isAr ? "لا توجد أوراق أو ملفات بريف مرفوعة بعد" : "No brief documents uploaded yet"}
+                    </p>
+                    <p className="text-[11px] text-zinc-400 max-w-sm mx-auto">
+                      {isAr
+                        ? "يمكنك رفع ملف البريف الخاص بالمشروع بصيغة PDF أو أي مستند للرجوع لشروط ومخرجات العميل بسهولة."
+                        : "Upload project brief PDF or documentation to review deliverables anytime."}
+                    </p>
+                    {isManager && (
+                      <span className="inline-block mt-1 text-[11px] font-bold text-purple-600 dark:text-purple-400 hover:underline">
+                        + {isAr ? "انقر هنا لاختيار ملف ورفعه" : "Click here to choose and upload a file"}
+                      </span>
+                    )}
+                  </div>
+                )}
+              </div>
+
               {/* Remarks Textarea */}
               <div className="space-y-2 pt-2">
                 <h4 className="text-sm font-bold text-zinc-800 dark:text-zinc-200">
@@ -575,7 +913,7 @@ export const ClientProjectsTab: React.FC<ClientProjectsTabProps> = ({
       {/* --- ADD NEW CLIENT MODAL --- */}
       {isAddModalOpen && (
         <div className="fixed inset-0 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4 z-50 animate-fade-in">
-          <div className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-2xl w-full max-w-md shadow-2xl p-6 text-start">
+          <div className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-2xl w-full max-w-md shadow-2xl p-6 text-start max-h-[90vh] overflow-y-auto custom-scrollbar">
             <h3 className="text-base font-bold text-zinc-850 dark:text-zinc-200 mb-4">
               {isAr ? "إضافة ملف تعريف العميل / المتجر" : "Add Client / Store Profile"}
             </h3>
@@ -608,6 +946,65 @@ export const ClientProjectsTab: React.FC<ClientProjectsTabProps> = ({
                 />
               </div>
 
+              {/* Attach Brief Document in Modal */}
+              <div>
+                <label className="text-[10px] font-extrabold uppercase tracking-wider text-zinc-400 dark:text-zinc-500 mb-1.5 flex items-center justify-between">
+                  <span>{isAr ? "أوراق وملف البريف (PDF / مستندات)" : "Brief Documents (PDF / Docs)"}</span>
+                  {newClientDocuments.length > 0 && (
+                    <span className="text-purple-600 dark:text-purple-400 font-bold">
+                      {newClientDocuments.length} {isAr ? "ملف" : "files"}
+                    </span>
+                  )}
+                </label>
+                
+                <input
+                  type="file"
+                  ref={modalFileInputRef}
+                  onChange={handleModalUploadDocument}
+                  accept=".pdf,.doc,.docx,.png,.jpg,.jpeg,.zip"
+                  className="hidden"
+                />
+
+                <div
+                  onClick={() => modalFileInputRef.current?.click()}
+                  className="p-3 border border-dashed border-zinc-250 dark:border-zinc-750 hover:border-purple-500 rounded-xl bg-zinc-50 dark:bg-zinc-800/40 text-center cursor-pointer transition-all flex items-center justify-center gap-2"
+                >
+                  {isModalUploadingDoc ? (
+                    <Loader2 className="h-4 w-4 animate-spin text-purple-500" />
+                  ) : (
+                    <Upload className="h-4 w-4 text-purple-500" />
+                  )}
+                  <span className="text-xs font-semibold text-zinc-600 dark:text-zinc-300">
+                    {isAr ? "انقر لرفع ملف بريف PDF مع العميل" : "Click to attach a brief PDF file"}
+                  </span>
+                </div>
+
+                {/* List attached documents in modal */}
+                {newClientDocuments.length > 0 && (
+                  <div className="mt-2 space-y-1.5 max-h-28 overflow-y-auto">
+                    {newClientDocuments.map((doc, idx) => (
+                      <div
+                        key={idx}
+                        className="flex items-center justify-between gap-2 p-2 rounded-lg bg-zinc-100 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 text-xs"
+                      >
+                        <div className="flex items-center gap-1.5 min-w-0">
+                          <FileText className="h-3.5 w-3.5 text-red-500 shrink-0" />
+                          <span className="truncate font-semibold text-zinc-800 dark:text-zinc-200">{doc.name}</span>
+                          <span className="text-[10px] text-zinc-400 shrink-0">({formatFileSize(doc.size)})</span>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => handleRemoveModalDocument(idx)}
+                          className="p-1 hover:bg-red-500/10 text-red-500 rounded-md cursor-pointer"
+                        >
+                          <X className="h-3.5 w-3.5" />
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+
               <div>
                 <label className="block text-[10px] font-extrabold uppercase tracking-wider text-zinc-400 dark:text-zinc-500 mb-1.5">
                   {isAr ? "ملاحظات العمل الأولية" : "Initial Notes"}
@@ -616,14 +1013,17 @@ export const ClientProjectsTab: React.FC<ClientProjectsTabProps> = ({
                   placeholder={isAr ? "اكتب شروط العقد أو مراجع العميل هنا..." : "Type any contract conditions or client references here..."}
                   value={newClientNotes}
                   onChange={(e) => setNewClientNotes(e.target.value)}
-                  className="w-full h-24 px-4 py-2.5 text-xs bg-zinc-50 dark:bg-zinc-800 border border-zinc-250 dark:border-zinc-700 rounded-xl focus:outline-none focus:ring-1 focus:ring-purple-500 dark:text-zinc-200 resize-none"
+                  className="w-full h-20 px-4 py-2.5 text-xs bg-zinc-50 dark:bg-zinc-800 border border-zinc-250 dark:border-zinc-700 rounded-xl focus:outline-none focus:ring-1 focus:ring-purple-500 dark:text-zinc-200 resize-none"
                 />
               </div>
 
               <div className="flex justify-end gap-3 pt-2">
                 <button
                   type="button"
-                  onClick={() => setIsAddModalOpen(false)}
+                  onClick={() => {
+                    setIsAddModalOpen(false);
+                    setNewClientDocuments([]);
+                  }}
                   className="px-4 py-2 text-xs font-bold text-zinc-500 hover:bg-zinc-100 dark:hover:bg-zinc-800 rounded-xl transition-all cursor-pointer"
                 >
                   {isAr ? "إلغاء" : "Cancel"}
@@ -795,6 +1195,23 @@ export const ClientProjectsTab: React.FC<ClientProjectsTabProps> = ({
                   {isAr ? "ملاحظات وتفاصيل العمل" : "Remarks & Project Notes"}
                 </h2>
                 <p style={{ fontSize: "11.5px", color: "#4b5563", whiteSpace: "pre-wrap", lineHeight: "1.6", margin: 0 }}>{selectedClient.notes}</p>
+              </div>
+            )}
+
+            {/* Attached Documents in PDF */}
+            {selectedClient.documents && selectedClient.documents.length > 0 && (
+              <div style={{ marginBottom: "30px" }}>
+                <h2 style={{ fontSize: "13px", fontWeight: "800", color: "#374151", textTransform: "uppercase", borderBottom: "1px solid #e5e7eb", paddingBottom: "6px", marginBottom: "16px" }}>
+                  {isAr ? "أوراق ومستندات البريف المرفقة" : "Attached Brief & Reference Documents"}
+                </h2>
+                <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
+                  {selectedClient.documents.map((doc, idx) => (
+                    <div key={idx} style={{ padding: "8px 12px", border: "1px solid #e5e7eb", borderRadius: "8px", backgroundColor: "#f9fafb", display: "flex", justifyContent: "space-between", alignItems: "center", fontSize: "11px" }}>
+                      <span style={{ fontWeight: "700", color: "#1f2937" }}>📄 {doc.name}</span>
+                      <span style={{ color: "#6b7280", fontWeight: "600" }}>{formatFileSize(doc.size)}</span>
+                    </div>
+                  ))}
+                </div>
               </div>
             )}
 

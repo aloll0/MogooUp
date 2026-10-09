@@ -40,7 +40,8 @@ export class AdminController {
   getDeletedTasks = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     try {
       await this.verifyAdmin(req.user!.userId);
-      const tasks = await adminService.getDeletedTasks();
+      const { workspaceId } = req.query;
+      const tasks = await adminService.getDeletedTasks(workspaceId as string | undefined);
       res.status(200).json({
         success: true,
         data: { tasks }
@@ -59,6 +60,20 @@ export class AdminController {
         success: true,
         message: "Task restored successfully",
         data: { task }
+      });
+    } catch (error) {
+      next(error);
+    }
+  };
+
+  permanentlyDeleteTask = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+    try {
+      await this.verifyAdmin(req.user!.userId);
+      const { taskId } = req.params;
+      await adminService.permanentlyDeleteTask(taskId);
+      res.status(200).json({
+        success: true,
+        message: "Task permanently deleted successfully"
       });
     } catch (error) {
       next(error);

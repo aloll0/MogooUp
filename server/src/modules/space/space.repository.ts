@@ -6,6 +6,14 @@ export class SpaceRepository {
     return SpaceModel.findById(id).exec();
   }
 
+  async findAllByWorkspace(workspaceId: string): Promise<ISpace[]> {
+    return SpaceModel.find({
+      workspaceId: new mongoose.Types.ObjectId(workspaceId),
+    })
+      .sort({ createdAt: 1 })
+      .exec();
+  }
+
   async findSpacesByWorkspace(workspaceId: string, userId: string): Promise<ISpace[]> {
     try {
       const UserModel = mongoose.model("User");

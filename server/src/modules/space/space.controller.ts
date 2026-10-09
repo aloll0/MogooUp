@@ -58,6 +58,22 @@ export class SpaceController {
       next(error);
     }
   };
+
+  requestAccess = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+    try {
+      const { spaceId } = req.params;
+      const userId = req.user!.userId;
+
+      await spaceService.requestAccessToSpace(spaceId, userId);
+
+      res.status(200).json({
+        success: true,
+        message: "Access request sent to workspace administrators successfully",
+      });
+    } catch (error) {
+      next(error);
+    }
+  };
 }
 
 export const spaceController = new SpaceController();

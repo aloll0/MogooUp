@@ -99,6 +99,7 @@ export class WorkspaceRepository {
       const defaultPerms = DEFAULT_ROLE_PERMISSIONS[m.role as WorkspaceRole] || DEFAULT_ROLE_PERMISSIONS.member;
       return {
         ...m,
+        allowedSpaces: m.allowedSpaces ? m.allowedSpaces.map((id: any) => id.toString()) : [],
         permissions: {
           ...defaultPerms,
           ...(m.permissions || {}),

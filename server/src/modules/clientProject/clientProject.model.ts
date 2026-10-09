@@ -6,11 +6,20 @@ export interface IClientService {
   note?: string;
 }
 
+export interface IClientDocument {
+  name: string;
+  url: string;
+  size: number;
+  fileType?: string;
+  uploadedAt?: Date;
+}
+
 export interface IClientProject extends Document {
   workspaceId: mongoose.Types.ObjectId;
   clientName: string;
   description?: string;
   services: IClientService[];
+  documents?: IClientDocument[];
   notes?: string;
   createdAt: Date;
   updatedAt: Date;
@@ -38,6 +47,15 @@ const ClientProjectSchema = new Schema<IClientProject>(
         name: { type: String, required: true },
         isChecked: { type: Boolean, default: false },
         note: { type: String, default: "" },
+      }
+    ],
+    documents: [
+      {
+        name: { type: String, required: true },
+        url: { type: String, required: true },
+        size: { type: Number, required: true },
+        fileType: { type: String, default: "application/pdf" },
+        uploadedAt: { type: Date, default: Date.now },
       }
     ],
     notes: {

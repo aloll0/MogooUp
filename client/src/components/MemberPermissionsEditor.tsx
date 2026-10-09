@@ -12,8 +12,10 @@ import {
   Users,
   FileEdit,
   Sliders,
+  Briefcase,
+  BarChart2,
 } from "lucide-react";
-import type { WorkspaceMember, WorkspacePermissions } from "../services/taskflowService";
+import type { WorkspaceMember, WorkspacePermissions, Space } from "../services/taskflowService";
 import { useConfirmStore } from "../stores/useConfirmStore";
 
 export const DEFAULT_PERMISSIONS_BY_ROLE: Record<string, WorkspacePermissions> = {
@@ -21,59 +23,125 @@ export const DEFAULT_PERMISSIONS_BY_ROLE: Record<string, WorkspacePermissions> =
     canCreateTasks: true,
     canEditTasks: true,
     canDeleteTasks: true,
-    canManageLists: true,
+    canChangeTaskStatus: true,
+    canAssignTasks: true,
+    canCommentOnTasks: true,
+    canDeleteComments: true,
+    canCreateSpaces: true,
     canManageSpaces: true,
+    canDeleteSpaces: true,
+    canManageLists: true,
     canInviteMembers: true,
-    canViewReports: true,
+    canManageRoles: true,
+    canRemoveMembers: true,
+    canViewClients: true,
     canManageClients: true,
+    canDeleteClients: true,
+    canViewReports: true,
+    canExportData: true,
+    canManageGoals: true,
+    canManageWorkspaceSettings: true,
   },
   admin: {
     canCreateTasks: true,
     canEditTasks: true,
     canDeleteTasks: true,
-    canManageLists: true,
+    canChangeTaskStatus: true,
+    canAssignTasks: true,
+    canCommentOnTasks: true,
+    canDeleteComments: true,
+    canCreateSpaces: true,
     canManageSpaces: true,
+    canDeleteSpaces: true,
+    canManageLists: true,
     canInviteMembers: true,
-    canViewReports: true,
+    canManageRoles: true,
+    canRemoveMembers: true,
+    canViewClients: true,
     canManageClients: true,
+    canDeleteClients: true,
+    canViewReports: true,
+    canExportData: true,
+    canManageGoals: true,
+    canManageWorkspaceSettings: true,
   },
   manager: {
     canCreateTasks: true,
     canEditTasks: true,
     canDeleteTasks: false,
-    canManageLists: true,
+    canChangeTaskStatus: true,
+    canAssignTasks: true,
+    canCommentOnTasks: true,
+    canDeleteComments: true,
+    canCreateSpaces: true,
     canManageSpaces: true,
+    canDeleteSpaces: false,
+    canManageLists: true,
     canInviteMembers: true,
-    canViewReports: true,
+    canManageRoles: false,
+    canRemoveMembers: false,
+    canViewClients: true,
     canManageClients: true,
+    canDeleteClients: false,
+    canViewReports: true,
+    canExportData: true,
+    canManageGoals: true,
+    canManageWorkspaceSettings: false,
   },
   member: {
     canCreateTasks: true,
     canEditTasks: true,
     canDeleteTasks: false,
-    canManageLists: false,
+    canChangeTaskStatus: true,
+    canAssignTasks: true,
+    canCommentOnTasks: true,
+    canDeleteComments: false,
+    canCreateSpaces: false,
     canManageSpaces: false,
+    canDeleteSpaces: false,
+    canManageLists: false,
     canInviteMembers: false,
-    canViewReports: true,
+    canManageRoles: false,
+    canRemoveMembers: false,
+    canViewClients: true,
     canManageClients: false,
+    canDeleteClients: false,
+    canViewReports: true,
+    canExportData: false,
+    canManageGoals: false,
+    canManageWorkspaceSettings: false,
   },
   guest: {
     canCreateTasks: false,
     canEditTasks: false,
     canDeleteTasks: false,
-    canManageLists: false,
+    canChangeTaskStatus: false,
+    canAssignTasks: false,
+    canCommentOnTasks: true,
+    canDeleteComments: false,
+    canCreateSpaces: false,
     canManageSpaces: false,
+    canDeleteSpaces: false,
+    canManageLists: false,
     canInviteMembers: false,
-    canViewReports: false,
+    canManageRoles: false,
+    canRemoveMembers: false,
+    canViewClients: false,
     canManageClients: false,
+    canDeleteClients: false,
+    canViewReports: false,
+    canExportData: false,
+    canManageGoals: false,
+    canManageWorkspaceSettings: false,
   },
 };
 
 interface MemberPermissionsEditorProps {
   member: WorkspaceMember;
+  spaces?: Space[];
   currentUserRole: string;
   currentUserId?: string;
-  onSave: (userId: string, role: string, permissions: WorkspacePermissions) => Promise<void> | void;
+  onSave: (userId: string, role: string, permissions: WorkspacePermissions, allowedSpaces?: string[]) => Promise<void> | void;
   onRemove: (userId: string) => Promise<void> | void;
   isSaving: boolean;
   isRemoving?: boolean;
@@ -81,6 +149,7 @@ interface MemberPermissionsEditorProps {
 
 export const MemberPermissionsEditor: React.FC<MemberPermissionsEditorProps> = ({
   member,
+  spaces = [],
   currentUserRole,
   currentUserId,
   onSave,
@@ -88,12 +157,16 @@ export const MemberPermissionsEditor: React.FC<MemberPermissionsEditorProps> = (
   isSaving,
   isRemoving = false,
 }) => {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
+  const isAr = i18n.language === "ar";
   const [selectedRole, setSelectedRole] = useState<string>(member.role || "member");
   const [permissions, setPermissions] = useState<WorkspacePermissions>(() => {
     return member.permissions && Object.keys(member.permissions).length > 0
       ? { ...DEFAULT_PERMISSIONS_BY_ROLE[member.role || "member"], ...member.permissions }
       : { ...DEFAULT_PERMISSIONS_BY_ROLE[member.role || "member"] };
+  });
+  const [selectedSpaces, setSelectedSpaces] = useState<string[]>(() => {
+    return Array.isArray(member.allowedSpaces) ? member.allowedSpaces : [];
   });
   const [hasChanges, setHasChanges] = useState(false);
 
@@ -104,8 +177,9 @@ export const MemberPermissionsEditor: React.FC<MemberPermissionsEditorProps> = (
         ? { ...DEFAULT_PERMISSIONS_BY_ROLE[member.role || "member"], ...member.permissions }
         : { ...DEFAULT_PERMISSIONS_BY_ROLE[member.role || "member"] }
     );
+    setSelectedSpaces(Array.isArray(member.allowedSpaces) ? member.allowedSpaces : []);
     setHasChanges(false);
-  }, [member._id, member.role, member.permissions]);
+  }, [member._id, member.role, member.permissions, member.allowedSpaces]);
 
   const isOwner = member.role === "owner";
   const isSelf = (member.userId?._id || member.userId) === currentUserId;
@@ -116,6 +190,24 @@ export const MemberPermissionsEditor: React.FC<MemberPermissionsEditorProps> = (
     setSelectedRole(newRole);
     // Apply defaults of the new role
     setPermissions({ ...DEFAULT_PERMISSIONS_BY_ROLE[newRole] });
+    setHasChanges(true);
+  };
+
+  const handleToggleSpace = (spaceId: string) => {
+    if (!canManage || isOwner) return;
+    setSelectedSpaces((prev) => {
+      const next = prev.includes(spaceId) ? prev.filter((id) => id !== spaceId) : [...prev, spaceId];
+      setHasChanges(true);
+      return next;
+    });
+  };
+
+  const handleToggleAllSpaces = () => {
+    if (!canManage || isOwner) return;
+    const allSpaceIds = spaces.map((s) => s._id);
+    const areAllSelected = allSpaceIds.every((id) => selectedSpaces.includes(id));
+    const next = areAllSelected ? [] : allSpaceIds;
+    setSelectedSpaces(next);
     setHasChanges(true);
   };
 
@@ -136,7 +228,7 @@ export const MemberPermissionsEditor: React.FC<MemberPermissionsEditorProps> = (
 
   const handleSave = () => {
     if (!canManage) return;
-    onSave(member.userId?._id || (member.userId as any), selectedRole, permissions);
+    onSave(member.userId?._id || (member.userId as any), selectedRole, permissions, selectedSpaces);
     setHasChanges(false);
   };
 
@@ -199,13 +291,34 @@ export const MemberPermissionsEditor: React.FC<MemberPermissionsEditorProps> = (
         },
         {
           key: "canEditTasks" as keyof WorkspacePermissions,
-          title: t("workspaceMembersModal.perm_canEditTasks", { defaultValue: "Edit Tasks" }),
-          desc: t("workspaceMembersModal.perm_canEditTasks_desc", { defaultValue: "Edit task details, statuses, due dates, and assignees" }),
+          title: t("workspaceMembersModal.perm_canEditTasks", { defaultValue: "Edit Task Details" }),
+          desc: t("workspaceMembersModal.perm_canEditTasks_desc", { defaultValue: "Edit task details, descriptions, due dates, and custom fields" }),
         },
         {
           key: "canDeleteTasks" as keyof WorkspacePermissions,
           title: t("workspaceMembersModal.perm_canDeleteTasks", { defaultValue: "Delete Tasks" }),
           desc: t("workspaceMembersModal.perm_canDeleteTasks_desc", { defaultValue: "Permanently delete tasks from the workspace" }),
+          isDanger: true,
+        },
+        {
+          key: "canChangeTaskStatus" as keyof WorkspacePermissions,
+          title: t("workspaceMembersModal.perm_canChangeTaskStatus", { defaultValue: "Move Tasks & Change Status" }),
+          desc: t("workspaceMembersModal.perm_canChangeTaskStatus_desc", { defaultValue: "Move tasks between workflow columns and update status" }),
+        },
+        {
+          key: "canAssignTasks" as keyof WorkspacePermissions,
+          title: t("workspaceMembersModal.perm_canAssignTasks", { defaultValue: "Assign & Reassign Tasks" }),
+          desc: t("workspaceMembersModal.perm_canAssignTasks_desc", { defaultValue: "Assign tasks to team members and modify assignees" }),
+        },
+        {
+          key: "canCommentOnTasks" as keyof WorkspacePermissions,
+          title: t("workspaceMembersModal.perm_canCommentOnTasks", { defaultValue: "Add Comments & Files" }),
+          desc: t("workspaceMembersModal.perm_canCommentOnTasks_desc", { defaultValue: "Write comments, notes, and attach files to tasks" }),
+        },
+        {
+          key: "canDeleteComments" as keyof WorkspacePermissions,
+          title: t("workspaceMembersModal.perm_canDeleteComments", { defaultValue: "Delete Comments" }),
+          desc: t("workspaceMembersModal.perm_canDeleteComments_desc", { defaultValue: "Delete comments and notes from tasks" }),
           isDanger: true,
         },
       ],
@@ -215,35 +328,101 @@ export const MemberPermissionsEditor: React.FC<MemberPermissionsEditorProps> = (
       icon: Layers,
       items: [
         {
+          key: "canCreateSpaces" as keyof WorkspacePermissions,
+          title: t("workspaceMembersModal.perm_canCreateSpaces", { defaultValue: "Create Spaces" }),
+          desc: t("workspaceMembersModal.perm_canCreateSpaces_desc", { defaultValue: "Create new project spaces and folders" }),
+        },
+        {
+          key: "canManageSpaces" as keyof WorkspacePermissions,
+          title: t("workspaceMembersModal.perm_canManageSpaces", { defaultValue: "Manage Spaces" }),
+          desc: t("workspaceMembersModal.perm_canManageSpaces_desc", { defaultValue: "Edit space names, colors, and configuration" }),
+        },
+        {
+          key: "canDeleteSpaces" as keyof WorkspacePermissions,
+          title: t("workspaceMembersModal.perm_canDeleteSpaces", { defaultValue: "Delete Spaces" }),
+          desc: t("workspaceMembersModal.perm_canDeleteSpaces_desc", { defaultValue: "Permanently delete project spaces and their lists" }),
+          isDanger: true,
+        },
+        {
           key: "canManageLists" as keyof WorkspacePermissions,
           title: t("workspaceMembersModal.perm_canManageLists", { defaultValue: "Manage Lists & Columns" }),
           desc: t("workspaceMembersModal.perm_canManageLists_desc", { defaultValue: "Create, edit, reorder, or delete lists and columns" }),
         },
-        {
-          key: "canManageSpaces" as keyof WorkspacePermissions,
-          title: t("workspaceMembersModal.perm_canManageSpaces", { defaultValue: "Manage Spaces & Folders" }),
-          desc: t("workspaceMembersModal.perm_canManageSpaces_desc", { defaultValue: "Create project spaces and modify settings" }),
-        },
       ],
     },
     {
-      title: t("workspaceMembersModal.teamOps", { defaultValue: "Team & Projects" }),
+      title: t("workspaceMembersModal.teamOps", { defaultValue: "Team & Members" }),
       icon: Users,
       items: [
         {
           key: "canInviteMembers" as keyof WorkspacePermissions,
-          title: t("workspaceMembersModal.perm_canInviteMembers", { defaultValue: "Invite & Manage Members" }),
+          title: t("workspaceMembersModal.perm_canInviteMembers", { defaultValue: "Invite Members" }),
           desc: t("workspaceMembersModal.perm_canInviteMembers_desc", { defaultValue: "Send invitations and add collaborators to the workspace" }),
         },
+        {
+          key: "canManageRoles" as keyof WorkspacePermissions,
+          title: t("workspaceMembersModal.perm_canManageRoles", { defaultValue: "Manage Roles & Permissions" }),
+          desc: t("workspaceMembersModal.perm_canManageRoles_desc", { defaultValue: "Change member roles and customize their permission matrix" }),
+        },
+        {
+          key: "canRemoveMembers" as keyof WorkspacePermissions,
+          title: t("workspaceMembersModal.perm_canRemoveMembers", { defaultValue: "Remove Members" }),
+          desc: t("workspaceMembersModal.perm_canRemoveMembers_desc", { defaultValue: "Remove and kick collaborators from the workspace" }),
+          isDanger: true,
+        },
+      ],
+    },
+    {
+      title: t("workspaceMembersModal.clientOps", { defaultValue: "Client Projects" }),
+      icon: Briefcase,
+      items: [
+        {
+          key: "canViewClients" as keyof WorkspacePermissions,
+          title: t("workspaceMembersModal.perm_canViewClients", { defaultValue: "View Client Projects" }),
+          desc: t("workspaceMembersModal.perm_canViewClients_desc", { defaultValue: "Browse client directory, projects, and contracts" }),
+        },
+        {
+          key: "canManageClients" as keyof WorkspacePermissions,
+          title: t("workspaceMembersModal.perm_canManageClients", { defaultValue: "Manage Client Projects" }),
+          desc: t("workspaceMembersModal.perm_canManageClients_desc", { defaultValue: "Create and update client projects and services" }),
+        },
+        {
+          key: "canDeleteClients" as keyof WorkspacePermissions,
+          title: t("workspaceMembersModal.perm_canDeleteClients", { defaultValue: "Delete Client Projects" }),
+          desc: t("workspaceMembersModal.perm_canDeleteClients_desc", { defaultValue: "Permanently delete client project records" }),
+          isDanger: true,
+        },
+      ],
+    },
+    {
+      title: t("workspaceMembersModal.analyticsOps", { defaultValue: "Reports & Goals" }),
+      icon: BarChart2,
+      items: [
         {
           key: "canViewReports" as keyof WorkspacePermissions,
           title: t("workspaceMembersModal.perm_canViewReports", { defaultValue: "View Reports & Analytics" }),
           desc: t("workspaceMembersModal.perm_canViewReports_desc", { defaultValue: "Access analytics dashboards and progress reports" }),
         },
         {
-          key: "canManageClients" as keyof WorkspacePermissions,
-          title: t("workspaceMembersModal.perm_canManageClients", { defaultValue: "Manage Client Projects" }),
-          desc: t("workspaceMembersModal.perm_canManageClients_desc", { defaultValue: "Create and manage client projects and services" }),
+          key: "canExportData" as keyof WorkspacePermissions,
+          title: t("workspaceMembersModal.perm_canExportData", { defaultValue: "Export Data & Reports" }),
+          desc: t("workspaceMembersModal.perm_canExportData_desc", { defaultValue: "Download and print workspace data as PDF or Excel" }),
+        },
+        {
+          key: "canManageGoals" as keyof WorkspacePermissions,
+          title: t("workspaceMembersModal.perm_canManageGoals", { defaultValue: "Manage Strategic Goals (OKRs)" }),
+          desc: t("workspaceMembersModal.perm_canManageGoals_desc", { defaultValue: "Create, edit, and track strategic goals and OKRs" }),
+        },
+      ],
+    },
+    {
+      title: t("workspaceMembersModal.settingsOps", { defaultValue: "Workspace Settings" }),
+      icon: Sliders,
+      items: [
+        {
+          key: "canManageWorkspaceSettings" as keyof WorkspacePermissions,
+          title: t("workspaceMembersModal.perm_canManageWorkspaceSettings", { defaultValue: "Workspace Settings" }),
+          desc: t("workspaceMembersModal.perm_canManageWorkspaceSettings_desc", { defaultValue: "Manage workspace branding, logo, and core settings" }),
         },
       ],
     },
@@ -295,6 +474,88 @@ export const MemberPermissionsEditor: React.FC<MemberPermissionsEditorProps> = (
                   <p className="text-[11px] text-zinc-400 line-clamp-2 leading-relaxed">
                     {roleItem.desc}
                   </p>
+                </button>
+              );
+            })}
+          </div>
+        )}
+      </div>
+
+      {/* Assigned Departments & Spaces Section */}
+      <div className="space-y-3 p-4 rounded-2xl border border-zinc-200 dark:border-zinc-800 bg-white/50 dark:bg-zinc-900/40">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <Layers className="h-4 w-4 text-purple-500" />
+            <div>
+              <h4 className="text-sm font-bold text-zinc-900 dark:text-zinc-100">
+                {isAr ? "الأقسام والمساحات المصرح بها" : "Assigned Departments & Spaces"}
+              </h4>
+              <p className="text-[11px] text-zinc-500 dark:text-zinc-400">
+                {isAr
+                  ? "حدد الأقسام التي يحق لهذا العضو دخولها واستعراض مهامها داخل مساحة العمل"
+                  : "Select the spaces/departments this member has permission to enter and view"}
+              </p>
+            </div>
+          </div>
+
+          {canManage && !isOwner && selectedRole !== "admin" && spaces.length > 0 && (
+            <button
+              type="button"
+              onClick={handleToggleAllSpaces}
+              className="text-xs text-purple-600 dark:text-purple-400 hover:underline cursor-pointer font-bold shrink-0"
+            >
+              {spaces.every((s) => selectedSpaces.includes(s._id))
+                ? (isAr ? "إلغاء تحديد الكل" : "Deselect All")
+                : (isAr ? "تحديد كل الأقسام" : "Select All")}
+            </button>
+          )}
+        </div>
+
+        {isOwner || selectedRole === "admin" ? (
+          <div className="p-3 rounded-xl border border-purple-500/20 bg-purple-500/5 text-purple-600 dark:text-purple-300 text-xs flex items-center gap-2">
+            <ShieldCheck className="h-4 w-4 shrink-0 text-purple-500" />
+            <span>
+              {isAr
+                ? "المدير وصاحب مساحة العمل لديهم صلاحية تلقائية للوصول إلى كافة الأقسام والمساحات."
+                : "Admins and Owners have automatic access to all departments and spaces."}
+            </span>
+          </div>
+        ) : spaces.length === 0 ? (
+          <p className="text-xs text-zinc-500 py-2">
+            {isAr ? "لا توجد أقسام منشأة في مساحة العمل حالياً" : "No spaces created in this workspace yet"}
+          </p>
+        ) : (
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 pt-1">
+            {spaces.map((sp) => {
+              const isChecked = selectedSpaces.includes(sp._id);
+              return (
+                <button
+                  key={sp._id}
+                  type="button"
+                  disabled={!canManage}
+                  onClick={() => handleToggleSpace(sp._id)}
+                  className={`flex items-center justify-between p-2.5 rounded-xl border transition-all text-start cursor-pointer ${
+                    isChecked
+                      ? "border-purple-500/50 bg-purple-500/10 text-zinc-900 dark:text-zinc-100 shadow-xs"
+                      : "border-zinc-200 dark:border-zinc-800 bg-zinc-50/50 dark:bg-zinc-900/30 text-zinc-600 dark:text-zinc-400 hover:border-zinc-300 dark:hover:border-zinc-700"
+                  } ${!canManage ? "opacity-60 cursor-not-allowed" : ""}`}
+                >
+                  <div className="flex items-center gap-2.5 min-w-0">
+                    <div
+                      className="h-2.5 w-2.5 rounded-full shrink-0 shadow-xs"
+                      style={{ backgroundColor: sp.color || "#b57ede" }}
+                    />
+                    <span className="text-xs font-semibold truncate">{sp.name}</span>
+                  </div>
+                  <div
+                    className={`h-4 w-4 rounded-md border flex items-center justify-center transition-colors shrink-0 ${
+                      isChecked
+                        ? "bg-purple-600 border-purple-600 text-white"
+                        : "border-zinc-300 dark:border-zinc-700 bg-white dark:bg-zinc-800"
+                    }`}
+                  >
+                    {isChecked && <Check className="h-3 w-3 stroke-3" />}
+                  </div>
                 </button>
               );
             })}

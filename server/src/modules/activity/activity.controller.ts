@@ -69,8 +69,9 @@ export class ActivityController {
         throw new ForbiddenError("Only system administrators can view global system logs");
       }
 
-      const limit = req.query.limit ? Number(req.query.limit) : 100;
-      const activities = await activityService.getGlobalActivities(limit);
+      const limit = req.query.limit ? Number(req.query.limit) : 150;
+      const workspaceId = req.query.workspaceId ? String(req.query.workspaceId) : undefined;
+      const activities = await activityService.getGlobalActivities(limit, workspaceId);
 
       res.status(200).json({
         success: true,

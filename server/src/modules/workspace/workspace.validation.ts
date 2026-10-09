@@ -31,11 +31,24 @@ const permissionsObject = z.object({
   canCreateTasks: z.boolean().optional(),
   canEditTasks: z.boolean().optional(),
   canDeleteTasks: z.boolean().optional(),
-  canManageLists: z.boolean().optional(),
+  canChangeTaskStatus: z.boolean().optional(),
+  canAssignTasks: z.boolean().optional(),
+  canCommentOnTasks: z.boolean().optional(),
+  canDeleteComments: z.boolean().optional(),
+  canCreateSpaces: z.boolean().optional(),
   canManageSpaces: z.boolean().optional(),
+  canDeleteSpaces: z.boolean().optional(),
+  canManageLists: z.boolean().optional(),
   canInviteMembers: z.boolean().optional(),
-  canViewReports: z.boolean().optional(),
+  canManageRoles: z.boolean().optional(),
+  canRemoveMembers: z.boolean().optional(),
+  canViewClients: z.boolean().optional(),
   canManageClients: z.boolean().optional(),
+  canDeleteClients: z.boolean().optional(),
+  canViewReports: z.boolean().optional(),
+  canExportData: z.boolean().optional(),
+  canManageGoals: z.boolean().optional(),
+  canManageWorkspaceSettings: z.boolean().optional(),
 });
 
 export const inviteMemberSchema = z.object({
@@ -48,6 +61,7 @@ export const inviteMemberSchema = z.object({
         errorMap: () => ({ message: "Invalid workspace role" }),
       }),
     permissions: permissionsObject.optional(),
+    allowedSpaces: z.array(z.string()).optional(),
   }),
 });
 
@@ -61,6 +75,7 @@ export const updateMemberRoleSchema = z.object({
       })
       .optional(),
     permissions: permissionsObject.optional(),
+    allowedSpaces: z.array(z.string()).optional(),
   }),
 });
 

@@ -137,13 +137,22 @@ export class AdminService {
   }
 
   /**
-   * Retrieves soft-deleted tasks.
+   * Retrieves soft-deleted tasks with full details.
    */
-  async getDeletedTasks(): Promise<any[]> {
-    return TaskModel.find({ deleted: true })
+  async getDeletedTasks(workspaceId?: string): Promise<any[]> {
+    const filter: any = { deleted: true };
+    const mongoose = require("mongoose");
+    if (workspaceId && mongoose.Types.ObjectId.isValid(workspaceId)) {
+      filter.workspaceId = new mongoose.Types.ObjectId(workspaceId);
+    }
+    return TaskModel.find(filter)
       .populate("deletedBy", "fullName email avatarUrl")
-      .populate("workspaceId", "name slug")
+      .populate("workspaceId", "name slug logoUrl")
       .populate("clientProjectId", "clientName")
+      .populate("spaceId", "name color")
+      .populate("listId", "name position")
+      .populate("assignees", "fullName email avatarUrl")
+      .populate("reporterId", "fullName email avatarUrl")
       .sort({ deletedAt: -1 })
       .exec();
   }
@@ -163,6 +172,17 @@ export class AdminService {
 
     await task.save();
     return task;
+  }
+
+  /**
+   * Permanently deletes a task from the database.
+   */
+  async permanentlyDeleteTask(taskId: string): Promise<void> {
+    const task = await TaskModel.findById(taskId);
+    if (!task) {
+      throw new NotFoundError("Task not found");
+    }
+    await TaskModel.findByIdAndDelete(taskId);
   }
 
   /**

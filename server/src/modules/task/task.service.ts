@@ -121,6 +121,19 @@ export class TaskService {
       throw new ForbiddenError("You are not a member of this workspace");
     }
 
+    const isAdmin = membership && ["owner", "admin"].includes(membership.role);
+
+    // If member is not admin/owner, verify they have access to this space
+    if (!isSysAdmin && !isOwner && !isAdmin) {
+      const allowedInSpace = space.allowedMembers && space.allowedMembers.some((m: any) => m.toString() === userId);
+      const memberAllowedSpaces = membership?.allowedSpaces || [];
+      const allowedInMembership = memberAllowedSpaces.some((s: any) => s.toString() === space._id.toString());
+
+      if (!allowedInSpace && !allowedInMembership) {
+        return [];
+      }
+    }
+
     // Employees (members/guests) should only see their own assigned tasks or tasks they reported
     if (!isSysAdmin && !isOwner && membership && (membership.role === "member" || membership.role === "guest")) {
       return TaskModel.find({
@@ -366,15 +379,34 @@ export class TaskService {
       throw new ForbiddenError("You do not have access to this workspace");
     }
 
-    // Employees (members/guests) should only see their own assigned tasks or tasks they reported
-    if (!isSysAdmin && !isOwner && membership && (membership.role === "member" || membership.role === "guest")) {
-      return taskRepository.findTasks({
+    const isAdmin = membership && ["owner", "admin"].includes(membership.role);
+
+    if (!isSysAdmin && !isOwner && !isAdmin) {
+      const SpaceModel = mongoose.model("Space");
+      const allowedSpaces = await SpaceModel.find({
         workspaceId: new mongoose.Types.ObjectId(workspaceId),
         $or: [
+          { allowedMembers: new mongoose.Types.ObjectId(userId) },
+          ...(membership?.allowedSpaces && membership.allowedSpaces.length > 0
+            ? [{ _id: { $in: membership.allowedSpaces } }]
+            : []),
+        ],
+      }).select("_id");
+      const allowedSpaceIds = allowedSpaces.map((s: any) => s._id);
+
+      const filter: any = {
+        workspaceId: new mongoose.Types.ObjectId(workspaceId),
+        spaceId: { $in: allowedSpaceIds },
+      };
+
+      if (membership && (membership.role === "member" || membership.role === "guest")) {
+        filter.$or = [
           { reporterId: new mongoose.Types.ObjectId(userId) },
           { assignees: new mongoose.Types.ObjectId(userId) },
-        ],
-      });
+        ];
+      }
+
+      return taskRepository.findTasks(filter);
     }
 
     return taskRepository.findTasks({ workspaceId: new mongoose.Types.ObjectId(workspaceId) });
