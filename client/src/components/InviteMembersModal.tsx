@@ -11,7 +11,7 @@ import {
   Sliders,
 } from "lucide-react";
 import { taskflowService } from "../services/taskflowService";
-import type { WorkspacePermissions } from "../services/taskflowService";
+import type { WorkspacePermissions, Space } from "../services/taskflowService";
 import { DEFAULT_PERMISSIONS_BY_ROLE } from "./MemberPermissionsEditor";
 import { useConfirmStore } from "../stores/useConfirmStore";
 
@@ -19,9 +19,10 @@ interface InviteMembersModalProps {
   isOpen: boolean;
   onClose: () => void;
   members: any[];
+  spaces?: Space[];
   currentUserRole: string;
   currentUserId?: string;
-  onInvite: (email: string, role: string, permissions?: WorkspacePermissions) => void;
+  onInvite: (email: string, role: string, permissions?: WorkspacePermissions, allowedSpaces?: string[]) => void;
   onUpdateRole: (userId: string, role: string) => void;
   onRemoveMember?: (userId: string) => void;
   isInvitePending: boolean;
@@ -31,6 +32,7 @@ export const InviteMembersModal: React.FC<InviteMembersModalProps> = ({
   isOpen,
   onClose,
   members,
+  spaces = [],
   currentUserRole,
   currentUserId,
   onInvite,
@@ -38,12 +40,14 @@ export const InviteMembersModal: React.FC<InviteMembersModalProps> = ({
   onRemoveMember,
   isInvitePending,
 }) => {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
+  const isAr = i18n.language === "ar";
   const [inviteEmail, setInviteEmail] = useState("");
   const [inviteRole, setInviteRole] = useState<"admin" | "manager" | "member" | "guest">("member");
   const [customPermissions, setCustomPermissions] = useState<WorkspacePermissions>({
     ...DEFAULT_PERMISSIONS_BY_ROLE.member,
   });
+  const [inviteSpaces, setInviteSpaces] = useState<string[]>([]);
   const [showAdvancedPermissions, setShowAdvancedPermissions] = useState(false);
 
   // User search suggestions
@@ -56,6 +60,7 @@ export const InviteMembersModal: React.FC<InviteMembersModalProps> = ({
       setInviteEmail("");
       setInviteRole("member");
       setCustomPermissions({ ...DEFAULT_PERMISSIONS_BY_ROLE.member });
+      setInviteSpaces([]);
       setShowAdvancedPermissions(false);
       setSuggestedUsers([]);
       setShowSuggestions(false);
@@ -113,7 +118,7 @@ export const InviteMembersModal: React.FC<InviteMembersModalProps> = ({
   const handleInviteSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!inviteEmail.trim()) return;
-    onInvite(inviteEmail.trim(), inviteRole, customPermissions);
+    onInvite(inviteEmail.trim(), inviteRole, customPermissions, inviteSpaces);
     setInviteEmail("");
     setShowSuggestions(false);
   };
@@ -142,16 +147,79 @@ export const InviteMembersModal: React.FC<InviteMembersModalProps> = ({
     { id: "guest", label: t("roles.guest"), desc: t("workspaceMembersModal.role_guest_desc") },
   ] as const;
 
-  const permissionItems = [
-    { key: "canCreateTasks" as keyof WorkspacePermissions, label: t("workspaceMembersModal.perm_canCreateTasks") },
-    { key: "canEditTasks" as keyof WorkspacePermissions, label: t("workspaceMembersModal.perm_canEditTasks") },
-    { key: "canDeleteTasks" as keyof WorkspacePermissions, label: t("workspaceMembersModal.perm_canDeleteTasks") },
-    { key: "canManageLists" as keyof WorkspacePermissions, label: t("workspaceMembersModal.perm_canManageLists") },
-    { key: "canManageSpaces" as keyof WorkspacePermissions, label: t("workspaceMembersModal.perm_canManageSpaces") },
-    { key: "canInviteMembers" as keyof WorkspacePermissions, label: t("workspaceMembersModal.perm_canInviteMembers") },
-    { key: "canViewReports" as keyof WorkspacePermissions, label: t("workspaceMembersModal.perm_canViewReports") },
-    { key: "canManageClients" as keyof WorkspacePermissions, label: t("workspaceMembersModal.perm_canManageClients") },
+  const permissionCategories = [
+    {
+      id: "tasks",
+      title: t("workspaceMembersModal.taskOps", { defaultValue: "Task Operations" }),
+      items: [
+        { key: "canCreateTasks" as keyof WorkspacePermissions, label: t("workspaceMembersModal.perm_canCreateTasks"), desc: t("workspaceMembersModal.perm_canCreateTasks_desc") },
+        { key: "canEditTasks" as keyof WorkspacePermissions, label: t("workspaceMembersModal.perm_canEditTasks"), desc: t("workspaceMembersModal.perm_canEditTasks_desc") },
+        { key: "canDeleteTasks" as keyof WorkspacePermissions, label: t("workspaceMembersModal.perm_canDeleteTasks"), desc: t("workspaceMembersModal.perm_canDeleteTasks_desc"), isDanger: true },
+        { key: "canChangeTaskStatus" as keyof WorkspacePermissions, label: t("workspaceMembersModal.perm_canChangeTaskStatus"), desc: t("workspaceMembersModal.perm_canChangeTaskStatus_desc") },
+        { key: "canAssignTasks" as keyof WorkspacePermissions, label: t("workspaceMembersModal.perm_canAssignTasks"), desc: t("workspaceMembersModal.perm_canAssignTasks_desc") },
+        { key: "canCommentOnTasks" as keyof WorkspacePermissions, label: t("workspaceMembersModal.perm_canCommentOnTasks"), desc: t("workspaceMembersModal.perm_canCommentOnTasks_desc") },
+        { key: "canDeleteComments" as keyof WorkspacePermissions, label: t("workspaceMembersModal.perm_canDeleteComments"), desc: t("workspaceMembersModal.perm_canDeleteComments_desc"), isDanger: true },
+      ],
+    },
+    {
+      id: "spaces",
+      title: t("workspaceMembersModal.spaceOps", { defaultValue: "Spaces & Structure" }),
+      items: [
+        { key: "canCreateSpaces" as keyof WorkspacePermissions, label: t("workspaceMembersModal.perm_canCreateSpaces"), desc: t("workspaceMembersModal.perm_canCreateSpaces_desc") },
+        { key: "canManageSpaces" as keyof WorkspacePermissions, label: t("workspaceMembersModal.perm_canManageSpaces"), desc: t("workspaceMembersModal.perm_canManageSpaces_desc") },
+        { key: "canDeleteSpaces" as keyof WorkspacePermissions, label: t("workspaceMembersModal.perm_canDeleteSpaces"), desc: t("workspaceMembersModal.perm_canDeleteSpaces_desc"), isDanger: true },
+        { key: "canManageLists" as keyof WorkspacePermissions, label: t("workspaceMembersModal.perm_canManageLists"), desc: t("workspaceMembersModal.perm_canManageLists_desc") },
+      ],
+    },
+    {
+      id: "team",
+      title: t("workspaceMembersModal.teamOps", { defaultValue: "Team & Members" }),
+      items: [
+        { key: "canInviteMembers" as keyof WorkspacePermissions, label: t("workspaceMembersModal.perm_canInviteMembers"), desc: t("workspaceMembersModal.perm_canInviteMembers_desc") },
+        { key: "canManageRoles" as keyof WorkspacePermissions, label: t("workspaceMembersModal.perm_canManageRoles"), desc: t("workspaceMembersModal.perm_canManageRoles_desc") },
+        { key: "canRemoveMembers" as keyof WorkspacePermissions, label: t("workspaceMembersModal.perm_canRemoveMembers"), desc: t("workspaceMembersModal.perm_canRemoveMembers_desc"), isDanger: true },
+      ],
+    },
+    {
+      id: "clients",
+      title: t("workspaceMembersModal.clientOps", { defaultValue: "Client Projects" }),
+      items: [
+        { key: "canViewClients" as keyof WorkspacePermissions, label: t("workspaceMembersModal.perm_canViewClients"), desc: t("workspaceMembersModal.perm_canViewClients_desc") },
+        { key: "canManageClients" as keyof WorkspacePermissions, label: t("workspaceMembersModal.perm_canManageClients"), desc: t("workspaceMembersModal.perm_canManageClients_desc") },
+        { key: "canDeleteClients" as keyof WorkspacePermissions, label: t("workspaceMembersModal.perm_canDeleteClients"), desc: t("workspaceMembersModal.perm_canDeleteClients_desc"), isDanger: true },
+      ],
+    },
+    {
+      id: "analytics",
+      title: t("workspaceMembersModal.analyticsOps", { defaultValue: "Reports & Goals" }),
+      items: [
+        { key: "canViewReports" as keyof WorkspacePermissions, label: t("workspaceMembersModal.perm_canViewReports"), desc: t("workspaceMembersModal.perm_canViewReports_desc") },
+        { key: "canExportData" as keyof WorkspacePermissions, label: t("workspaceMembersModal.perm_canExportData"), desc: t("workspaceMembersModal.perm_canExportData_desc") },
+        { key: "canManageGoals" as keyof WorkspacePermissions, label: t("workspaceMembersModal.perm_canManageGoals"), desc: t("workspaceMembersModal.perm_canManageGoals_desc") },
+      ],
+    },
+    {
+      id: "settings",
+      title: t("workspaceMembersModal.settingsOps", { defaultValue: "Workspace Settings" }),
+      items: [
+        { key: "canManageWorkspaceSettings" as keyof WorkspacePermissions, label: t("workspaceMembersModal.perm_canManageWorkspaceSettings"), desc: t("workspaceMembersModal.perm_canManageWorkspaceSettings_desc") },
+      ],
+    },
   ];
+
+  const handleToggleCategory = (categoryItems: { key: keyof WorkspacePermissions }[]) => {
+    const allEnabled = categoryItems.every((item) => customPermissions[item.key]);
+    setCustomPermissions((prev) => {
+      const next = { ...prev };
+      categoryItems.forEach((item) => {
+        next[item.key] = !allEnabled;
+      });
+      return next;
+    });
+  };
+
+  const totalPermissionsCount = 21;
+  const enabledPermissionsCount = Object.values(customPermissions).filter(Boolean).length;
 
   return (
     <div className="fixed inset-0 bg-black/60 backdrop-blur-xs flex items-center justify-center p-3 sm:p-4 z-50 overflow-y-auto">
@@ -208,7 +276,7 @@ export const InviteMembersModal: React.FC<InviteMembersModalProps> = ({
                     required
                   />
                   {isSearchingUsers && (
-                    <div className="absolute end-2.5 top-1/2 -translate-y-1/2 text-zinc-400">
+                    <div className="absolute inset-e-2.5 top-1/2 -translate-y-1/2 text-zinc-400">
                       <Loader2 className="h-4 w-4 animate-spin" />
                     </div>
                   )}
@@ -274,6 +342,68 @@ export const InviteMembersModal: React.FC<InviteMembersModalProps> = ({
                 </div>
               </div>
 
+              {/* Assigned Departments & Spaces */}
+              {spaces && spaces.length > 0 && inviteRole !== "admin" && (
+                <div className="space-y-2 border border-zinc-200 dark:border-zinc-800 rounded-xl p-3 bg-zinc-50/50 dark:bg-zinc-900/30">
+                  <div className="flex items-center justify-between">
+                    <label className="text-xs font-bold text-zinc-700 dark:text-zinc-300">
+                      {isAr ? "الأقسام والمساحات المصرح بها" : "Assigned Departments"}
+                    </label>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const allIds = spaces.map((s) => s._id);
+                        const allSelected = allIds.every((id) => inviteSpaces.includes(id));
+                        setInviteSpaces(allSelected ? [] : allIds);
+                      }}
+                      className="text-[11px] text-purple-600 dark:text-purple-400 hover:underline cursor-pointer font-bold"
+                    >
+                      {spaces.every((s) => inviteSpaces.includes(s._id))
+                        ? (isAr ? "إلغاء تحديد الكل" : "Deselect All")
+                        : (isAr ? "تحديد كل الأقسام" : "Select All")}
+                    </button>
+                  </div>
+                  <div className="grid grid-cols-2 gap-1.5 pt-1">
+                    {spaces.map((sp) => {
+                      const isChecked = inviteSpaces.includes(sp._id);
+                      return (
+                        <button
+                          key={sp._id}
+                          type="button"
+                          onClick={() => {
+                            setInviteSpaces((prev) =>
+                              prev.includes(sp._id) ? prev.filter((id) => id !== sp._id) : [...prev, sp._id]
+                            );
+                          }}
+                          className={`flex items-center justify-between p-2 rounded-lg border text-start transition-all cursor-pointer ${
+                            isChecked
+                              ? "border-purple-500/50 bg-purple-500/10 text-zinc-900 dark:text-zinc-100"
+                              : "border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 text-zinc-600 dark:text-zinc-400"
+                          }`}
+                        >
+                          <div className="flex items-center gap-2 min-w-0">
+                            <div
+                              className="h-2 w-2 rounded-full shrink-0"
+                              style={{ backgroundColor: sp.color || "#b57ede" }}
+                            />
+                            <span className="text-[11px] font-semibold truncate">{sp.name}</span>
+                          </div>
+                          <div
+                            className={`h-3.5 w-3.5 rounded border flex items-center justify-center shrink-0 ${
+                              isChecked
+                                ? "bg-purple-600 border-purple-600 text-white"
+                                : "border-zinc-300 dark:border-zinc-700 bg-white dark:bg-zinc-800"
+                            }`}
+                          >
+                            {isChecked && <Check className="h-2.5 w-2.5 stroke-3" />}
+                          </div>
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
+
               {/* Advanced Permissions Accordion */}
               <div className="border border-zinc-200 dark:border-zinc-800 rounded-xl overflow-hidden">
                 <button
@@ -281,36 +411,110 @@ export const InviteMembersModal: React.FC<InviteMembersModalProps> = ({
                   onClick={() => setShowAdvancedPermissions(!showAdvancedPermissions)}
                   className="w-full flex items-center justify-between p-2.5 bg-zinc-50 dark:bg-zinc-900/50 text-xs font-bold text-zinc-700 dark:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-zinc-800/60 transition-colors cursor-pointer"
                 >
-                  <span className="flex items-center gap-1.5">
+                  <div className="flex items-center gap-2">
                     <Sliders className="h-3.5 w-3.5 text-purple-500" />
                     <span>{t("workspaceMembersModal.customizePermissions", { defaultValue: "Customize Permissions" })}</span>
-                  </span>
+                    <span className="text-[10px] px-1.5 py-0.5 rounded-md bg-purple-500/10 text-purple-600 dark:text-purple-400 font-mono font-bold">
+                      {enabledPermissionsCount} / {totalPermissionsCount}
+                    </span>
+                  </div>
                   {showAdvancedPermissions ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
                 </button>
 
                 {showAdvancedPermissions && (
-                  <div className="p-3 bg-white dark:bg-zinc-950/30 space-y-2 border-t dark:border-zinc-800">
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                      {permissionItems.map((p) => {
-                        const enabled = customPermissions[p.key];
+                  <div className="p-3 bg-white dark:bg-zinc-950/30 space-y-3.5 border-t dark:border-zinc-800">
+                    {/* Bulk select / deselect all */}
+                    <div className="flex items-center justify-between text-[11px] pb-1 border-b dark:border-zinc-800/60">
+                      <span className="text-zinc-500">
+                        {enabledPermissionsCount} {t("workspaceMembersModal.enabled", { defaultValue: "enabled" })}
+                      </span>
+                      <div className="flex items-center gap-2">
+                        <button
+                          type="button"
+                          onClick={() => {
+                            const next = { ...customPermissions };
+                            Object.keys(next).forEach((k) => {
+                              next[k as keyof WorkspacePermissions] = true;
+                            });
+                            setCustomPermissions(next);
+                          }}
+                          className="text-purple-600 dark:text-purple-400 hover:underline font-semibold cursor-pointer"
+                        >
+                          {t("common.selectAll", { defaultValue: "تحديد الكل" })}
+                        </button>
+                        <span className="text-zinc-300 dark:text-zinc-700">|</span>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            const next = { ...customPermissions };
+                            Object.keys(next).forEach((k) => {
+                              next[k as keyof WorkspacePermissions] = false;
+                            });
+                            setCustomPermissions(next);
+                          }}
+                          className="text-zinc-500 hover:text-zinc-700 dark:hover:text-zinc-300 hover:underline font-semibold cursor-pointer"
+                        >
+                          {t("common.deselectAll", { defaultValue: "إلغاء التحديد" })}
+                        </button>
+                      </div>
+                    </div>
+
+                    <div className="max-h-64 overflow-y-auto space-y-3 pe-1 custom-scrollbar">
+                      {permissionCategories.map((category) => {
+                        const allCatEnabled = category.items.every((it) => customPermissions[it.key]);
                         return (
-                          <label
-                            key={p.key}
-                            onClick={() => handleTogglePermission(p.key)}
-                            className={`flex items-center justify-between p-2 rounded-lg border text-xs cursor-pointer select-none transition-colors ${
-                              enabled
-                                ? "bg-purple-50/50 dark:bg-purple-950/20 border-purple-500/30 text-purple-700 dark:text-purple-300 font-semibold"
-                                : "bg-zinc-50 dark:bg-zinc-900/40 border-zinc-200 dark:border-zinc-800 text-zinc-500"
-                            }`}
-                          >
-                            <span>{p.label}</span>
-                            <input
-                              type="checkbox"
-                              checked={enabled}
-                              onChange={() => {}}
-                              className="accent-purple-600 rounded cursor-pointer"
-                            />
-                          </label>
+                          <div key={category.id} className="space-y-1.5">
+                            <div className="flex items-center justify-between">
+                              <span className="text-[11px] font-bold text-zinc-500 dark:text-zinc-400 uppercase tracking-wider">
+                                {category.title}
+                              </span>
+                              <button
+                                type="button"
+                                onClick={() => handleToggleCategory(category.items)}
+                                className="text-[10px] text-purple-600 dark:text-purple-400 hover:underline font-semibold cursor-pointer"
+                              >
+                                {allCatEnabled
+                                  ? t("common.deselectAll", { defaultValue: "إلغاء" })
+                                  : t("common.selectAll", { defaultValue: "تحديد الكل" })}
+                              </button>
+                            </div>
+
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-1.5">
+                              {category.items.map((p) => {
+                                const enabled = customPermissions[p.key];
+                                return (
+                                <button
+                                  key={p.key}
+                                  type="button"
+                                  onClick={() => handleTogglePermission(p.key)}
+                                  title={`${p.label}${p.desc ? ` - ${p.desc}` : ""}`}
+                                  className={`group relative flex items-center justify-between p-2.5 rounded-lg border text-xs cursor-pointer select-none transition-all hover:shadow-xs w-full text-start ${
+                                    enabled
+                                      ? p.isDanger
+                                        ? "bg-red-500/10 border-red-500/30 text-red-600 dark:text-red-400 font-semibold"
+                                        : "bg-purple-50/50 dark:bg-purple-950/20 border-purple-500/30 text-purple-700 dark:text-purple-300 font-semibold"
+                                      : "bg-zinc-50 dark:bg-zinc-900/40 border-zinc-200 dark:border-zinc-800 text-zinc-600 dark:text-zinc-400 hover:border-zinc-300 dark:hover:border-zinc-700"
+                                  }`}
+                                >
+                                  <span className="flex-1 pe-2 text-start leading-snug wrap-break-word text-[11px] font-medium">
+                                    {p.label}
+                                  </span>
+                                  <div
+                                    className={`h-4 w-4 rounded flex items-center justify-center shrink-0 border transition-all ${
+                                      enabled
+                                        ? p.isDanger
+                                          ? "bg-red-600 border-red-600 text-white"
+                                          : "bg-purple-600 border-purple-600 text-white"
+                                        : "border-zinc-300 dark:border-zinc-700 bg-white dark:bg-zinc-800"
+                                    }`}
+                                  >
+                                    {enabled && <Check className="h-3 w-3 stroke-3" />}
+                                  </div>
+                                </button>
+                                );
+                              })}
+                            </div>
+                          </div>
                         );
                       })}
                     </div>

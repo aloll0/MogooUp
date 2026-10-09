@@ -27,9 +27,14 @@ export class ActivityService {
   /**
    * Retrieves all populated activity logs across the entire system.
    */
-  async getGlobalActivities(limit: number = 100): Promise<IActivityLog[]> {
-    return ActivityLogModel.find({})
-      .populate("userId", "fullName avatarUrl")
+  async getGlobalActivities(limit: number = 150, workspaceId?: string): Promise<IActivityLog[]> {
+    const filter: any = {};
+    if (workspaceId && mongoose.Types.ObjectId.isValid(workspaceId)) {
+      filter.workspaceId = new mongoose.Types.ObjectId(workspaceId);
+    }
+    return ActivityLogModel.find(filter)
+      .populate("userId", "fullName avatarUrl email")
+      .populate("workspaceId", "name slug logoUrl")
       .sort({ createdAt: -1 })
       .limit(limit)
       .exec();

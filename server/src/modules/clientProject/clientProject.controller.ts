@@ -29,7 +29,7 @@ export class ClientProjectController {
     try {
       const { workspaceId } = req.params;
       const userId = req.user!.userId;
-      const { clientName, description, services, notes } = req.body;
+      const { clientName, description, services, notes, documents } = req.body;
 
       // Verify privileges (Only Owner, Admin, Manager)
       const membership = await workspaceRepository.findMembership(workspaceId, userId);
@@ -55,6 +55,7 @@ export class ClientProjectController {
         description: description || "",
         services: initialServices,
         notes: notes || "",
+        documents: documents || [],
       });
 
       res.status(201).json({

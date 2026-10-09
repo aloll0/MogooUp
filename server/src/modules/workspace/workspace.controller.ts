@@ -69,10 +69,10 @@ export class WorkspaceController {
   invite = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     try {
       const { workspaceId } = req.params;
-      const { email, role, permissions } = req.body;
+      const { email, role, permissions, allowedSpaces } = req.body;
       const userId = req.user!.userId;
       
-      const membership = await workspaceService.inviteMember(workspaceId, email, role, userId, permissions);
+      const membership = await workspaceService.inviteMember(workspaceId, email, role, userId, permissions, allowedSpaces);
       
       res.status(200).json({
         success: true,
@@ -87,7 +87,7 @@ export class WorkspaceController {
   updateMemberRole = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     try {
       const { workspaceId } = req.params;
-      const { userId: targetUserId, role, permissions } = req.body;
+      const { userId: targetUserId, role, permissions, allowedSpaces } = req.body;
       const requestorId = req.user!.userId;
       
       const membership = await workspaceService.updateMemberRoleAndPermissions(
@@ -95,7 +95,8 @@ export class WorkspaceController {
         targetUserId,
         requestorId,
         role,
-        permissions
+        permissions,
+        allowedSpaces
       );
       
       res.status(200).json({

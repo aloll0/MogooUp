@@ -134,7 +134,8 @@ export class WorkspaceService {
     email: string,
     role: WorkspaceRole,
     inviterId: string,
-    customPermissions?: Partial<IWorkspacePermissions>
+    customPermissions?: Partial<IWorkspacePermissions>,
+    allowedSpaces?: string[]
   ): Promise<IMembership> {
     // 1. Validate inviter is Owner or Admin or has canInviteMembers permission or is system admin
     const user = await mongoose.model("User").findById(inviterId);
@@ -166,13 +167,29 @@ export class WorkspaceService {
     };
 
     // 5. Create membership
-    return workspaceRepository.createMembership(
+    const newMembership = await workspaceRepository.createMembership(
       workspaceId,
       targetUser._id.toString(),
       role,
       "active",
       permissions
     );
+
+    if (allowedSpaces && allowedSpaces.length > 0) {
+      const spaceObjIds = allowedSpaces.map((id) => new mongoose.Types.ObjectId(id));
+      await workspaceRepository.updateMembership(workspaceId, targetUser._id.toString(), {
+        allowedSpaces: spaceObjIds,
+      });
+
+      // Synchronize SpaceModel
+      const SpaceModel = mongoose.model("Space");
+      await SpaceModel.updateMany(
+        { _id: { $in: spaceObjIds }, workspaceId: new mongoose.Types.ObjectId(workspaceId) },
+        { $addToSet: { allowedMembers: targetUser._id } }
+      );
+    }
+
+    return newMembership;
   }
 
   async updateMemberRoleAndPermissions(
@@ -180,7 +197,8 @@ export class WorkspaceService {
     targetUserId: string,
     requestorId: string,
     role?: WorkspaceRole,
-    permissions?: Partial<IWorkspacePermissions>
+    permissions?: Partial<IWorkspacePermissions>,
+    allowedSpaces?: string[]
   ): Promise<IMembership> {
     const user = await mongoose.model("User").findById(requestorId);
     const isSysAdmin = user?.isSystemAdmin;
@@ -216,6 +234,26 @@ export class WorkspaceService {
         ...existingPerms,
         ...permissions,
       };
+    }
+
+    if (allowedSpaces !== undefined) {
+      const spaceObjIds = allowedSpaces.map((id) => new mongoose.Types.ObjectId(id));
+      updateData.allowedSpaces = spaceObjIds;
+
+      // Synchronize SpaceModel allowedMembers
+      const SpaceModel = mongoose.model("Space");
+      const targetUserObjId = new mongoose.Types.ObjectId(targetUserId);
+
+      if (spaceObjIds.length > 0) {
+        await SpaceModel.updateMany(
+          { _id: { $in: spaceObjIds }, workspaceId: new mongoose.Types.ObjectId(workspaceId) },
+          { $addToSet: { allowedMembers: targetUserObjId } }
+        );
+      }
+      await SpaceModel.updateMany(
+        { _id: { $nin: spaceObjIds }, workspaceId: new mongoose.Types.ObjectId(workspaceId) },
+        { $pull: { allowedMembers: targetUserObjId } }
+      );
     }
 
     const updated = await workspaceRepository.updateMembership(workspaceId, targetUserId, updateData);

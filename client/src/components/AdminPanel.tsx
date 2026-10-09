@@ -22,7 +22,17 @@ import {
   FileText,
   Trash2,
   ExternalLink,
-  UserMinus
+  UserMinus,
+  Eye,
+  Calendar,
+  CheckSquare,
+  AlertCircle,
+  ArrowRight,
+  Info,
+  RotateCcw,
+  Sparkles,
+  SlidersHorizontal,
+  Building2
 } from "lucide-react";
 import { useToastStore } from "../stores/useToastStore";
 import { useConfirmStore } from "../stores/useConfirmStore";
@@ -31,15 +41,82 @@ interface AdminPanelProps {
   activeSubTab?: "dashboard" | "companies" | "users" | "deleted" | "audit" | "employee-reports";
 }
 
+const STATUS_META: Record<string, { ar: string; en: string; bg: string }> = {
+  "to-do": { ar: "قيد الانتظار", en: "To Do", bg: "bg-blue-500/10 text-blue-400 border border-blue-500/25" },
+  "todo": { ar: "قيد الانتظار", en: "To Do", bg: "bg-blue-500/10 text-blue-400 border border-blue-500/25" },
+  "in-progress": { ar: "قيد التنفيذ", en: "In Progress", bg: "bg-amber-500/10 text-amber-400 border border-amber-500/25" },
+  "in_progress": { ar: "قيد التنفيذ", en: "In Progress", bg: "bg-amber-500/10 text-amber-400 border border-amber-500/25" },
+  "review": { ar: "قيد المراجعة", en: "In Review", bg: "bg-purple-500/10 text-purple-400 border border-purple-500/25" },
+  "done": { ar: "مكتملة", en: "Completed", bg: "bg-emerald-500/10 text-emerald-400 border border-emerald-500/25" },
+  "blocked": { ar: "معلقة", en: "Blocked", bg: "bg-red-500/10 text-red-400 border border-red-500/25" },
+};
+
+const PRIORITY_META: Record<string, { ar: string; en: string; bg: string }> = {
+  urgent: { ar: "عاجلة جداً", en: "Urgent", bg: "bg-red-500/15 text-red-400 border border-red-500/30" },
+  high: { ar: "عالية", en: "High", bg: "bg-amber-500/15 text-amber-400 border border-amber-500/30" },
+  medium: { ar: "متوسطة", en: "Medium", bg: "bg-blue-500/15 text-blue-400 border border-blue-500/30" },
+  low: { ar: "منخفضة", en: "Low", bg: "bg-zinc-500/15 text-zinc-400 border border-zinc-500/30" },
+};
+
+const ACTION_META: Record<string, { ar: string; en: string; bg: string }> = {
+  created: { ar: "إنشاء جديد", en: "Created", bg: "bg-emerald-500/15 text-emerald-400 border border-emerald-500/30" },
+  updated: { ar: "تعديل بيانات", en: "Updated", bg: "bg-blue-500/15 text-blue-400 border border-blue-500/30" },
+  deleted: { ar: "حذف مهمة", en: "Deleted", bg: "bg-red-500/15 text-red-400 border border-red-500/30" },
+  restored: { ar: "استعادة مهمة", en: "Restored", bg: "bg-purple-500/15 text-purple-400 border border-purple-500/30" },
+  moved: { ar: "نقل مرحلة", en: "Moved", bg: "bg-amber-500/15 text-amber-400 border border-amber-500/30" },
+  login: { ar: "تسجيل دخول", en: "Login", bg: "bg-cyan-500/15 text-cyan-400 border border-cyan-500/30" },
+};
+
+const formatArabicDate = (dateVal: string | Date | undefined | null, isAr: boolean): string => {
+  if (!dateVal) return "-";
+  try {
+    const d = new Date(dateVal);
+    if (isNaN(d.getTime())) return String(dateVal);
+    return d.toLocaleDateString(isAr ? "ar-EG" : "en-US", {
+      year: "numeric",
+      month: "short",
+      day: "numeric",
+      hour: "2-digit",
+      minute: "2-digit",
+    });
+  } catch {
+    return String(dateVal);
+  }
+};
+
 const formatAuditValue = (key: string, val: any, isAr: boolean): string => {
-  if (val === undefined || val === null || val === "") return "-";
+  if (val === undefined || val === null || val === "") return isAr ? "فارغ" : "Empty";
+  
+  // Status mapping
+  if (key === "status" && typeof val === "string") {
+    const meta = STATUS_META[val.toLowerCase()];
+    if (meta) return isAr ? meta.ar : meta.en;
+  }
+
+  // Priority mapping
+  if (key === "priority" && typeof val === "string") {
+    const meta = PRIORITY_META[val.toLowerCase()];
+    if (meta) return isAr ? meta.ar : meta.en;
+  }
+
+  // Assignees
   if (key === "assignees") {
     if (Array.isArray(val)) {
-      if (val.length === 0) return isAr ? "لا يوجد مسؤولين" : "None";
-      return isAr ? `${val.length} مسؤولين` : `${val.length} assignees`;
+      if (val.length === 0) return isAr ? "بدون مسؤولين" : "None";
+      return isAr ? `${val.length} عضو` : `${val.length} members`;
     }
     return isAr ? "المسؤولون" : "Assignees";
   }
+
+  // ISO Dates
+  if ((key === "dueDate" || key === "startDate" || key.toLowerCase().includes("date")) && typeof val === "string") {
+    return formatArabicDate(val, isAr);
+  }
+
+  if (typeof val === "string" && /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}/.test(val)) {
+    return formatArabicDate(val, isAr);
+  }
+
   if (typeof val === "object") {
     try {
       const str = JSON.stringify(val);
@@ -49,11 +126,12 @@ const formatAuditValue = (key: string, val: any, isAr: boolean): string => {
       return "[Object]";
     }
   }
+
   const strVal = String(val);
-  if (strVal.includes("data:image") || strVal.includes("base64") || strVal.length > 50) {
-    if (strVal.includes("data:image") || strVal.includes("base64")) {
-      return isAr ? "[بيانات صورة]" : "[Image Data]";
-    }
+  if (strVal.includes("data:image") || strVal.includes("base64")) {
+    return isAr ? "[بيانات صورة]" : "[Image Data]";
+  }
+  if (strVal.length > 50) {
     return strVal.substring(0, 47) + "...";
   }
   return strVal;
@@ -72,6 +150,8 @@ const formatKeyName = (key: string, isAr: boolean): string => {
     projectName: "المشروع",
     notes: "الملاحظات",
     timeEstimate: "الوقت المقدر",
+    checklist: "قائمة المهام الفرعية",
+    tags: "الوسوم",
   };
   return map[key] || key;
 };
@@ -89,6 +169,12 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ activeSubTab }) => {
   const [selectedTimeframe, setSelectedTimeframe] = useState<"today" | "week" | "month">("month");
   const [selectedUserForReset, setSelectedUserForReset] = useState<any | null>(null);
   const [adminNewPassword, setAdminNewPassword] = useState("");
+
+  // Filters for Audit & Deleted Tabs
+  const [selectedAuditCompanyId, setSelectedAuditCompanyId] = useState<string>("all");
+  const [selectedAuditAction, setSelectedAuditAction] = useState<string>("all");
+  const [selectedDeletedCompanyId, setSelectedDeletedCompanyId] = useState<string>("all");
+  const [inspectDeletedTask, setInspectDeletedTask] = useState<any | null>(null);
 
   // Queries
   const { data: stats = { totalCompanies: 0, totalEmployees: 0, activeTasks: 0, completedToday: 0, delayedTasks: 0 } } = useQuery({
@@ -115,22 +201,22 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ activeSubTab }) => {
     enabled: activeTab === "employee-reports" && !!selectedEmployeeId,
   });
 
+  const { data: companies = [], isLoading: isLoadingCompanies } = useQuery({
+    queryKey: ["adminCompanies"],
+    queryFn: taskflowService.getAdminCompanies,
+    enabled: activeTab === "companies" || activeTab === "dashboard" || activeTab === "audit" || activeTab === "deleted",
+  });
+
   const { data: deletedTasks = [], isLoading: isLoadingDeleted } = useQuery({
-    queryKey: ["adminDeletedTasks"],
-    queryFn: taskflowService.getAdminDeletedTasks,
+    queryKey: ["adminDeletedTasks", selectedDeletedCompanyId],
+    queryFn: () => taskflowService.getAdminDeletedTasks(selectedDeletedCompanyId !== "all" ? selectedDeletedCompanyId : undefined),
     enabled: activeTab === "deleted",
   });
 
   const { data: globalActivities = [], isLoading: isLoadingAudit } = useQuery({
-    queryKey: ["adminGlobalActivities"],
-    queryFn: taskflowService.getGlobalActivities,
+    queryKey: ["adminGlobalActivities", selectedAuditCompanyId],
+    queryFn: () => taskflowService.getGlobalActivities(selectedAuditCompanyId !== "all" ? selectedAuditCompanyId : undefined),
     enabled: activeTab === "audit",
-  });
-
-  const { data: companies = [], isLoading: isLoadingCompanies } = useQuery({
-    queryKey: ["adminCompanies"],
-    queryFn: taskflowService.getAdminCompanies,
-    enabled: activeTab === "companies" || activeTab === "dashboard",
   });
 
   // Mutations
@@ -188,6 +274,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ activeSubTab }) => {
       queryClient.invalidateQueries({ queryKey: ["adminGlobalStats"] });
       queryClient.invalidateQueries({ queryKey: ["workspaceTasks"] });
       queryClient.invalidateQueries({ queryKey: ["tasks"] });
+      setInspectDeletedTask(null);
       useToastStore.getState().addToast(
         isAr ? `تم استعادة المهمة "${task.title}" بنجاح` : `Restored task "${task.title}" successfully`, 
         "success"
@@ -197,6 +284,39 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ activeSubTab }) => {
       useToastStore.getState().addToast(err?.response?.data?.error?.message || "Failed to restore task", "error");
     }
   });
+
+  const permanentlyDeleteTaskMutation = useMutation({
+    mutationFn: taskflowService.permanentlyDeleteTask,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["adminDeletedTasks"] });
+      queryClient.invalidateQueries({ queryKey: ["adminGlobalStats"] });
+      setInspectDeletedTask(null);
+      useToastStore.getState().addToast(
+        isAr ? "تم حذف المهمة نهائياً من قاعدة البيانات" : "Task permanently deleted",
+        "success"
+      );
+    },
+    onError: (err: any) => {
+      useToastStore.getState().addToast(
+        err?.response?.data?.error?.message || "Failed to permanently delete task",
+        "error"
+      );
+    }
+  });
+
+  const handleConfirmPermanentDeleteTask = async (taskId: string, title: string) => {
+    const ok = await useConfirmStore.getState().show({
+      title: isAr ? `حذف نهائي للمهمة "${title}"` : `Permanently Delete Task "${title}"`,
+      message: isAr
+        ? `تحذير: هذا الإجراء لا يمكن التراجع عنه أبداً! سيتم مسح كافة تفاصيل المهمة وسجلاتها نهائياً من قاعدة البيانات.`
+        : `Warning: This action cannot be undone! The task and all its data will be permanently removed from the database.`,
+      confirmText: isAr ? "نعم، حذف نهائي للأبد" : "Yes, Permanently Delete",
+      cancelText: isAr ? "إلغاء" : "Cancel",
+    });
+    if (ok) {
+      permanentlyDeleteTaskMutation.mutate(taskId);
+    }
+  };
 
   const deleteWorkspaceMutation = useMutation({
     mutationFn: (workspaceId: string) => taskflowService.deleteWorkspace(workspaceId),
@@ -329,10 +449,28 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ activeSubTab }) => {
     (c.owner?.fullName || "").toLowerCase().includes(searchQuery.toLowerCase())
   );
 
-  const filteredDeleted = deletedTasks.filter((t: any) => 
-    t.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    (t.deletedBy?.fullName || "").toLowerCase().includes(searchQuery.toLowerCase())
-  );
+  const filteredDeleted = deletedTasks.filter((t: any) => {
+    if (!searchQuery) return true;
+    const q = searchQuery.toLowerCase();
+    const titleMatch = (t.title || "").toLowerCase().includes(q);
+    const descMatch = (t.description || "").toLowerCase().includes(q);
+    const delByMatch = (t.deletedBy?.fullName || "").toLowerCase().includes(q);
+    const wsMatch = (t.workspaceId?.name || t.workspaceId?.slug || "").toLowerCase().includes(q);
+    const spaceMatch = (t.spaceId?.name || "").toLowerCase().includes(q);
+    const clientMatch = (t.clientProjectId?.clientName || t.projectName || "").toLowerCase().includes(q);
+    return titleMatch || descMatch || delByMatch || wsMatch || spaceMatch || clientMatch;
+  });
+
+  const filteredAudit = globalActivities.filter((act: any) => {
+    if (selectedAuditAction !== "all" && act.action !== selectedAuditAction) return false;
+    if (!searchQuery) return true;
+    const q = searchQuery.toLowerCase();
+    const actorName = (act.userId?.fullName || "").toLowerCase();
+    const taskTitle = (act.details?.title || "").toLowerCase();
+    const companyName = (act.workspaceId?.name || act.workspaceId?.slug || "").toLowerCase();
+    const entityType = (act.entityType || "").toLowerCase();
+    return actorName.includes(q) || taskTitle.includes(q) || companyName.includes(q) || entityType.includes(q);
+  });
 
   const selectedCompanyObj = companies.find((c: any) => c._id === selectedCompanyId);
 
@@ -496,7 +634,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ activeSubTab }) => {
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
             
             {/* Chart 1: Tasks completed per employee */}
-            <div className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-2xl p-5 flex flex-col min-h-[300px] shadow-xs">
+            <div className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-2xl p-5 flex flex-col min-h-75 shadow-xs">
               <h3 className="text-xs font-black uppercase text-zinc-450 dark:text-zinc-500 tracking-wider mb-4 flex items-center gap-2 border-b dark:border-zinc-800 pb-2">
                 <CheckCircle className="h-4 w-4 text-green-500" />
                 <span>{isAr ? "مخرجات مهام الموظفين" : "Employee Tasks Output"}</span>
@@ -517,7 +655,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ activeSubTab }) => {
                     return (
                       <div key={p.userId} className="space-y-1">
                         <div className="flex justify-between items-center text-xs">
-                          <span className="font-bold text-zinc-800 dark:text-zinc-200 truncate max-w-[120px]">{p.fullName}</span>
+                          <span className="font-bold text-zinc-800 dark:text-zinc-200 truncate max-w-30">{p.fullName}</span>
                           <span className="font-semibold text-zinc-450">
                             {isAr 
                               ? `مكتمل ${p.completed} / إجمالي ${p.assignedTasks}`
@@ -544,7 +682,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ activeSubTab }) => {
             </div>
 
             {/* Chart 2: Average Completion Time per Employee */}
-            <div className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-2xl p-5 flex flex-col min-h-[300px] shadow-xs">
+            <div className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-2xl p-5 flex flex-col min-h-75 shadow-xs">
               <h3 className="text-xs font-black uppercase text-zinc-500 dark:text-zinc-500 tracking-wider mb-4 flex items-center gap-2 border-b dark:border-zinc-800 pb-2">
                 <Clock className="h-4 w-4 text-purple-500" />
                 <span>{isAr ? "متوسط وقت الإنجاز (ساعات)" : "Average Completion Time (Hours)"}</span>
@@ -580,7 +718,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ activeSubTab }) => {
             </div>
 
             {/* Chart 3: Companies Tasks breakdown */}
-            <div className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-2xl p-5 flex flex-col min-h-[300px] shadow-xs">
+            <div className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-2xl p-5 flex flex-col min-h-75 shadow-xs">
               <h3 className="text-xs font-black uppercase text-zinc-500 dark:text-zinc-500 tracking-wider mb-4 flex items-center gap-2 border-b dark:border-zinc-800 pb-2">
                 <Building className="h-4 w-4 text-blue-500" />
                 <span>{isAr ? "المهام حسب مساحة العمل / الشركة" : "Tasks by Company / Workspace"}</span>
@@ -599,7 +737,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ activeSubTab }) => {
                     return (
                       <div key={c._id} className="space-y-1">
                         <div className="flex justify-between items-center text-xs">
-                          <span className="font-bold text-zinc-800 dark:text-zinc-200 truncate max-w-[140px]">{c.name}</span>
+                          <span className="font-bold text-zinc-800 dark:text-zinc-200 truncate max-w-35">{c.name}</span>
                           <span className="font-semibold text-zinc-450">
                             {isAr ? `${c.stats?.totalTasks || 0} مهمة` : `${c.stats?.totalTasks || 0} Tasks`}
                           </span>
@@ -1013,142 +1151,498 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ activeSubTab }) => {
       )}
 
       {activeTab === "deleted" && (
-        <div className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-2xl shadow-xs overflow-hidden">
-          {isLoadingDeleted ? (
-            <div className="flex justify-center items-center py-16">
-              <Loader2 className="h-8 w-8 animate-spin text-purple-650" />
+        <div className="space-y-4">
+          {/* Top Company Filter Bar & Summary */}
+          <div className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-2xl p-4 shadow-xs space-y-3">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+              <div className="flex items-center gap-2">
+                <Trash2 className="h-4 w-4 text-red-500" />
+                <h3 className="text-xs font-bold text-zinc-900 dark:text-white">
+                  {isAr ? "سلة المحذوفات واستعادة المهام" : "Deleted Tasks & Recycle Bin"}
+                </h3>
+                <span className="text-[11px] font-bold px-2 py-0.5 rounded-full bg-red-500/10 text-red-500 border border-red-500/20">
+                  {deletedTasks.length} {isAr ? "مهمة محذوفة" : "deleted"}
+                </span>
+              </div>
+              <p className="text-[11px] text-zinc-500 dark:text-zinc-400">
+                {isAr ? "يمكنك فحص كافة تفاصيل أي مهمة قبل اتخاذ قرار استعادتها أو حذفها نهائياً." : "Inspect full task contents before choosing to restore or permanently purge."}
+              </p>
             </div>
-          ) : filteredDeleted.length === 0 ? (
-            <div className="text-center py-16 text-zinc-500 text-xs">{isAr ? "سلة المحذوفات فارغة." : "No soft-deleted tasks found."}</div>
-          ) : (
-            <div className="overflow-x-auto">
-              <table className="w-full border-collapse text-left text-xs">
-                <thead>
-                  <tr className="border-b border-zinc-150 dark:border-zinc-800 text-zinc-400 font-bold">
-                    <th className="p-4">{isAr ? "اسم المهمة" : "Task Name"}</th>
-                    <th className="p-4">{isAr ? "مشروع العميل" : "Client Project"}</th>
-                    <th className="p-4">{isAr ? "مساحة العمل" : "Workspace"}</th>
-                    <th className="p-4">{isAr ? "حذف بواسطة" : "Deleted By"}</th>
-                    <th className="p-4">{isAr ? "تاريخ الحذف" : "Deleted At"}</th>
-                    <th className="p-4 text-right">{isAr ? "الإجراءات" : "Actions"}</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-zinc-100 dark:divide-zinc-800/40 text-zinc-700 dark:text-zinc-300">
-                  {filteredDeleted.map((task: any) => (
-                    <tr key={task._id} className="hover:bg-zinc-50/50 dark:hover:bg-zinc-850/15">
-                      <td className="p-4 font-bold text-zinc-900 dark:text-white">{task.title}</td>
-                      <td className="p-4 text-zinc-500 dark:text-zinc-400">{task.clientProjectId?.clientName || task.projectName || "-"}</td>
-                      <td className="p-4 text-zinc-500 dark:text-zinc-400 font-mono">slug: {task.workspaceId?.slug || "-"}</td>
-                      <td className="p-4">
-                        <div className="flex items-center gap-2">
-                          <img
-                            src={task.deletedBy?.avatarUrl || "https://api.dicebear.com/7.x/bottts/svg"}
-                            alt="deletedBy avatar"
-                            className="h-5 w-5 rounded-full border bg-zinc-850 shrink-0"
-                          />
-                          <span className="font-semibold text-zinc-800 dark:text-zinc-200">{task.deletedBy?.fullName || (isAr ? "النظام" : "System")}</span>
-                        </div>
-                      </td>
-                      <td className="p-4 text-zinc-500 dark:text-zinc-400 font-medium">
-                        {task.deletedAt ? new Date(task.deletedAt).toLocaleString() : "-"}
-                      </td>
-                      <td className="p-4 text-right">
-                        <button
-                          onClick={() => restoreTaskMutation.mutate(task._id)}
-                          disabled={restoreTaskMutation.isPending}
-                          className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-purple-600 hover:bg-purple-700 text-white font-bold text-[11px] transition-all shadow-xs cursor-pointer"
-                        >
-                          <RefreshCw className="h-3 w-3 shrink-0" />
-                          <span>{isAr ? "استعادة المهمة" : "Restore Task"}</span>
-                        </button>
-                      </td>
+
+            {/* Company Filter Pills */}
+            <div className="border-t dark:border-zinc-800/80 pt-3 flex items-center gap-2 flex-wrap">
+              <span className="text-[11px] font-bold text-zinc-400 flex items-center gap-1 shrink-0">
+                <Building2 className="h-3.5 w-3.5 text-purple-500" />
+                <span>{isAr ? "الشركة:" : "Company:"}</span>
+              </span>
+
+              <button
+                onClick={() => setSelectedDeletedCompanyId("all")}
+                className={`px-2.5 py-1 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+                  selectedDeletedCompanyId === "all"
+                    ? "bg-purple-600 text-white shadow-xs"
+                    : "bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-300 hover:bg-zinc-200 dark:hover:bg-zinc-700"
+                }`}
+              >
+                {isAr ? "جميع الشركات" : "All Companies"}
+              </button>
+
+              {companies.map((c: any) => (
+                <button
+                  key={c._id}
+                  onClick={() => setSelectedDeletedCompanyId(c._id)}
+                  className={`px-2.5 py-1 rounded-lg text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5 ${
+                    selectedDeletedCompanyId === c._id
+                      ? "bg-purple-600 text-white shadow-xs"
+                      : "bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-300 hover:bg-zinc-200 dark:hover:bg-zinc-700"
+                  }`}
+                >
+                  <Building className="h-3 w-3 opacity-70" />
+                  <span>{c.name}</span>
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* Table Card */}
+          <div className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-2xl shadow-xs overflow-hidden">
+            {isLoadingDeleted ? (
+              <div className="flex justify-center items-center py-16">
+                <Loader2 className="h-8 w-8 animate-spin text-purple-650" />
+              </div>
+            ) : filteredDeleted.length === 0 ? (
+              <div className="text-center py-16 space-y-2">
+                <Trash2 className="h-8 w-8 text-zinc-400 mx-auto opacity-50" />
+                <p className="text-zinc-500 text-xs font-semibold">
+                  {isAr ? "سلة المحذوفات فارغة (لا توجد عناصر محذوفة مطابقة)." : "No deleted tasks found matching your filter."}
+                </p>
+              </div>
+            ) : (
+              <div className="overflow-x-auto">
+                <table className="w-full border-collapse text-left text-xs">
+                  <thead>
+                    <tr className="border-b border-zinc-150 dark:border-zinc-800 text-zinc-400 font-bold bg-zinc-50/50 dark:bg-zinc-850/40">
+                      <th className="p-4">{isAr ? "المهمة والتفاصيل" : "Task & Context"}</th>
+                      <th className="p-4">{isAr ? "الشركة والقسم" : "Company & Space"}</th>
+                      <th className="p-4">{isAr ? "الحالة والأولوية" : "Status & Priority"}</th>
+                      <th className="p-4">{isAr ? "المكلفون" : "Assignees"}</th>
+                      <th className="p-4">{isAr ? "حذف بواسطة وتاريخه" : "Deleted By & Date"}</th>
+                      <th className="p-4 text-right">{isAr ? "الإجراءات" : "Actions"}</th>
                     </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          )}
+                  </thead>
+                  <tbody className="divide-y divide-zinc-100 dark:divide-zinc-800/40 text-zinc-700 dark:text-zinc-300">
+                    {filteredDeleted.map((task: any) => {
+                      const statusMeta = STATUS_META[task.status?.toLowerCase()] || {
+                        ar: task.status || "قيد الانتظار",
+                        en: task.status || "To Do",
+                        bg: "bg-zinc-500/10 text-zinc-400 border border-zinc-500/20",
+                      };
+                      const priorityMeta = PRIORITY_META[task.priority?.toLowerCase()] || {
+                        ar: task.priority || "متوسطة",
+                        en: task.priority || "Medium",
+                        bg: "bg-zinc-500/10 text-zinc-400 border border-zinc-500/20",
+                      };
+                      const assigneesList = Array.isArray(task.assignees) ? task.assignees : [];
+
+                      return (
+                        <tr key={task._id} className="hover:bg-zinc-50/50 dark:hover:bg-zinc-850/20 transition-colors">
+                          {/* Task Name & Snippet */}
+                          <td className="p-4 max-w-xs">
+                            <div className="space-y-1">
+                              <p className="font-bold text-zinc-900 dark:text-white text-xs truncate" title={task.title}>
+                                {task.title}
+                              </p>
+                              {task.description && (
+                                <p className="text-[11px] text-zinc-400 line-clamp-1 truncate" title={task.description}>
+                                  {task.description}
+                                </p>
+                              )}
+                              <div className="flex items-center gap-1.5 flex-wrap pt-0.5">
+                                {task.listId?.name && (
+                                  <span className="px-1.5 py-0.5 rounded-md bg-zinc-100 dark:bg-zinc-800 text-zinc-500 text-[10px] font-semibold">
+                                    📋 {task.listId.name}
+                                  </span>
+                                )}
+                                {task.checklist && task.checklist.length > 0 && (
+                                  <span className="px-1.5 py-0.5 rounded-md bg-purple-500/10 text-purple-400 text-[10px] font-semibold border border-purple-500/20">
+                                    ☑ {task.checklist.filter((i: any) => i.isCompleted).length}/{task.checklist.length}
+                                  </span>
+                                )}
+                              </div>
+                            </div>
+                          </td>
+
+                          {/* Company & Department */}
+                          <td className="p-4 whitespace-nowrap">
+                            <div className="space-y-1">
+                              <div className="flex items-center gap-1 text-zinc-800 dark:text-zinc-200 font-bold">
+                                <Building className="h-3 w-3 text-purple-500 shrink-0" />
+                                <span>{task.workspaceId?.name || task.workspaceId?.slug || "-"}</span>
+                              </div>
+                              {task.spaceId?.name && (
+                                <div className="flex items-center gap-1 text-[11px] text-zinc-400">
+                                  <span
+                                    className="h-2 w-2 rounded-full shrink-0"
+                                    style={{ backgroundColor: task.spaceId.color || "#8b5cf6" }}
+                                  />
+                                  <span>{task.spaceId.name}</span>
+                                </div>
+                              )}
+                              {task.clientProjectId?.clientName && (
+                                <p className="text-[10px] text-zinc-500 font-medium">
+                                  💼 {task.clientProjectId.clientName}
+                                </p>
+                              )}
+                            </div>
+                          </td>
+
+                          {/* Status & Priority */}
+                          <td className="p-4 whitespace-nowrap">
+                            <div className="flex flex-col gap-1 items-start">
+                              <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${statusMeta.bg}`}>
+                                {isAr ? statusMeta.ar : statusMeta.en}
+                              </span>
+                              <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${priorityMeta.bg}`}>
+                                {isAr ? priorityMeta.ar : priorityMeta.en}
+                              </span>
+                            </div>
+                          </td>
+
+                          {/* Assignees */}
+                          <td className="p-4">
+                            {assigneesList.length === 0 ? (
+                              <span className="text-[11px] text-zinc-400 italic">{isAr ? "غير معين" : "Unassigned"}</span>
+                            ) : (
+                              <div className="flex items-center -space-x-1.5 rtl:space-x-reverse">
+                                {assigneesList.slice(0, 3).map((a: any, idx: number) => (
+                                  <img
+                                    key={a._id || idx}
+                                    src={a.avatarUrl || "https://api.dicebear.com/7.x/bottts/svg"}
+                                    alt={a.fullName}
+                                    title={a.fullName}
+                                    className="h-6 w-6 rounded-full border-2 border-white dark:border-zinc-900 bg-zinc-800 shrink-0 object-cover"
+                                  />
+                                ))}
+                                {assigneesList.length > 3 && (
+                                  <span className="h-6 w-6 rounded-full bg-zinc-200 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-300 text-[10px] font-bold flex items-center justify-center border-2 border-white dark:border-zinc-900">
+                                    +{assigneesList.length - 3}
+                                  </span>
+                                )}
+                              </div>
+                            )}
+                          </td>
+
+                          {/* Deletion Info */}
+                          <td className="p-4 whitespace-nowrap">
+                            <div className="flex items-center gap-2">
+                              <img
+                                src={task.deletedBy?.avatarUrl || "https://api.dicebear.com/7.x/bottts/svg"}
+                                alt="deletedBy avatar"
+                                className="h-6 w-6 rounded-full border bg-zinc-850 shrink-0"
+                              />
+                              <div>
+                                <p className="font-bold text-zinc-800 dark:text-zinc-200 text-xs">
+                                  {task.deletedBy?.fullName || (isAr ? "مدير النظام" : "System")}
+                                </p>
+                                <p className="text-[10px] text-zinc-400">
+                                  {task.deletedAt ? formatArabicDate(task.deletedAt, isAr) : "-"}
+                                </p>
+                              </div>
+                            </div>
+                          </td>
+
+                          {/* Actions */}
+                          <td className="p-4 text-right whitespace-nowrap">
+                            <div className="flex items-center justify-end gap-1.5">
+                              {/* Inspect Details Button */}
+                              <button
+                                onClick={() => setInspectDeletedTask(task)}
+                                className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg bg-zinc-100 hover:bg-zinc-200 dark:bg-zinc-800 dark:hover:bg-zinc-700 text-zinc-700 dark:text-zinc-200 font-bold text-[11px] transition-all cursor-pointer border dark:border-zinc-700"
+                                title={isAr ? "فحص ومعاينة تفاصيل المهمة قبل الاستعادة" : "Inspect full task contents"}
+                              >
+                                <Eye className="h-3.5 w-3.5 text-blue-400 shrink-0" />
+                                <span>{isAr ? "تفاصيل المهمة" : "Inspect"}</span>
+                              </button>
+
+                              {/* Restore Button */}
+                              <button
+                                onClick={() => restoreTaskMutation.mutate(task._id)}
+                                disabled={restoreTaskMutation.isPending}
+                                className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg bg-purple-600 hover:bg-purple-700 text-white font-bold text-[11px] transition-all shadow-xs cursor-pointer"
+                                title={isAr ? "استعادة المهمة إلى مساحة العمل" : "Restore task"}
+                              >
+                                <RefreshCw className="h-3 w-3 shrink-0" />
+                                <span>{isAr ? "استعادة" : "Restore"}</span>
+                              </button>
+
+                              {/* Permanent Delete Button */}
+                              <button
+                                onClick={() => handleConfirmPermanentDeleteTask(task._id, task.title)}
+                                disabled={permanentlyDeleteTaskMutation.isPending}
+                                className="p-1.5 rounded-lg border border-red-500/20 hover:bg-red-600 text-red-500 hover:text-white transition-all cursor-pointer shrink-0"
+                                title={isAr ? "حذف نهائي للأبد من قاعدة البيانات" : "Permanently delete"}
+                              >
+                                <Trash2 className="h-3.5 w-3.5" />
+                              </button>
+                            </div>
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </div>
         </div>
       )}
 
       {activeTab === "audit" && (
-        <div className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-2xl shadow-xs overflow-hidden">
-          <div className="border-b dark:border-zinc-800 p-4 flex items-center justify-between gap-4">
-            <h3 className="text-xs font-black uppercase text-zinc-500 dark:text-zinc-500 tracking-wider flex items-center gap-2">
-              <Activity className="h-4 w-4 text-purple-600" />
-              <span>{isAr ? "سجل العمليات والتدقيق في الوقت الفعلي" : "Real-time System Audit Stream"}</span>
-            </h3>
-            <span className="text-[10px] text-zinc-500 dark:text-zinc-450 bg-zinc-50 dark:bg-zinc-850 px-2.5 py-0.5 rounded-md border dark:border-zinc-800">
-              {isAr ? "سجلات غير قابلة للتعديل" : "Immutable Records"}
-            </span>
+        <div className="space-y-4">
+          {/* Header & Filter Controls Card */}
+          <div className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-2xl p-4 shadow-xs space-y-3">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+              <div className="flex items-center gap-2">
+                <Activity className="h-4 w-4 text-purple-600" />
+                <h3 className="text-xs font-bold text-zinc-900 dark:text-white">
+                  {isAr ? "سجل الأحداث والتدقيق للشركات" : "System Audit & Activity Logs"}
+                </h3>
+                <span className="text-[11px] font-bold px-2 py-0.5 rounded-full bg-purple-500/10 text-purple-400 border border-purple-500/20">
+                  {globalActivities.length} {isAr ? "سجل محفوظ" : "logs"}
+                </span>
+              </div>
+              <span className="text-[10px] text-zinc-500 dark:text-zinc-450 bg-zinc-50 dark:bg-zinc-850 px-2.5 py-0.5 rounded-md border dark:border-zinc-800">
+                {isAr ? "سجلات غير قابلة للتعديل" : "Immutable Records"}
+              </span>
+            </div>
+
+            {/* 1. Company Filter Pills (Isolating per company) */}
+            <div className="border-t dark:border-zinc-800/80 pt-3 flex items-center gap-2 flex-wrap">
+              <span className="text-[11px] font-bold text-zinc-400 flex items-center gap-1 shrink-0">
+                <Building2 className="h-3.5 w-3.5 text-purple-500" />
+                <span>{isAr ? "عرض سجل شركة:" : "Company Logs:"}</span>
+              </span>
+
+              <button
+                onClick={() => setSelectedAuditCompanyId("all")}
+                className={`px-2.5 py-1 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+                  selectedAuditCompanyId === "all"
+                    ? "bg-purple-600 text-white shadow-xs"
+                    : "bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-300 hover:bg-zinc-200 dark:hover:bg-zinc-700"
+                }`}
+              >
+                {isAr ? "جميع الشركات" : "All Companies"}
+              </button>
+
+              {companies.map((c: any) => (
+                <button
+                  key={c._id}
+                  onClick={() => setSelectedAuditCompanyId(c._id)}
+                  className={`px-2.5 py-1 rounded-lg text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5 ${
+                    selectedAuditCompanyId === c._id
+                      ? "bg-purple-600 text-white shadow-xs"
+                      : "bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-300 hover:bg-zinc-200 dark:hover:bg-zinc-700"
+                  }`}
+                >
+                  <Building className="h-3 w-3 opacity-70" />
+                  <span>{c.name}</span>
+                </button>
+              ))}
+            </div>
+
+            {/* 2. Action Filter Pills */}
+            <div className="border-t dark:border-zinc-800/80 pt-2 flex items-center gap-1.5 flex-wrap">
+              <span className="text-[11px] font-bold text-zinc-400 flex items-center gap-1 shrink-0">
+                <SlidersHorizontal className="h-3 w-3 text-zinc-400" />
+                <span>{isAr ? "نوع العملية:" : "Action:"}</span>
+              </span>
+
+              {[
+                { id: "all", labelAr: "الكل", labelEn: "All" },
+                { id: "created", labelAr: "✨ إنشاء", labelEn: "Created" },
+                { id: "updated", labelAr: "✏️ تعديل", labelEn: "Updated" },
+                { id: "deleted", labelAr: "🗑️ حذف", labelEn: "Deleted" },
+                { id: "restored", labelAr: "🔄 استعادة", labelEn: "Restored" },
+                { id: "moved", labelAr: "➡️ نقل", labelEn: "Moved" },
+              ].map((actFilter) => (
+                <button
+                  key={actFilter.id}
+                  onClick={() => setSelectedAuditAction(actFilter.id)}
+                  className={`px-2 py-0.5 rounded-md text-[11px] font-bold transition-all cursor-pointer ${
+                    selectedAuditAction === actFilter.id
+                      ? "bg-zinc-900 text-white dark:bg-white dark:text-zinc-900"
+                      : "text-zinc-500 hover:text-zinc-700 dark:hover:text-zinc-200"
+                  }`}
+                >
+                  {isAr ? actFilter.labelAr : actFilter.labelEn}
+                </button>
+              ))}
+            </div>
           </div>
 
-          {isLoadingAudit ? (
-            <div className="flex justify-center items-center py-16">
-              <Loader2 className="h-8 w-8 animate-spin text-purple-650" />
-            </div>
-          ) : globalActivities.length === 0 ? (
-            <div className="text-center py-16 text-zinc-500 text-xs">{isAr ? "سجل التدقيق فارغ." : "No audit logs logged in the platform."}</div>
-          ) : (
-            <div className="divide-y divide-zinc-100 dark:divide-zinc-850 max-h-[500px] overflow-y-auto custom-scrollbar">
-              {globalActivities.map((act: any) => {
-                const dateStr = new Date(act.createdAt).toLocaleDateString();
-                const timeStr = new Date(act.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-                
-                let detailsStr = "";
-                if (act.details?.title) {
-                  detailsStr = isAr ? `مهمة: "${act.details.title}"` : `Task: "${act.details.title}"`;
-                }
+          {/* Activity Stream Feed */}
+          <div className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-2xl shadow-xs overflow-hidden">
+            {isLoadingAudit ? (
+              <div className="flex justify-center items-center py-16">
+                <Loader2 className="h-8 w-8 animate-spin text-purple-650" />
+              </div>
+            ) : filteredAudit.length === 0 ? (
+              <div className="text-center py-16 space-y-2">
+                <Activity className="h-8 w-8 text-zinc-400 mx-auto opacity-50" />
+                <p className="text-zinc-500 text-xs font-semibold">
+                  {isAr ? "لا توجد سجلات تدقيق تطابق الفلتر الحالي." : "No audit logs found matching your filter."}
+                </p>
+              </div>
+            ) : (
+              <div className="divide-y divide-zinc-100 dark:divide-zinc-850 max-h-162.5 overflow-y-auto custom-scrollbar">
+                {filteredAudit.map((act: any) => {
+                  const actionMeta = ACTION_META[act.action?.toLowerCase()] || {
+                    ar: act.action || "عملية",
+                    en: act.action || "Action",
+                    bg: "bg-zinc-500/10 text-zinc-400 border border-zinc-500/20",
+                  };
+                  
+                  const changes = act.details?.changes || {};
+                  const changeKeys = Object.keys(changes);
+                  const isCreated = act.action === "created";
+                  const isDeleted = act.action === "deleted";
+                  const isRestored = act.action === "restored";
+                  const companyName = act.workspaceId?.name || act.workspaceId?.slug;
 
-                const changes = act.details?.changes || {};
-                const changeKeys = Object.keys(changes);
-                
-                return (
-                  <div key={act._id} className="p-4 hover:bg-zinc-50/50 dark:hover:bg-zinc-850/15 flex items-start justify-between gap-4 text-xs max-w-full overflow-hidden">
-                    <div className="flex items-start gap-3 min-w-0 flex-1 overflow-hidden">
-                      <img
-                        src={act.userId?.avatarUrl || "https://api.dicebear.com/7.x/bottts/svg"}
-                        alt="actor avatar"
-                        className="h-7 w-7 rounded-full bg-zinc-850 border shrink-0 mt-0.5"
-                      />
-                      <div className="min-w-0 flex-1 space-y-1 overflow-hidden">
-                        <p className="text-zinc-800 dark:text-zinc-200 truncate">
-                          <strong className="font-bold text-zinc-900 dark:text-white mr-1.5">{act.userId?.fullName || (isAr ? "مدير النظام" : "System Actor")}</strong>
-                          <span className="px-1.5 py-0.5 bg-zinc-100 dark:bg-zinc-800 text-zinc-500 rounded font-semibold text-[10px] capitalize mr-2">
-                            {act.action}
-                          </span>
-                          <span className="text-zinc-600 dark:text-zinc-400 font-medium">
-                            {act.entityType} ({detailsStr})
-                          </span>
-                        </p>
-                        
-                        {/* Change differences list */}
-                        {changeKeys.length > 0 && (
-                          <div className="mt-2 pl-3 border-l-2 dark:border-zinc-800 space-y-1 max-w-full overflow-hidden">
-                            {changeKeys.map((key) => {
-                              const item = changes[key] || {};
-                              const oldText = formatAuditValue(key, item.old, isAr);
-                              const newText = formatAuditValue(key, item.new, isAr);
-                              return (
-                                <p key={key} className="text-[10.5px] text-zinc-500 leading-relaxed font-mono break-all overflow-hidden">
-                                  • <span className="font-bold capitalize">{formatKeyName(key, isAr)}</span> {isAr ? "تغير من:" : "changed from:"} <span className="text-red-500 line-through">"{oldText}"</span> {isAr ? "إلى:" : "to:"} <span className="text-green-500 font-bold">"{newText}"</span>
-                                </p>
-                              );
-                            })}
+                  return (
+                    <div
+                      key={act._id}
+                      className="p-4 hover:bg-zinc-50/60 dark:hover:bg-zinc-850/25 transition-colors space-y-3 text-xs"
+                    >
+                      {/* Top Row: Actor, Action badge, Company badge, Timestamp */}
+                      <div className="flex items-center justify-between gap-3 flex-wrap">
+                        <div className="flex items-center gap-2.5">
+                          <img
+                            src={act.userId?.avatarUrl || "https://api.dicebear.com/7.x/bottts/svg"}
+                            alt="actor avatar"
+                            className="h-7 w-7 rounded-full bg-zinc-850 border border-zinc-200 dark:border-zinc-700 shrink-0 object-cover"
+                          />
+                          <div>
+                            <div className="flex items-center gap-2">
+                              <span className="font-bold text-zinc-900 dark:text-white">
+                                {act.userId?.fullName || (isAr ? "مدير النظام" : "System Actor")}
+                              </span>
+                              <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${actionMeta.bg}`}>
+                                {isAr ? actionMeta.ar : actionMeta.en}
+                              </span>
+                              {companyName && (
+                                <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-purple-500/10 text-purple-400 border border-purple-500/20 flex items-center gap-1">
+                                  <Building className="h-2.5 w-2.5" />
+                                  <span>{companyName}</span>
+                                </span>
+                              )}
+                            </div>
+                            <p className="text-[10px] text-zinc-400">
+                              {act.userId?.email || ""}
+                            </p>
                           </div>
+                        </div>
+
+                        {/* Timestamp */}
+                        <div className="text-[11px] text-zinc-400 font-semibold flex items-center gap-1">
+                          <Clock className="h-3 w-3 opacity-60" />
+                          <span>{formatArabicDate(act.createdAt, isAr)}</span>
+                        </div>
+                      </div>
+
+                      {/* Content Card / Structured Breakdown */}
+                      <div className="mr-9 ml-2 p-3 bg-zinc-50/80 dark:bg-zinc-850/35 border border-zinc-200/70 dark:border-zinc-800 rounded-xl space-y-2">
+                        {/* Title Reference */}
+                        <div className="flex items-center gap-2 flex-wrap text-zinc-800 dark:text-zinc-200">
+                          <span className="text-zinc-400 font-semibold">{isAr ? "العنصر المتأثر:" : "Target:"}</span>
+                          <span className="font-bold text-zinc-900 dark:text-white bg-zinc-200/50 dark:bg-zinc-800 px-2 py-0.5 rounded-md">
+                            {act.entityType === "task" ? (isAr ? "مهمة" : "Task") : act.entityType}: "{act.details?.title || act.entityTitle || (isAr ? "بدون عنوان" : "Untitled")}"
+                          </span>
+                        </div>
+
+                        {/* Case 1: Created Task Summary */}
+                        {isCreated && (
+                          <div className="pt-1 space-y-2">
+                            <p className="text-[11px] text-emerald-600 dark:text-emerald-400 font-bold flex items-center gap-1">
+                              <Sparkles className="h-3.5 w-3.5" />
+                              <span>{isAr ? "تم إنشاء المهمة بنجاح بالخصائص الأولية التالية:" : "Task created with the following attributes:"}</span>
+                            </p>
+                            <div className="flex items-center gap-2 flex-wrap">
+                              {changeKeys.map((key) => {
+                                const item = changes[key] || {};
+                                const val = item.new || item;
+                                if (!val) return null;
+                                return (
+                                  <div
+                                    key={key}
+                                    className="px-2.5 py-1 rounded-lg bg-white dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 flex items-center gap-1.5 text-[11px]"
+                                  >
+                                    <span className="text-zinc-400 font-semibold">{formatKeyName(key, isAr)}:</span>
+                                    <span className="font-bold text-zinc-800 dark:text-zinc-100">{formatAuditValue(key, val, isAr)}</span>
+                                  </div>
+                                );
+                              })}
+                            </div>
+                          </div>
+                        )}
+
+                        {/* Case 2: Updated Task Detailed Diffs */}
+                        {!isCreated && !isDeleted && !isRestored && changeKeys.length > 0 && (
+                          <div className="pt-1 space-y-1.5">
+                            <p className="text-[11px] text-zinc-400 font-bold">
+                              {isAr ? "التعديلات التي تمت على البيانات:" : "Modifications made:"}
+                            </p>
+                            <div className="space-y-1.5">
+                              {changeKeys.map((key) => {
+                                const item = changes[key] || {};
+                                const oldText = formatAuditValue(key, item.old, isAr);
+                                const newText = formatAuditValue(key, item.new, isAr);
+                                return (
+                                  <div
+                                    key={key}
+                                    className="p-2 rounded-lg bg-white dark:bg-zinc-800/80 border border-zinc-200 dark:border-zinc-750 flex items-center justify-between gap-3 flex-wrap text-[11px]"
+                                  >
+                                    <span className="font-bold text-purple-600 dark:text-purple-400 min-w-24">
+                                      {formatKeyName(key, isAr)}
+                                    </span>
+                                    <div className="flex items-center gap-2 flex-1 flex-wrap">
+                                      <span className="px-2 py-0.5 rounded-md bg-red-500/10 text-red-400 border border-red-500/20 line-through">
+                                        {oldText}
+                                      </span>
+                                      <ArrowRight className="h-3 w-3 text-zinc-400 rtl:rotate-180 shrink-0" />
+                                      <span className="px-2 py-0.5 rounded-md bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 font-bold">
+                                        {newText}
+                                      </span>
+                                    </div>
+                                  </div>
+                                );
+                              })}
+                            </div>
+                          </div>
+                        )}
+
+                        {/* Case 3: Deleted Task */}
+                        {isDeleted && (
+                          <p className="text-[11px] text-red-500 font-semibold flex items-center gap-1">
+                            <Trash2 className="h-3.5 w-3.5" />
+                            <span>{isAr ? "تم نقل هذا العنصر إلى سلة المحذوفات بواسطة المستخدم." : "Item moved to trash."}</span>
+                          </p>
+                        )}
+
+                        {/* Case 4: Restored Task */}
+                        {isRestored && (
+                          <p className="text-[11px] text-purple-400 font-semibold flex items-center gap-1">
+                            <RotateCcw className="h-3.5 w-3.5" />
+                            <span>{isAr ? "تمت استعادة هذا العنصر بنجاح إلى مساحة العمل النشطة." : "Item restored to active workspace."}</span>
+                          </p>
                         )}
                       </div>
                     </div>
-
-                    <div className="text-right text-[10px] text-zinc-400 font-semibold shrink-0">
-                      <p>{dateStr}</p>
-                      <p className="mt-0.5">{timeStr}</p>
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-          )}
+                  );
+                })}
+              </div>
+            )}
+          </div>
         </div>
       )}
 
@@ -1446,7 +1940,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ activeSubTab }) => {
                           {isAr ? "لا توجد عمليات مسجلة للموظف في هذه الفترة." : "No operations recorded during this timeframe."}
                         </div>
                       ) : (
-                        <div className="space-y-4 max-h-[480px] overflow-y-auto pr-1 custom-scrollbar">
+                        <div className="space-y-4 max-h-120 overflow-y-auto pr-1 custom-scrollbar">
                           {employeeReport.activities.map((act: any) => {
                             const dateStr = new Date(act.createdAt).toLocaleDateString();
                             const timeStr = new Date(act.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
@@ -1485,7 +1979,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ activeSubTab }) => {
                                     </p>
                                   )}
                                 </div>
-                                <div className="text-right text-[9px] text-zinc-400 shrink-0 font-medium font-semibold">
+                                <div className="text-right text-[9px] text-zinc-400 shrink-0 font-medium">
                                   <p>{dateStr}</p>
                                   <p>{timeStr}</p>
                                 </div>
@@ -1508,7 +2002,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ activeSubTab }) => {
                           {isAr ? "لا توجد مهام مكلف بها الموظف حالياً." : "No tasks assigned to this employee."}
                         </div>
                       ) : (
-                        <div className="space-y-3 max-h-[480px] overflow-y-auto pr-1 custom-scrollbar">
+                        <div className="space-y-3 max-h-120 overflow-y-auto pr-1 custom-scrollbar">
                           {employeeReport.tasks.map((task: any) => {
                             let priorityColor = "bg-zinc-100 text-zinc-700 dark:bg-zinc-800 dark:text-zinc-300";
                             if (task.priority === "urgent") priorityColor = "bg-red-500/10 text-red-600";
@@ -1550,6 +2044,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ activeSubTab }) => {
           )}
         </div>
       )}
+
 
       {/* Admin Reset Password Modal */}
       {selectedUserForReset && (
@@ -1615,6 +2110,285 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ activeSubTab }) => {
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* Inspect Deleted Task Modal */}
+      {inspectDeletedTask && (
+        <div className="fixed inset-0 bg-black/75 backdrop-blur-xs flex items-center justify-center p-3 sm:p-4 z-50 animate-fade-in animate-duration-200">
+          <div className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 w-full max-w-2xl max-h-[90vh] rounded-2xl shadow-2xl flex flex-col text-start relative overflow-hidden">
+            
+            {/* Modal Header */}
+            <div className="p-4 sm:p-5 border-b dark:border-zinc-800 flex items-center justify-between gap-3 bg-zinc-50/50 dark:bg-zinc-850/30">
+              <div className="flex items-center gap-2.5 min-w-0">
+                <span className="p-2 rounded-xl bg-red-500/10 text-red-500 border border-red-500/20 shrink-0">
+                  <Trash2 className="h-5 w-5" />
+                </span>
+                <div className="min-w-0">
+                  <h2 className="text-sm sm:text-base font-bold text-zinc-900 dark:text-white truncate">
+                    {isAr ? "فحص ومعاينة المهمة المحذوفة" : "Deleted Task Detailed Inspection"}
+                  </h2>
+                  <p className="text-[11px] text-zinc-500 dark:text-zinc-400">
+                    {isAr ? "راجع محتوى المهمة وهيكلها التنظيمي لتحديد قرار الاستعادة أو الحذف النهائي." : "Inspect full task contents and context before deciding to restore or purge."}
+                  </p>
+                </div>
+              </div>
+              <button
+                onClick={() => setInspectDeletedTask(null)}
+                className="text-zinc-400 hover:text-zinc-700 dark:hover:text-zinc-200 p-1.5 rounded-lg hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-all cursor-pointer shrink-0"
+              >
+                <X className="h-5 w-5" />
+              </button>
+            </div>
+
+            {/* Modal Scrollable Body */}
+            <div className="p-4 sm:p-6 overflow-y-auto custom-scrollbar space-y-5 text-xs">
+              
+              {/* Deletion Alert Banner */}
+              <div className="p-3 rounded-xl bg-red-500/10 border border-red-500/20 flex items-start gap-3">
+                <AlertCircle className="h-4 w-4 text-red-500 shrink-0 mt-0.5" />
+                <div className="space-y-0.5 text-red-600 dark:text-red-400 text-xs">
+                  <p className="font-bold">
+                    {isAr ? "بيانات الحذف المسجلة:" : "Deletion Record:"}
+                  </p>
+                  <p className="text-[11px] opacity-90">
+                    {isAr
+                      ? `تم حذف هذه المهمة بتاريخ ${formatArabicDate(inspectDeletedTask.deletedAt, isAr)} بواسطة "${inspectDeletedTask.deletedBy?.fullName || "مدير النظام"}" (${inspectDeletedTask.deletedBy?.email || "-"})`
+                      : `Deleted on ${formatArabicDate(inspectDeletedTask.deletedAt, isAr)} by "${inspectDeletedTask.deletedBy?.fullName || "System"}" (${inspectDeletedTask.deletedBy?.email || "-"})`}
+                  </p>
+                </div>
+              </div>
+
+              {/* Task Title & Status Header */}
+              <div className="space-y-2">
+                <div className="flex items-center justify-between gap-2 flex-wrap">
+                  <h3 className="text-base sm:text-lg font-extrabold text-zinc-900 dark:text-white leading-snug">
+                    {inspectDeletedTask.title}
+                  </h3>
+                  <div className="flex items-center gap-1.5 flex-wrap">
+                    {(() => {
+                      const sm = STATUS_META[inspectDeletedTask.status?.toLowerCase()] || { ar: inspectDeletedTask.status || "قيد الانتظار", en: inspectDeletedTask.status || "To Do", bg: "bg-blue-500/10 text-blue-400 border border-blue-500/25" };
+                      const pm = PRIORITY_META[inspectDeletedTask.priority?.toLowerCase()] || { ar: inspectDeletedTask.priority || "متوسطة", en: inspectDeletedTask.priority || "Medium", bg: "bg-blue-500/15 text-blue-400 border border-blue-500/30" };
+                      return (
+                        <>
+                          <span className={`px-2.5 py-1 rounded-full text-[11px] font-bold ${sm.bg}`}>
+                            {isAr ? sm.ar : sm.en}
+                          </span>
+                          <span className={`px-2.5 py-1 rounded-full text-[11px] font-bold ${pm.bg}`}>
+                            {isAr ? pm.ar : pm.en}
+                          </span>
+                        </>
+                      );
+                    })()}
+                  </div>
+                </div>
+              </div>
+
+              {/* Task Full Description */}
+              <div className="space-y-1.5">
+                <h4 className="text-[11px] font-bold uppercase tracking-wider text-zinc-400 flex items-center gap-1.5">
+                  <FileText className="h-3.5 w-3.5 text-purple-500" />
+                  <span>{isAr ? "الوصف ومحتوى المهمة:" : "Task Description & Content:"}</span>
+                </h4>
+                <div className="p-3.5 bg-zinc-50 dark:bg-zinc-850/60 border border-zinc-200 dark:border-zinc-800 rounded-xl leading-relaxed text-zinc-800 dark:text-zinc-200 whitespace-pre-wrap font-sans text-xs min-h-16">
+                  {inspectDeletedTask.description ? (
+                    inspectDeletedTask.description
+                  ) : (
+                    <span className="text-zinc-400 italic">
+                      {isAr ? "لا يوجد نص تفصيلي لوصف هذه المهمة." : "No description provided for this task."}
+                    </span>
+                  )}
+                </div>
+              </div>
+
+              {/* Organizational Location Breakdown */}
+              <div className="space-y-1.5">
+                <h4 className="text-[11px] font-bold uppercase tracking-wider text-zinc-400 flex items-center gap-1.5">
+                  <Building2 className="h-3.5 w-3.5 text-blue-500" />
+                  <span>{isAr ? "الموقع التنظيمي والشركة:" : "Organizational Context:"}</span>
+                </h4>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                  <div className="p-3 rounded-xl bg-zinc-50 dark:bg-zinc-850/40 border border-zinc-200/80 dark:border-zinc-800 space-y-1">
+                    <span className="text-[10px] text-zinc-400 font-bold">{isAr ? "الشركة / مساحة العمل:" : "Workspace / Company:"}</span>
+                    <p className="font-bold text-zinc-900 dark:text-white flex items-center gap-1.5 text-xs">
+                      <Building className="h-3.5 w-3.5 text-purple-500" />
+                      <span>{inspectDeletedTask.workspaceId?.name || inspectDeletedTask.workspaceId?.slug || "-"}</span>
+                    </p>
+                  </div>
+
+                  <div className="p-3 rounded-xl bg-zinc-50 dark:bg-zinc-850/40 border border-zinc-200/80 dark:border-zinc-800 space-y-1">
+                    <span className="text-[10px] text-zinc-400 font-bold">{isAr ? "القسم / المساحة:" : "Department / Space:"}</span>
+                    <p className="font-bold text-zinc-900 dark:text-white flex items-center gap-1.5 text-xs">
+                      {inspectDeletedTask.spaceId?.color && (
+                        <span className="h-2.5 w-2.5 rounded-full" style={{ backgroundColor: inspectDeletedTask.spaceId.color }} />
+                      )}
+                      <span>{inspectDeletedTask.spaceId?.name || (isAr ? "عام" : "General")}</span>
+                    </p>
+                  </div>
+
+                  <div className="p-3 rounded-xl bg-zinc-50 dark:bg-zinc-850/40 border border-zinc-200/80 dark:border-zinc-800 space-y-1">
+                    <span className="text-[10px] text-zinc-400 font-bold">{isAr ? "المرحلة / قائمة المهام:" : "List / Stage:"}</span>
+                    <p className="font-bold text-zinc-900 dark:text-white flex items-center gap-1.5 text-xs">
+                      <Layers className="h-3.5 w-3.5 text-amber-500" />
+                      <span>{inspectDeletedTask.listId?.name || "-"}</span>
+                    </p>
+                  </div>
+
+                  <div className="p-3 rounded-xl bg-zinc-50 dark:bg-zinc-850/40 border border-zinc-200/80 dark:border-zinc-800 space-y-1">
+                    <span className="text-[10px] text-zinc-400 font-bold">{isAr ? "مشروع العميل:" : "Client Project:"}</span>
+                    <p className="font-bold text-zinc-900 dark:text-white flex items-center gap-1.5 text-xs">
+                      <Briefcase className="h-3.5 w-3.5 text-emerald-500" />
+                      <span>{inspectDeletedTask.clientProjectId?.clientName || inspectDeletedTask.projectName || "-"}</span>
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              {/* Assignees & Dates */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                {/* Assignees */}
+                <div className="space-y-1.5">
+                  <h4 className="text-[11px] font-bold uppercase tracking-wider text-zinc-400 flex items-center gap-1.5">
+                    <Users className="h-3.5 w-3.5 text-indigo-500" />
+                    <span>{isAr ? "المكلفون بالعمل:" : "Assigned Team:"}</span>
+                  </h4>
+                  <div className="p-3 rounded-xl bg-zinc-50 dark:bg-zinc-850/40 border border-zinc-200/80 dark:border-zinc-800 min-h-14">
+                    {Array.isArray(inspectDeletedTask.assignees) && inspectDeletedTask.assignees.length > 0 ? (
+                      <div className="space-y-2">
+                        {inspectDeletedTask.assignees.map((a: any, idx: number) => (
+                          <div key={a._id || idx} className="flex items-center gap-2">
+                            <img
+                              src={a.avatarUrl || "https://api.dicebear.com/7.x/bottts/svg"}
+                              alt={a.fullName}
+                              className="h-6 w-6 rounded-full border bg-zinc-800 shrink-0 object-cover"
+                            />
+                            <div className="min-w-0">
+                              <p className="font-bold text-zinc-800 dark:text-zinc-200 text-xs truncate">{a.fullName}</p>
+                              <p className="text-[10px] text-zinc-400 truncate">{a.email}</p>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    ) : (
+                      <span className="text-zinc-400 italic text-[11px]">{isAr ? "لا يوجد مكلفين محددين." : "No assignees assigned."}</span>
+                    )}
+                  </div>
+                </div>
+
+                {/* Dates & Reporter */}
+                <div className="space-y-1.5">
+                  <h4 className="text-[11px] font-bold uppercase tracking-wider text-zinc-400 flex items-center gap-1.5">
+                    <Calendar className="h-3.5 w-3.5 text-purple-500" />
+                    <span>{isAr ? "التواريخ والمنشئ:" : "Dates & Reporter:"}</span>
+                  </h4>
+                  <div className="p-3 rounded-xl bg-zinc-50 dark:bg-zinc-850/40 border border-zinc-200/80 dark:border-zinc-800 space-y-1.5 text-[11px]">
+                    <div className="flex justify-between">
+                      <span className="text-zinc-400">{isAr ? "تاريخ الاستحقاق:" : "Due Date:"}</span>
+                      <span className="font-bold text-zinc-800 dark:text-zinc-200">{formatArabicDate(inspectDeletedTask.dueDate, isAr)}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-zinc-400">{isAr ? "تاريخ البدء:" : "Start Date:"}</span>
+                      <span className="font-bold text-zinc-800 dark:text-zinc-200">{formatArabicDate(inspectDeletedTask.startDate, isAr)}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-zinc-400">{isAr ? "تاريخ الإنشاء:" : "Created At:"}</span>
+                      <span className="font-bold text-zinc-800 dark:text-zinc-200">{formatArabicDate(inspectDeletedTask.createdAt, isAr)}</span>
+                    </div>
+                    {inspectDeletedTask.reporterId?.fullName && (
+                      <div className="flex justify-between pt-1 border-t dark:border-zinc-800">
+                        <span className="text-zinc-400">{isAr ? "أنشئت بواسطة:" : "Reported By:"}</span>
+                        <span className="font-bold text-zinc-800 dark:text-zinc-200">{inspectDeletedTask.reporterId.fullName}</span>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </div>
+
+              {/* Subtasks / Checklist if any */}
+              {Array.isArray(inspectDeletedTask.checklist) && inspectDeletedTask.checklist.length > 0 && (
+                <div className="space-y-1.5">
+                  <h4 className="text-[11px] font-bold uppercase tracking-wider text-zinc-400 flex items-center gap-1.5">
+                    <CheckSquare className="h-3.5 w-3.5 text-emerald-500" />
+                    <span>{isAr ? "قائمة المهام الفرعية والفحص:" : "Checklist Items:"}</span>
+                    <span className="text-[10px] text-zinc-500">
+                      ({inspectDeletedTask.checklist.filter((i: any) => i.isCompleted).length}/{inspectDeletedTask.checklist.length})
+                    </span>
+                  </h4>
+                  <div className="p-3 bg-zinc-50 dark:bg-zinc-850/40 border border-zinc-200 dark:border-zinc-800 rounded-xl space-y-1.5">
+                    {inspectDeletedTask.checklist.map((item: any, idx: number) => (
+                      <div key={idx} className="flex items-center gap-2 text-xs">
+                        <span
+                          className={`h-4 w-4 rounded-md flex items-center justify-center border text-[10px] ${
+                            item.isCompleted
+                              ? "bg-emerald-600 text-white border-emerald-600"
+                              : "border-zinc-400 dark:border-zinc-600 text-transparent"
+                          }`}
+                        >
+                          ✓
+                        </span>
+                        <span className={item.isCompleted ? "line-through text-zinc-400" : "text-zinc-800 dark:text-zinc-200 font-medium"}>
+                          {item.title}
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Additional Notes if any */}
+              {inspectDeletedTask.notes && (
+                <div className="space-y-1.5">
+                  <h4 className="text-[11px] font-bold uppercase tracking-wider text-zinc-400 flex items-center gap-1.5">
+                    <Info className="h-3.5 w-3.5 text-amber-500" />
+                    <span>{isAr ? "ملاحظات إضافية:" : "Additional Notes:"}</span>
+                  </h4>
+                  <div className="p-3 bg-amber-500/5 border border-amber-500/20 rounded-xl text-amber-900 dark:text-amber-200 text-xs">
+                    {inspectDeletedTask.notes}
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* Modal Actions Footer */}
+            <div className="p-4 sm:p-5 border-t dark:border-zinc-800 flex items-center justify-between gap-3 bg-zinc-50/50 dark:bg-zinc-850/30 flex-wrap">
+              <button
+                type="button"
+                onClick={() => setInspectDeletedTask(null)}
+                className="px-4 py-2 bg-zinc-100 dark:bg-zinc-800 hover:bg-zinc-200 dark:hover:bg-zinc-700 text-zinc-700 dark:text-zinc-300 font-bold text-xs rounded-xl transition-all cursor-pointer"
+              >
+                {isAr ? "إغلاق" : "Close"}
+              </button>
+
+              <div className="flex items-center gap-2">
+                {/* Permanent Delete Button */}
+                <button
+                  type="button"
+                  onClick={() => handleConfirmPermanentDeleteTask(inspectDeletedTask._id, inspectDeletedTask.title)}
+                  disabled={permanentlyDeleteTaskMutation.isPending}
+                  className="px-3.5 py-2 rounded-xl border border-red-500/30 hover:bg-red-600 text-red-500 hover:text-white font-bold text-xs transition-all flex items-center gap-1.5 cursor-pointer disabled:opacity-50"
+                >
+                  <Trash2 className="h-3.5 w-3.5 shrink-0" />
+                  <span>{isAr ? "حذف نهائي للأبد" : "Permanently Delete"}</span>
+                </button>
+
+                {/* Restore Task Button */}
+                <button
+                  type="button"
+                  onClick={() => restoreTaskMutation.mutate(inspectDeletedTask._id)}
+                  disabled={restoreTaskMutation.isPending}
+                  className="px-4 py-2 bg-purple-600 hover:bg-purple-700 text-white font-bold text-xs rounded-xl shadow-md flex items-center gap-1.5 transition-all cursor-pointer disabled:opacity-50"
+                >
+                  {restoreTaskMutation.isPending ? (
+                    <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                  ) : (
+                    <RefreshCw className="h-3.5 w-3.5 shrink-0" />
+                  )}
+                  <span>{isAr ? "استعادة المهمة إلى مساحة العمل" : "Restore Task to Workspace"}</span>
+                </button>
+              </div>
+            </div>
+
           </div>
         </div>
       )}

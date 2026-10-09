@@ -1,6 +1,6 @@
 import { Schema, model, Document, Types } from "mongoose";
 
-export type NotificationType = "task_assigned" | "task_updated" | "comment_mentioned" | "workspace_invite";
+export type NotificationType = "task_assigned" | "task_updated" | "comment_mentioned" | "workspace_invite" | "space_access_request";
 
 export interface INotification extends Document {
   recipientId: Types.ObjectId;
@@ -9,7 +9,7 @@ export interface INotification extends Document {
   message: string;
   type: NotificationType;
   entityId?: Types.ObjectId;
-  entityType?: "task" | "workspace";
+  entityType?: "task" | "workspace" | "space";
   isRead: boolean;
   createdAt: Date;
   updatedAt: Date;
@@ -39,7 +39,7 @@ const notificationSchema = new Schema<INotification>(
     },
     type: {
       type: String,
-      enum: ["task_assigned", "task_updated", "comment_mentioned", "workspace_invite"],
+      enum: ["task_assigned", "task_updated", "comment_mentioned", "workspace_invite", "space_access_request"],
       required: true,
     },
     entityId: {
@@ -47,7 +47,7 @@ const notificationSchema = new Schema<INotification>(
     },
     entityType: {
       type: String,
-      enum: ["task", "workspace"],
+      enum: ["task", "workspace", "space"],
     },
     isRead: {
       type: Boolean,

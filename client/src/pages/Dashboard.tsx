@@ -28,6 +28,8 @@ import { CreateTaskModal } from "../components/CreateTaskModal";
 import { InviteMembersModal } from "../components/InviteMembersModal";
 import { MemberPermissionsEditor } from "../components/MemberPermissionsEditor";
 import { ProfileModal } from "../components/ProfileModal";
+import { WorkspaceDropdown } from "../components/WorkspaceDropdown";
+import { useConfirmStore } from "../stores/useConfirmStore";
 import arabProLogo from "../assets/arabpro_logo.png";
 import arabProIcon from "../assets/arabpro_icon.png";
 import {
@@ -35,7 +37,6 @@ import {
   LogOut,
   PlusCircle,
   Briefcase,
-  ChevronDown,
   ChevronLeft,
   ChevronRight,
   Menu,
@@ -62,6 +63,10 @@ import {
   Search,
   Sliders,
   FileEdit,
+  Lock,
+  Send,
+  ShieldAlert,
+  Check,
 } from "lucide-react";
 
 // Static reference to prevent empty array literals from re-allocating memory and triggering render loops
@@ -300,12 +305,111 @@ export const Dashboard: React.FC = () => {
       ? "owner"
       : (members.find((m: any) => (m.userId?._id || m.userId?.id || m.userId) === user?.id)?.role || "guest");
 
+  const canManageSpaces =
+    user?.isSystemAdmin ||
+    currentUserRole === "owner" ||
+    currentUserRole === "admin";
+
   // Track task detailed update by query mapping
   const currentTaskDetails = selectedTask
     ? (queryClient.getQueryData(["tasks", selectedTask.listId]) as Task[])?.find((t) => t._id === selectedTask._id) || selectedTask
     : null;
 
   // --- Mutations ---
+  const deleteWorkspaceMutation = useMutation({
+    mutationFn: (wsId: string) => taskflowService.deleteWorkspace(wsId),
+    onSuccess: (_, deletedWsId) => {
+      queryClient.setQueryData(["workspaces"], (old: any) =>
+        Array.isArray(old) ? old.filter((w: any) => w._id !== deletedWsId) : []
+      );
+      queryClient.invalidateQueries({ queryKey: ["workspaces"] });
+      queryClient.invalidateQueries({ queryKey: ["adminCompanies"] });
+      queryClient.invalidateQueries({ queryKey: ["adminGlobalStats"] });
+
+      useToastStore.getState().addToast(
+        isAr ? "تم حذف مساحة العمل بالكامل بنجاح" : "Workspace deleted successfully",
+        "success"
+      );
+
+      // If active workspace was deleted, redirect
+      if (activeWorkspace?._id === deletedWsId) {
+        const remaining = workspaces.filter((w) => w._id !== deletedWsId);
+        if (remaining.length > 0) {
+          navigate(`/w/${remaining[0]._id}`);
+        } else if (user?.isSystemAdmin) {
+          navigate("/admin");
+        } else {
+          navigate("/");
+        }
+      }
+    },
+    onError: (err: any) => {
+      const msg = err?.response?.data?.error?.message || err?.message || (isAr ? "فشل حذف مساحة العمل" : "Failed to delete workspace");
+      useToastStore.getState().addToast(msg, "error");
+    },
+  });
+
+  const handleConfirmDeleteWorkspace = async (workspaceId: string, name: string, e?: React.MouseEvent) => {
+    e?.stopPropagation();
+    const ok = await useConfirmStore.getState().show({
+      title: isAr ? `حذف شركة ومساحة عمل "${name}"` : `Delete Workspace "${name}"`,
+      message: isAr
+        ? `هل أنت متأكد من حذف شركة "${name}" نهائياً مع كافة مساحاتها وقوائمها ومهامها ومشاريعها؟ هذا الإجراء فوري ولا يمكن التراجع عنه.`
+        : `Are you sure you want to permanently delete workspace "${name}" and all of its spaces, lists, tasks, and client projects? This cannot be undone.`,
+      confirmText: isAr ? "نعم، حذف نهائي" : "Yes, Delete Permanently",
+      cancelText: isAr ? "إلغاء" : "Cancel",
+    });
+    if (ok) {
+      deleteWorkspaceMutation.mutate(workspaceId);
+    }
+  };
+
+  const deleteSpaceMutation = useMutation({
+    mutationFn: (spaceId: string) => taskflowService.deleteSpace(spaceId),
+    onSuccess: (_, deletedSpaceId) => {
+      queryClient.setQueryData(["spaces", activeWorkspace?._id], (old: any) =>
+        Array.isArray(old) ? old.filter((s: any) => s._id !== deletedSpaceId) : []
+      );
+      queryClient.invalidateQueries({ queryKey: ["spaces", activeWorkspace?._id] });
+      queryClient.invalidateQueries({ queryKey: ["tasks"] });
+      queryClient.invalidateQueries({ queryKey: ["workspaceTasks", activeWorkspace?._id] });
+      queryClient.invalidateQueries({ queryKey: ["lists"] });
+
+      useToastStore.getState().addToast(
+        isAr ? "تم حذف المساحة بنجاح" : "Space deleted successfully",
+        "success"
+      );
+
+      // If active space was deleted, redirect
+      if (activeSpace?._id === deletedSpaceId) {
+        const remaining = spaces.filter((s) => s._id !== deletedSpaceId);
+        if (remaining.length > 0) {
+          navigate(`/w/${activeWorkspace?._id}/space/${remaining[0]._id}`);
+        } else {
+          navigate(`/w/${activeWorkspace?._id}/kanban`);
+        }
+      }
+    },
+    onError: (err: any) => {
+      const msg = err?.response?.data?.error?.message || err?.message || (isAr ? "فشل حذف المساحة" : "Failed to delete space");
+      useToastStore.getState().addToast(msg, "error");
+    },
+  });
+
+  const handleConfirmDeleteSpace = async (spaceId: string, name: string, e?: React.MouseEvent) => {
+    e?.stopPropagation();
+    const ok = await useConfirmStore.getState().show({
+      title: isAr ? `حذف المساحة "${name}"` : `Delete Space "${name}"`,
+      message: isAr
+        ? `هل أنت متأكد من حذف مساحة "${name}" وكافة المهام والقوائم التابعة لها نهائياً؟ هذا الإجراء فوري ولا يمكن التراجع عنه.`
+        : `Are you sure you want to permanently delete space "${name}" and all of its lists and tasks? This cannot be undone.`,
+      confirmText: isAr ? "نعم، حذف نهائي" : "Yes, Delete Permanently",
+      cancelText: isAr ? "إلغاء" : "Cancel",
+    });
+    if (ok) {
+      deleteSpaceMutation.mutate(spaceId);
+    }
+  };
   const createWorkspaceMutation = useMutation({
     mutationFn: (name: string) => taskflowService.createWorkspace(name),
     onSuccess: (newWs) => {
@@ -497,10 +601,11 @@ export const Dashboard: React.FC = () => {
   });
 
   const inviteMemberMutation = useMutation({
-    mutationFn: (data: { email: string; role: string; permissions?: any }) =>
-      taskflowService.inviteWorkspaceMember(activeWorkspace!._id, data.email, data.role, data.permissions),
+    mutationFn: (data: { email: string; role: string; permissions?: any; allowedSpaces?: string[] }) =>
+      taskflowService.inviteWorkspaceMember(activeWorkspace!._id, data.email, data.role, data.permissions, data.allowedSpaces),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["members", activeWorkspace?._id] });
+      queryClient.invalidateQueries({ queryKey: ["spaces", activeWorkspace?._id] });
       setIsInviteModalOpen(false);
       useToastStore.getState().addToast(t('inviteModal.success'), "success");
     },
@@ -510,14 +615,33 @@ export const Dashboard: React.FC = () => {
   });
 
   const updateMemberRoleMutation = useMutation({
-    mutationFn: (data: { userId: string; role?: string; permissions?: any }) =>
-      taskflowService.updateWorkspaceMemberRole(activeWorkspace!._id, data.userId, data.role, data.permissions),
+    mutationFn: (data: { userId: string; role?: string; permissions?: any; allowedSpaces?: string[] }) =>
+      taskflowService.updateWorkspaceMemberRole(activeWorkspace!._id, data.userId, data.role, data.permissions, data.allowedSpaces),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["members", activeWorkspace?._id] });
+      queryClient.invalidateQueries({ queryKey: ["spaces", activeWorkspace?._id] });
       useToastStore.getState().addToast(t('workspaceMembersModal.roleChangeSuccess'), "success");
     },
     onError: (err: any) => {
       useToastStore.getState().addToast(err?.response?.data?.error?.message || t('workspaceMembersModal.roleChangeFailed'), "error");
+    },
+  });
+
+  const [requestedSpaceIds, setRequestedSpaceIds] = useState<string[]>([]);
+  const requestSpaceAccessMutation = useMutation({
+    mutationFn: (spaceId: string) => taskflowService.requestSpaceAccess(spaceId),
+    onSuccess: (_data, spaceId) => {
+      setRequestedSpaceIds((prev) => [...prev, spaceId]);
+      useToastStore.getState().addToast(
+        isAr ? "تم إرسال طلب إذن الدخول إلى مسؤولي مساحة العمل بنجاح" : "Access request sent to workspace admins successfully",
+        "success"
+      );
+    },
+    onError: (err: any) => {
+      useToastStore.getState().addToast(
+        err?.response?.data?.error?.message || (isAr ? "فشل إرسال طلب الوصول" : "Failed to send access request"),
+        "error"
+      );
     },
   });
 
@@ -586,7 +710,7 @@ export const Dashboard: React.FC = () => {
                 <img
                   src={arabProLogo}
                   alt="Arab Pro Logo"
-                  className="h-9 w-auto max-w-[150px] object-contain shrink-0"
+                  className="h-9 w-auto max-w-37.5 object-contain shrink-0"
                 />
               )}
             </div>
@@ -615,41 +739,24 @@ export const Dashboard: React.FC = () => {
 
           {/* Workspace Switcher */}
           {!collapsed && (
-            <div className="p-4 border-b border-zinc-200 dark:border-[#1f1233]">
+            <div className="p-3 border-b border-zinc-200 dark:border-[#1f1233] relative">
               <label className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest block mb-2">
                 {t('sidebar.currentWorkspace')}
               </label>
-              <div className="relative">
-                <select
-                  value={activeWorkspace?._id || ""}
-                  onChange={(e) => {
-                    const ws = workspaces.find((w) => w._id === e.target.value);
-                    if (ws) {
-                      navigate(`/w/${ws._id}`);
-                      if (isMobile) setIsMobileSidebarOpen(false);
-                    }
-                  }}
-                  className="w-full bg-zinc-100 dark:bg-[#0e071c] border border-zinc-200 dark:border-[#261540] rounded-lg py-2 px-3 text-sm text-zinc-900 dark:text-zinc-100 appearance-none focus:outline-hidden focus:ring-1 focus:ring-[#b57ede] cursor-pointer font-medium"
-                >
-                  {workspaces.map((ws) => (
-                    <option key={ws._id} value={ws._id}>
-                      {ws.name}
-                    </option>
-                  ))}
-                </select>
-                <ChevronDown className="absolute end-3 top-2.5 h-4 w-4 text-zinc-400 pointer-events-none" />
-              </div>
-
-              <button
-                onClick={() => {
+              <WorkspaceDropdown
+                workspaces={workspaces}
+                activeWorkspace={activeWorkspace}
+                user={user}
+                onSelect={(ws) => {
+                  navigate(`/w/${ws._id}`);
+                  if (isMobile) setIsMobileSidebarOpen(false);
+                }}
+                onOpenCreateModal={() => {
                   setIsWorkspaceModalOpen(true);
                   if (isMobile) setIsMobileSidebarOpen(false);
                 }}
-                className="mt-3 flex items-center gap-1.5 text-xs text-[#843ec0] dark:text-[#b57ede] hover:text-[#9e59d2] dark:hover:text-[#d3a6f7] font-semibold transition-colors cursor-pointer"
-              >
-                <Plus className="h-3.5 w-3.5" />
-                <span>{t('sidebar.createWorkspace')}</span>
-              </button>
+                onDeleteWorkspace={handleConfirmDeleteWorkspace}
+              />
             </div>
           )}
 
@@ -780,28 +887,50 @@ export const Dashboard: React.FC = () => {
                 ) : (
                   spaces.map((sp) => {
                     const isActive = activeSpace?._id === sp._id && activeTab === "kanban";
+                    const isLocked = sp.isLocked === true;
                     return (
-                      <button
+                      <div
                         key={sp._id}
-                        onClick={() => {
-                          navigate(`/w/${activeWorkspace?._id}/space/${sp._id}`);
-                          if (isMobile) setIsMobileSidebarOpen(false);
-                        }}
-                        className={`w-full flex items-center rounded-lg transition-all cursor-pointer ${
-                          collapsed ? "justify-center p-2.5" : "gap-2.5 py-2 px-3 text-start"
+                        className={`group/space relative flex items-center justify-between rounded-lg transition-all ${
+                          collapsed ? "justify-center p-2.5" : "py-1.5 px-2.5"
                         } ${
                           isActive
                             ? "bg-[#b57ede]/15 text-[#843ec0] dark:text-[#b57ede] font-bold border-s-4 border-[#843ec0] dark:border-[#b57ede]"
+                            : isLocked
+                            ? "text-zinc-500 dark:text-zinc-400 hover:bg-zinc-100 dark:hover:bg-white/5 hover:text-zinc-800 dark:hover:text-zinc-200"
                             : "text-zinc-600 dark:text-zinc-400 hover:bg-zinc-100 dark:hover:bg-white/5 hover:text-zinc-900 dark:hover:text-zinc-200"
                         }`}
-                        title={collapsed ? sp.name : undefined}
                       >
-                        <div
-                          className="h-2.5 w-2.5 rounded-full shrink-0"
-                          style={{ backgroundColor: sp.color || "#b57ede" }}
-                        />
-                        {!collapsed && <span className="text-sm truncate">{sp.name}</span>}
-                      </button>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            navigate(`/w/${activeWorkspace?._id}/space/${sp._id}`);
+                            if (isMobile) setIsMobileSidebarOpen(false);
+                          }}
+                          className="flex items-center gap-2.5 min-w-0 flex-1 text-start cursor-pointer"
+                          title={collapsed ? (isLocked ? `${sp.name} (${isAr ? "مقفل" : "Locked"})` : sp.name) : undefined}
+                        >
+                          <div
+                            className="h-2.5 w-2.5 rounded-full shrink-0 shadow-xs"
+                            style={{ backgroundColor: sp.color || "#b57ede" }}
+                          />
+                          {!collapsed && <span className="text-sm truncate flex-1">{sp.name}</span>}
+                          {!collapsed && isLocked && (
+                            <Lock className="h-3.5 w-3.5 text-amber-500/80 dark:text-amber-400/80 shrink-0 ms-1" />
+                          )}
+                        </button>
+
+                        {!collapsed && canManageSpaces && (
+                          <button
+                            type="button"
+                            onClick={(e) => handleConfirmDeleteSpace(sp._id, sp.name, e)}
+                            title={isAr ? `حذف مساحة "${sp.name}"` : `Delete space "${sp.name}"`}
+                            className="opacity-0 group-hover/space:opacity-100 p-1 text-zinc-400 hover:text-red-500 hover:bg-red-500/10 dark:hover:bg-red-500/15 rounded-md transition-all cursor-pointer shrink-0 ms-1"
+                          >
+                            <Trash2 className="h-3.5 w-3.5" />
+                          </button>
+                        )}
+                      </div>
                     );
                   })
                 )}
@@ -820,7 +949,7 @@ export const Dashboard: React.FC = () => {
           )}
 
           {/* Profile bar */}
-          <div className={`p-3 border-t border-zinc-200 dark:border-[#1f1233] bg-zinc-50 dark:bg-[#05030a] flex items-center justify-between ${collapsed ? "flex-col gap-3 justify-center" : ""}`}>
+          <div className={`p-3 border-t border-zinc-200 dark:border-[#1f1233] bg-zinc-50 dark:bg-zinc-950 flex items-center justify-between ${collapsed ? "flex-col gap-3 justify-center" : ""}`}>
             <div 
               onClick={() => {
                 setIsProfileModalOpen(true);
@@ -855,9 +984,9 @@ export const Dashboard: React.FC = () => {
   };
 
   return (
-    <div className="flex h-screen w-screen bg-[#f8fafc] dark:bg-[#000000] font-sans text-zinc-900 dark:text-white overflow-hidden transition-theme selection:bg-[#b57ede]/35 selection:text-white">
+    <div className="flex h-screen w-screen bg-[#f8fafc] dark:bg-brand-black font-sans text-zinc-900 dark:text-white overflow-hidden transition-theme selection:bg-[#b57ede]/35 selection:text-white">
       {/* 1. DESKTOP SIDEBAR */}
-      <aside className={`hidden md:flex bg-white dark:bg-[#05030a] text-zinc-800 dark:text-zinc-100 flex-col justify-between border-e border-zinc-200 dark:border-[#1a1029] shrink-0 transition-all duration-300 no-print ${isSidebarCollapsed ? "w-16" : "w-64"}`}>
+      <aside className={`hidden md:flex bg-white dark:bg-zinc-950 text-zinc-800 dark:text-zinc-100 flex-col justify-between border-e border-zinc-200 dark:border-[#1a1029] shrink-0 transition-all duration-300 no-print ${isSidebarCollapsed ? "w-16" : "w-64"}`}>
         {renderSidebarContent(false)}
       </aside>
 
@@ -877,7 +1006,7 @@ export const Dashboard: React.FC = () => {
               animate={{ x: 0 }}
               exit={{ x: isAr ? "100%" : "-100%" }}
               transition={{ type: "spring", damping: 25, stiffness: 260 }}
-              className="fixed top-0 bottom-0 start-0 w-72 max-w-[85vw] bg-white dark:bg-[#05030a] text-zinc-800 dark:text-zinc-100 flex flex-col justify-between border-e border-zinc-200 dark:border-[#1a1029] z-50 md:hidden shadow-2xl"
+              className="fixed top-0 bottom-0 inset-s-0 w-72 max-w-[85vw] bg-white dark:bg-zinc-950 text-zinc-800 dark:text-zinc-100 flex flex-col justify-between border-e border-zinc-200 dark:border-[#1a1029] z-50 md:hidden shadow-2xl"
             >
               {renderSidebarContent(true)}
             </motion.aside>
@@ -886,11 +1015,11 @@ export const Dashboard: React.FC = () => {
       </AnimatePresence>
 
       {/* 2. MAIN BOARD WORKSPACE */}
-      <main className="flex-1 flex flex-col min-w-0 overflow-hidden bg-[#f8fafc] dark:bg-[#000000]">
+      <main className="flex-1 flex flex-col min-w-0 overflow-hidden bg-[#f8fafc] dark:bg-brand-black">
         {isAdminPath || activeTab === "admin" ? (
           <div className="flex-1 flex flex-col overflow-hidden animate-fade-in text-start">
             {/* Header Toolbar */}
-            <header className="h-16 border-b border-zinc-200 dark:border-[#1f1233] bg-white/90 dark:bg-[#0a0614]/85 backdrop-blur-md px-3 sm:px-4 py-3 flex items-center justify-between shrink-0 transition-theme relative z-20 no-print gap-2 text-zinc-900 dark:text-white">
+            <header className="h-16 border-b border-zinc-200 dark:border-[#1f1233] bg-white/90 dark:bg-brand-surface/85 backdrop-blur-md px-3 sm:px-4 py-3 flex items-center justify-between shrink-0 transition-theme relative z-20 no-print gap-2 text-zinc-900 dark:text-white">
               <div className="flex items-center gap-2 sm:gap-3 min-w-0">
                 <button
                   onClick={() => setIsMobileSidebarOpen(true)}
@@ -908,7 +1037,7 @@ export const Dashboard: React.FC = () => {
                    adminSubTab === "deleted" ? t('adminHeader.titleDeleted', { defaultValue: "Soft-Deleted Task Recovery" }) :
                    t('adminHeader.titleAudit', { defaultValue: "Immutable System Audit Logs" })}
                 </h1>
-                <span className="hidden lg:inline-flex items-center gap-1.5 text-xs font-semibold px-2.5 py-0.5 bg-[#031e19] border border-[#064237] rounded-md text-[#c6ff00] select-none shrink-0">
+                <span className="hidden lg:inline-flex items-center gap-1.5 text-xs font-semibold px-2.5 py-0.5 bg-brand-darkgreen border border-[#064237] rounded-md text-[#c6ff00] select-none shrink-0">
                   <span className="h-1.5 w-1.5 rounded-full bg-[#c6ff00]" />
                   {t('adminHeader.platformAdminBadge', { defaultValue: "Arab Pro Platform Admin" })}
                 </span>
@@ -980,7 +1109,7 @@ export const Dashboard: React.FC = () => {
               </div>
             </header>
             
-            <div className="flex-1 overflow-y-auto overflow-x-hidden min-h-0 min-w-0 max-w-full bg-[#f8fafc] dark:bg-[#000000]">
+            <div className="flex-1 overflow-y-auto overflow-x-hidden min-h-0 min-w-0 max-w-full bg-[#f8fafc] dark:bg-brand-black">
               <Suspense fallback={
                 <div className="flex-1 flex items-center justify-center p-8 bg-zinc-50 dark:bg-black/40">
                   <Loader2 className="h-8 w-8 animate-spin text-[#843ec0] dark:text-[#b57ede]" />
@@ -991,7 +1120,7 @@ export const Dashboard: React.FC = () => {
             </div>
           </div>
         ) : workspaces.length === 0 && !isLoadingWorkspaces ? (
-          <div className="flex-1 flex flex-col items-center justify-center p-8 text-center max-w-md mx-auto animate-fade-in bg-[#f8fafc] dark:bg-[#000000]">
+          <div className="flex-1 flex flex-col items-center justify-center p-8 text-center max-w-md mx-auto animate-fade-in bg-[#f8fafc] dark:bg-brand-black">
             <Briefcase className="h-16 w-16 text-[#843ec0] dark:text-[#b57ede] mb-6" />
             <h1 className="text-3xl font-extrabold mb-3 text-zinc-900 dark:text-white">{t('welcome.title')}</h1>
             <p className="text-zinc-600 dark:text-zinc-400 mb-8 leading-relaxed">
@@ -1005,7 +1134,7 @@ export const Dashboard: React.FC = () => {
             </button>
           </div>
         ) : !activeSpace && activeTab === "kanban" ? (
-          <div className="flex-1 flex flex-col items-center justify-center p-8 text-center max-w-md mx-auto bg-[#f8fafc] dark:bg-[#000000]">
+          <div className="flex-1 flex flex-col items-center justify-center p-8 text-center max-w-md mx-auto bg-[#f8fafc] dark:bg-brand-black">
             <Layers className="h-16 w-16 text-[#843ec0] dark:text-[#b57ede] mb-6 animate-pulse" />
             <h1 className="text-2xl font-bold mb-3 text-zinc-900 dark:text-white">{t('noSpaces.title')}</h1>
             <p className="text-zinc-600 dark:text-zinc-400 mb-8 leading-relaxed">
@@ -1019,9 +1148,9 @@ export const Dashboard: React.FC = () => {
             </button>
           </div>
         ) : (
-          <div className="flex-1 flex flex-col overflow-hidden bg-[#f8fafc] dark:bg-[#000000]">
+          <div className="flex-1 flex flex-col overflow-hidden bg-[#f8fafc] dark:bg-brand-black">
             {/* Header Toolbar */}
-            <header className="h-16 border-b border-zinc-200 dark:border-[#1f1233] bg-white/90 dark:bg-[#0a0614]/85 backdrop-blur-md px-3 sm:px-4 py-3 flex items-center justify-between shrink-0 transition-theme relative z-20 gap-2 text-zinc-900 dark:text-white">
+            <header className="h-16 border-b border-zinc-200 dark:border-[#1f1233] bg-white/90 dark:bg-brand-surface/85 backdrop-blur-md px-3 sm:px-4 py-3 flex items-center justify-between shrink-0 transition-theme relative z-20 gap-2 text-zinc-900 dark:text-white">
               <div className="flex items-center gap-2 sm:gap-3 min-w-0">
                 <button
                   onClick={() => setIsMobileSidebarOpen(true)}
@@ -1068,10 +1197,28 @@ export const Dashboard: React.FC = () => {
                 ) : (
                   <>
                     <div
-                      className="h-3 w-3 rounded-full shrink-0"
+                      className="h-3 w-3 rounded-full shrink-0 shadow-xs"
                       style={{ backgroundColor: activeSpace?.color || "#b57ede" }}
                     />
-                    <h1 className="text-sm sm:text-lg md:text-xl font-bold tracking-tight truncate text-zinc-900 dark:text-white">{activeSpace?.name || activeWorkspace?.name}</h1>
+                    <h1 className="text-sm sm:text-lg md:text-xl font-bold tracking-tight truncate text-zinc-900 dark:text-white">
+                      {activeSpace?.name || activeWorkspace?.name}
+                    </h1>
+                    {activeSpace?.isLocked && (
+                      <span className="flex items-center gap-1 px-2 py-0.5 rounded-md bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/20 text-xs font-bold shrink-0">
+                        <Lock className="h-3 w-3" />
+                        <span>{isAr ? "قسم مقيد" : "Locked"}</span>
+                      </span>
+                    )}
+                    {activeSpace && canManageSpaces && (
+                      <button
+                        type="button"
+                        onClick={(e) => handleConfirmDeleteSpace(activeSpace._id, activeSpace.name, e)}
+                        title={isAr ? `حذف مساحة "${activeSpace.name}"` : `Delete space "${activeSpace.name}"`}
+                        className="p-1.5 text-zinc-400 hover:text-red-500 hover:bg-red-500/10 dark:hover:bg-red-500/15 rounded-lg transition-all cursor-pointer shrink-0 ms-1"
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </button>
+                    )}
                   </>
                 )}
               </div>
@@ -1121,12 +1268,12 @@ export const Dashboard: React.FC = () => {
                   >
                     <Bell className="h-4 w-4" />
                     {unreadCount > 0 && (
-                      <span className="absolute top-1.5 end-1.5 h-2 w-2 rounded-full bg-[#c6ff00] animate-pulse" />
+                      <span className="absolute top-1.5 inset-e-1.5 h-2 w-2 rounded-full bg-[#c6ff00] animate-pulse" />
                     )}
                   </button>
 
                   {isNotificationsOpen && (
-                    <div className="absolute end-0 mt-2 w-72 sm:w-80 max-w-[calc(100vw-32px)] bg-white dark:bg-[#0a0614] border border-zinc-200 dark:border-[#261540] rounded-2xl shadow-2xl overflow-hidden z-50 transition-theme max-h-96 flex flex-col">
+                    <div className="absolute inset-e-0 mt-2 w-72 sm:w-80 max-w-[calc(100vw-32px)] bg-white dark:bg-brand-surface border border-zinc-200 dark:border-[#261540] rounded-2xl shadow-2xl overflow-hidden z-50 transition-theme max-h-96 flex flex-col">
                       <div className="p-3 border-b border-zinc-200 dark:border-[#1f1233] flex items-center justify-between shrink-0 bg-zinc-50 dark:bg-black/50 gap-2">
                         <div className="flex items-center gap-1.5">
                           <button
@@ -1173,6 +1320,10 @@ export const Dashboard: React.FC = () => {
                                   } catch (error) {
                                     console.error("Failed to load task details for notification:", error);
                                   }
+                                } else if (n.type === "space_access_request") {
+                                  if (activeWorkspace?._id) {
+                                    navigate(`/w/${activeWorkspace._id}/team`);
+                                  }
                                 }
                               }}
                               className={`p-3 text-start hover:bg-white/5 cursor-pointer transition-all ${
@@ -1185,12 +1336,13 @@ export const Dashboard: React.FC = () => {
                                   {n.type === "task_updated" && <Layers className="h-4.5 w-4.5 text-[#c6ff00]" />}
                                   {n.type === "comment_mentioned" && <MessageSquare className="h-4.5 w-4.5 text-[#b57ede]" />}
                                   {n.type === "workspace_invite" && <UserPlus className="h-4.5 w-4.5 text-[#c6ff00]" />}
+                                  {n.type === "space_access_request" && <ShieldAlert className="h-4.5 w-4.5 text-amber-400" />}
                                 </div>
                                 <div className="min-w-0 flex-1">
                                   <p className="text-xs font-bold text-white">
                                     {n.title}
                                   </p>
-                                  <p className="text-[11px] text-zinc-400 mt-0.5 break-words">
+                                  <p className="text-[11px] text-zinc-400 mt-0.5 wrap-break-word">
                                     {n.message}
                                   </p>
                                   <span className="text-[9px] text-zinc-500 block mt-1">
@@ -1256,7 +1408,7 @@ export const Dashboard: React.FC = () => {
                       ))}
                       <button
                         onClick={handleOpenInviteModal}
-                        className="h-7 w-7 rounded-full border border-dashed border-[#b57ede]/50 bg-[#0a0614] flex items-center justify-center text-[#b57ede] hover:text-white hover:border-[#b57ede] hover:bg-[#b57ede]/20 transition-all cursor-pointer"
+                        className="h-7 w-7 rounded-full border border-dashed border-[#b57ede]/50 bg-brand-surface flex items-center justify-center text-[#b57ede] hover:text-white hover:border-[#b57ede] hover:bg-[#b57ede]/20 transition-all cursor-pointer"
                       >
                         <UserPlus className="h-3.5 w-3.5" />
                       </button>
@@ -1303,7 +1455,7 @@ export const Dashboard: React.FC = () => {
 
                   {/* Search Bar */}
                   <div className="relative mb-3 shrink-0">
-                    <Search className="absolute start-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-zinc-400" />
+                    <Search className="absolute inset-s-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-zinc-400" />
                     <input
                       type="text"
                       placeholder={t('workspaceMembersModal.searchMembers', { defaultValue: "Search members..." })}
@@ -1314,7 +1466,7 @@ export const Dashboard: React.FC = () => {
                     {memberSearchQuery && (
                       <button
                         onClick={() => setMemberSearchQuery("")}
-                        className="absolute end-2.5 top-1/2 -translate-y-1/2 text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-200"
+                        className="absolute inset-e-2.5 top-1/2 -translate-y-1/2 text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-200"
                       >
                         <X className="h-3.5 w-3.5" />
                       </button>
@@ -1496,10 +1648,11 @@ export const Dashboard: React.FC = () => {
                       {teamMemberTab === "permissions" ? (
                         <MemberPermissionsEditor
                           member={selectedTeamMember}
+                          spaces={spaces}
                           currentUserRole={currentUserRole}
                           currentUserId={user?.id}
-                          onSave={(userId, role, perms) => {
-                            updateMemberRoleMutation.mutate({ userId, role, permissions: perms });
+                          onSave={(userId, role, perms, allowedSpaces) => {
+                            updateMemberRoleMutation.mutate({ userId, role, permissions: perms, allowedSpaces });
                           }}
                           onRemove={(userId) => {
                             removeMemberMutation.mutate(userId);
@@ -1632,6 +1785,65 @@ export const Dashboard: React.FC = () => {
                   />
                 )}
               </Suspense>
+            ) : activeSpace?.isLocked ? (
+              <div className="flex-1 flex flex-col items-center justify-center p-6 sm:p-12 text-center bg-[#f8fafc] dark:bg-brand-black">
+                <div className="max-w-md w-full p-8 rounded-3xl border border-zinc-200 dark:border-zinc-800 bg-white/90 dark:bg-zinc-900/80 backdrop-blur-xl shadow-2xl flex flex-col items-center">
+                  <div className="relative mb-5">
+                    <div className="h-20 w-20 rounded-3xl bg-amber-500/10 dark:bg-amber-500/15 border border-amber-500/20 flex items-center justify-center text-amber-500 shadow-inner">
+                      <Lock className="h-9 w-9 stroke-[2.2]" />
+                    </div>
+                    <div
+                      className="absolute -bottom-1 -right-1 h-5 w-5 rounded-full border-2 border-white dark:border-zinc-900 shadow-xs"
+                      style={{ backgroundColor: activeSpace.color || "#b57ede" }}
+                      title={activeSpace.name}
+                    />
+                  </div>
+
+                  <h2 className="text-xl sm:text-2xl font-black text-zinc-900 dark:text-white mb-2">
+                    {activeSpace.name}
+                  </h2>
+
+                  <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/20 text-xs font-bold mb-4">
+                    <ShieldAlert className="h-3.5 w-3.5" />
+                    <span>{isAr ? "قسم خاص ومقفل" : "Private & Restricted Space"}</span>
+                  </span>
+
+                  <p className="text-xs sm:text-sm text-zinc-600 dark:text-zinc-400 mb-6 leading-relaxed">
+                    {isAr
+                      ? "أنت لست عضواً مصرحاً له في هذا القسم، ولا يمكنك استعراض المهام أو القوائم الخاصة به. يتم تحديد الصلاحيات حصراً من قِبل مسؤول مساحة العمل."
+                      : "You are not an authorized member of this department and cannot view its tasks or columns. Access is managed exclusively by the workspace admin."}
+                  </p>
+
+                  <div className="w-full pt-4 border-t border-zinc-100 dark:border-zinc-800/80 flex flex-col gap-2.5">
+                    {requestedSpaceIds.includes(activeSpace._id) ? (
+                      <div className="w-full py-3 px-4 rounded-xl bg-emerald-500/10 border border-emerald-500/30 text-emerald-600 dark:text-emerald-400 text-xs font-bold flex items-center justify-center gap-2">
+                        <Check className="h-4 w-4 stroke-3" />
+                        <span>{isAr ? "تم إرسال طلب الوصول إلى المسؤولين بنجاح" : "Access request has been sent to admins"}</span>
+                      </div>
+                    ) : (
+                      <button
+                        type="button"
+                        onClick={() => requestSpaceAccessMutation.mutate(activeSpace._id)}
+                        disabled={requestSpaceAccessMutation.isPending}
+                        className="w-full py-3 px-5 rounded-xl bg-[#843ec0] hover:bg-[#7232a8] text-white font-bold text-xs sm:text-sm flex items-center justify-center gap-2 shadow-lg shadow-purple-500/25 transition-all cursor-pointer active:scale-98 disabled:opacity-50"
+                      >
+                        {requestSpaceAccessMutation.isPending ? (
+                          <Loader2 className="h-4 w-4 animate-spin" />
+                        ) : (
+                          <Send className="h-4 w-4 rtl:rotate-180" />
+                        )}
+                        <span>{isAr ? "طلب إذن الدخول من الأدمن" : "Request Access from Admin"}</span>
+                      </button>
+                    )}
+
+                    <p className="text-[11px] text-zinc-400 dark:text-zinc-500">
+                      {isAr
+                        ? "سيصل إشعار فوري لمدراء الشركة للنظر في منحك الصلاحية لهذا القسم"
+                        : "Workspace admins will receive an instant notification to review your request"}
+                    </p>
+                  </div>
+                </div>
+              </div>
             ) : (
               <div className="flex-1 overflow-x-auto overflow-y-hidden p-3 sm:p-6 bg-[#eef1f5] dark:bg-zinc-950/20 transition-theme kanban-scrollbar">
                 <div className="flex gap-3 sm:gap-4 h-full items-start snap-x snap-mandatory sm:snap-none">
@@ -1746,9 +1958,12 @@ export const Dashboard: React.FC = () => {
         isOpen={isInviteModalOpen}
         onClose={() => setIsInviteModalOpen(false)}
         members={members}
+        spaces={spaces}
         currentUserRole={currentUserRole}
         currentUserId={user?.id}
-        onInvite={(email, role, permissions) => inviteMemberMutation.mutate({ email, role, permissions })}
+        onInvite={(email, role, permissions, allowedSpaces) =>
+          inviteMemberMutation.mutate({ email, role, permissions, allowedSpaces })
+        }
         onUpdateRole={(userId, role) => updateMemberRoleMutation.mutate({ userId, role })}
         onRemoveMember={(userId) => removeMemberMutation.mutate(userId)}
         isInvitePending={inviteMemberMutation.isPending}
