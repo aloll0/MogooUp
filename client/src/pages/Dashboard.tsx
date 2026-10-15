@@ -16,6 +16,7 @@ const CalendarTab = lazy(() => import("../components/CalendarTab").then(m => ({ 
 const GoalsTab = lazy(() => import("../components/GoalsTab").then(m => ({ default: m.GoalsTab })));
 const AdminPanel = lazy(() => import("../components/AdminPanel").then(m => ({ default: m.AdminPanel })));
 const ClientProjectsTab = lazy(() => import("../components/ClientProjectsTab").then(m => ({ default: m.ClientProjectsTab })));
+const CommunityTab = lazy(() => import("../components/CommunityTab").then(m => ({ default: m.CommunityTab })));
 import { ScratchpadDrawer } from "../components/ScratchpadDrawer";
 import { TimeTrackerWidget } from "../components/TimeTrackerWidget";
 import { socketService } from "../services/socketService";
@@ -204,7 +205,7 @@ export const Dashboard: React.FC = () => {
     ? "admin"
     : spaceId
     ? "kanban"
-    : (tab as "kanban" | "team" | "dashboard" | "reports" | "gantt" | "calendar" | "goals" | "admin" | "clients") ||
+    : (tab as "kanban" | "team" | "dashboard" | "reports" | "gantt" | "calendar" | "goals" | "admin" | "clients" | "community") ||
       "kanban";
 
   const [searchParams] = useSearchParams();
@@ -769,6 +770,7 @@ export const Dashboard: React.FC = () => {
               { id: "clients", icon: Briefcase, label: t('sidebar.clients', { defaultValue: "Client Projects" }) },
               { id: "gantt", icon: Clock, label: t('sidebar.gantt', { defaultValue: "Gantt Chart" }) },
               { id: "calendar", icon: Calendar, label: t('sidebar.calendar', { defaultValue: "Calendar View" }) },
+              { id: "community", icon: MessageSquare, label: t('sidebar.community', { defaultValue: "المجتمع والدردشة" }) },
               { id: "team", icon: Users, label: t('sidebar.team', { defaultValue: "Workspace Team" }) },
               { id: "goals", icon: Target, label: t('sidebar.goals', { defaultValue: "Strategic Goals & OKRs" }) },
             ].map((tab) => {
@@ -1168,6 +1170,11 @@ export const Dashboard: React.FC = () => {
                   <>
                     <Users className="h-5 w-5 text-[#843ec0] dark:text-[#b57ede] shrink-0" />
                     <h1 className="text-sm sm:text-lg md:text-xl font-bold tracking-tight truncate text-zinc-900 dark:text-white">{t('sidebar.team', { defaultValue: "Workspace Team" })}</h1>
+                  </>
+                ) : activeTab === "community" ? (
+                  <>
+                    <MessageSquare className="h-5 w-5 text-[#843ec0] dark:text-[#b57ede] shrink-0" />
+                    <h1 className="text-sm sm:text-lg md:text-xl font-bold tracking-tight truncate text-zinc-900 dark:text-white">{t('sidebar.community', { defaultValue: "المجتمع والدردشة" })}</h1>
                   </>
                 ) : activeTab === "dashboard" ? (
                   <>
@@ -1746,6 +1753,16 @@ export const Dashboard: React.FC = () => {
                   workspaceId={activeWorkspace?._id || ""}
                   currentUserRole={currentUserRole}
                 />
+              </Suspense>
+            ) : activeTab === "community" ? (
+              <Suspense fallback={
+                <div className="flex-1 flex items-center justify-center p-8 bg-zinc-50/50 dark:bg-zinc-950/20">
+                  <Loader2 className="h-8 w-8 animate-spin text-purple-500" />
+                </div>
+              }>
+                <div className="flex-1 p-3 md:p-6 overflow-hidden flex flex-col">
+                  <CommunityTab />
+                </div>
               </Suspense>
             ) : activeTab === "dashboard" || activeTab === "goals" || activeTab === "reports" || activeTab === "gantt" || activeTab === "calendar" ? (
               <Suspense fallback={

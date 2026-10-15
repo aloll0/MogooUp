@@ -19,6 +19,7 @@ import goalRoutes from "./modules/goal/goal.routes";
 import activityRoutes from "./modules/activity/activity.routes";
 import clientProjectRoutes from "./modules/clientProject/clientProject.routes";
 import adminRoutes from "./modules/admin/admin.routes";
+import chatRoutes from "./modules/chat/chat.routes";
 
 const app = express();
 
@@ -107,6 +108,7 @@ app.use("/api/v1/goals", goalRoutes);
 app.use("/api/v1/activities", activityRoutes);
 app.use("/api/v1/workspaces/:workspaceId/clients", clientProjectRoutes);
 app.use("/api/v1/admin", adminRoutes);
+app.use("/api/v1/chat", chatRoutes);
 
 // Catch 404 and forward to error handler
 app.use((_req: Request, _res: Response, next: NextFunction) => {

@@ -17,7 +17,8 @@
     "approvals": "مراجعة واعتماد الحسابات",
     "employeeReports": "تقارير أنشطة الموظفين",
     "deletedItems": "استعادة العناصر المحذوفة",
-    "auditLogs": "سجل التدقيق والأحداث"
+    "auditLogs": "سجل التدقيق والأحداث",
+    "community": "المجتمع والدردشة"
   },
   "adminHeader": {
     "titleDashboard": "تحليلات عامة للمنصة",
