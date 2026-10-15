@@ -17,7 +17,8 @@
     "approvals": "User Approvals",
     "employeeReports": "Employee Reports",
     "deletedItems": "Deleted Items",
-    "auditLogs": "System Audit Logs"
+    "auditLogs": "System Audit Logs",
+    "community": "Community & Chat"
   },
   "adminHeader": {
     "titleDashboard": "Admin Analytics Overview",

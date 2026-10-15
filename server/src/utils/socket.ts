@@ -29,6 +29,39 @@ export const initSocket = (server: HttpServer): SocketServer => {
       socket.leave(`workspace:${workspaceId}`);
     });
 
+    // Chat: User room for direct notifications
+    socket.on("join-user", (userId: string) => {
+      if (userId) {
+        socket.join(`user:${userId}`);
+      }
+    });
+
+    socket.on("leave-user", (userId: string) => {
+      if (userId) {
+        socket.leave(`user:${userId}`);
+      }
+    });
+
+    // Chat: Join specific conversation room
+    socket.on("join-conversation", (conversationId: string) => {
+      if (conversationId) {
+        socket.join(`conv:${conversationId}`);
+      }
+    });
+
+    socket.on("leave-conversation", (conversationId: string) => {
+      if (conversationId) {
+        socket.leave(`conv:${conversationId}`);
+      }
+    });
+
+    // Chat: Typing indicator
+    socket.on("chat-typing", (data: { conversationId: string; userId: string; userName: string; isTyping: boolean }) => {
+      if (data?.conversationId) {
+        socket.to(`conv:${data.conversationId}`).emit("user-typing", data);
+      }
+    });
+
     socket.on("disconnect", () => {
       logger.info(`Socket disconnected: ${socket.id}`);
     });
