@@ -24,6 +24,7 @@ import {
   ExternalLink,
   UserMinus,
   Eye,
+  EyeOff,
   Calendar,
   CheckSquare,
   AlertCircle,
@@ -169,6 +170,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ activeSubTab }) => {
   const [selectedTimeframe, setSelectedTimeframe] = useState<"today" | "week" | "month">("month");
   const [selectedUserForReset, setSelectedUserForReset] = useState<any | null>(null);
   const [adminNewPassword, setAdminNewPassword] = useState("");
+  const [showAdminNewPassword, setShowAdminNewPassword] = useState(false);
 
   // Filters for Audit & Deleted Tabs
   const [selectedAuditCompanyId, setSelectedAuditCompanyId] = useState<string>("all");
@@ -2079,14 +2081,23 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ activeSubTab }) => {
                     ? `أدخل كلمة المرور الجديدة للمستخدم: ${selectedUserForReset.fullName} (${selectedUserForReset.email})` 
                     : `Enter a new password for: ${selectedUserForReset.fullName} (${selectedUserForReset.email})`}
                 </p>
-                <input
-                  type="password"
-                  required
-                  placeholder={isAr ? "كلمة المرور الجديدة" : "New password"}
-                  value={adminNewPassword}
-                  onChange={(e) => setAdminNewPassword(e.target.value)}
-                  className="w-full rounded-xl border border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-black/30 py-2.5 px-3 text-sm focus:outline-hidden focus:ring-1 focus:ring-purple-500 text-zinc-900 dark:text-zinc-100 font-semibold"
-                />
+                <div className="relative">
+                  <input
+                    type={showAdminNewPassword ? "text" : "password"}
+                    required
+                    placeholder={isAr ? "كلمة المرور الجديدة" : "New password"}
+                    value={adminNewPassword}
+                    onChange={(e) => setAdminNewPassword(e.target.value)}
+                    className="w-full rounded-xl border border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-black/30 py-2.5 ps-3 pe-10 text-sm focus:outline-hidden focus:ring-1 focus:ring-purple-500 text-zinc-900 dark:text-zinc-100 font-semibold"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowAdminNewPassword((v) => !v)}
+                    className="absolute inset-y-0 end-0 flex items-center px-3 text-zinc-400 hover:text-zinc-700 dark:hover:text-zinc-100 cursor-pointer"
+                  >
+                    {showAdminNewPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                  </button>
+                </div>
               </div>
               
               <div className="flex gap-2 justify-end border-t dark:border-zinc-800 pt-3.5">

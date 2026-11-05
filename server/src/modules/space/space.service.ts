@@ -3,6 +3,7 @@ import { workspaceRepository } from "../workspace/workspace.repository";
 import { ISpace } from "./space.model";
 import { ForbiddenError, NotFoundError } from "../../utils/errors";
 import mongoose from "mongoose";
+import { TaskModel } from "../task/task.model";
 
 export class SpaceService {
   async createSpace(
@@ -72,6 +73,21 @@ export class SpaceService {
     const isAdmin = membership && ["owner", "admin"].includes(membership.role);
     const allSpaces = await spaceRepository.findAllByWorkspace(workspaceId);
 
+    // Spaces containing tasks assigned to / reported by this user must stay accessible to them,
+    // otherwise their tasks are hidden even though they were assigned work there.
+    let involvedSpaceIds = new Set<string>();
+    if (!isSysAdmin && !isOwner && !isAdmin) {
+      const involvedIds = await TaskModel.distinct("spaceId", {
+        workspaceId: new mongoose.Types.ObjectId(workspaceId),
+        deleted: { $ne: true },
+        $or: [
+          { reporterId: new mongoose.Types.ObjectId(userId) },
+          { assignees: new mongoose.Types.ObjectId(userId) },
+        ],
+      });
+      involvedSpaceIds = new Set(involvedIds.map((id: any) => id.toString()));
+    }
+
     return allSpaces.map((sp: any) => {
       const spObj = sp.toObject ? sp.toObject() : { ...sp };
 
@@ -92,7 +108,7 @@ export class SpaceService {
         (sId: any) => sId.toString() === sp._id.toString()
       );
 
-      const hasAccess = !!(allowedInSpace || allowedInMembership);
+      const hasAccess = !!(allowedInSpace || allowedInMembership || involvedSpaceIds.has(sp._id.toString()));
 
       return {
         ...spObj,
