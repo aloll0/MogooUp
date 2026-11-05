@@ -129,13 +129,18 @@ export class TaskService {
       const memberAllowedSpaces = membership?.allowedSpaces || [];
       const allowedInMembership = memberAllowedSpaces.some((s: any) => s.toString() === space._id.toString());
 
-      if (!allowedInSpace && !allowedInMembership) {
+      const isEmployee = membership && (membership.role === "member" || membership.role === "guest");
+      if (!allowedInSpace && !allowedInMembership && !isEmployee) {
         return [];
       }
     }
 
     // Employees (members/guests) should only see their own assigned tasks or tasks they reported
-    if (!isSysAdmin && !isOwner && membership && (membership.role === "member" || membership.role === "guest")) {
+    // Employees see every task in departments (spaces) they are assigned to; outside those they only see their own tasks
+    const hasSpaceAccess = isSysAdmin || isOwner || isAdmin ||
+      (space.allowedMembers && space.allowedMembers.some((m: any) => m.toString() === userId)) ||
+      (membership?.allowedSpaces || []).some((s: any) => s.toString() === space._id.toString());
+    if (!hasSpaceAccess && !isSysAdmin && !isOwner && membership && (membership.role === "member" || membership.role === "guest")) {
       return TaskModel.find({
         listId: new mongoose.Types.ObjectId(listId),
         deleted: { $ne: true },
@@ -394,16 +399,20 @@ export class TaskService {
       }).select("_id");
       const allowedSpaceIds = allowedSpaces.map((s: any) => s._id);
 
+      const isEmployee = membership && (membership.role === "member" || membership.role === "guest");
       const filter: any = {
         workspaceId: new mongoose.Types.ObjectId(workspaceId),
-        spaceId: { $in: allowedSpaceIds },
       };
 
-      if (membership && (membership.role === "member" || membership.role === "guest")) {
+      if (isEmployee) {
+        // Employees see all tasks in their departments, plus any task assigned to / reported by them elsewhere
         filter.$or = [
+          { spaceId: { $in: allowedSpaceIds } },
           { reporterId: new mongoose.Types.ObjectId(userId) },
           { assignees: new mongoose.Types.ObjectId(userId) },
         ];
+      } else {
+        filter.spaceId = { $in: allowedSpaceIds };
       }
 
       return taskRepository.findTasks(filter);
