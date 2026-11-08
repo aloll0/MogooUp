@@ -46,7 +46,8 @@ export const KanbanColumn: React.FC<KanbanColumnProps> = ({
   allLists: _allLists,
   currentUserRole,
 }) => {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
+  const isAr = i18n.language === "ar";
   const [isDragOver, setIsDragOver] = useState(false);
   const [isEditingName, setIsEditingName] = useState(false);
   const [columnName, setColumnName] = useState(list.name);
@@ -244,8 +245,8 @@ export const KanbanColumn: React.FC<KanbanColumnProps> = ({
                 </div>
 
                 {task.description && (
-                  <p className="text-xs text-zinc-550 dark:text-zinc-400 leading-relaxed mb-3 line-clamp-2">
-                    {task.description}
+                  <p className="text-xs text-zinc-550 dark:text-zinc-400 leading-relaxed mb-3 line-clamp-2 whitespace-pre-line">
+                    {task.description.replace(/!\[[^\]]*\]\((?:data:image\/[^)]+|https?:\/\/[^)]+)\)/g, isAr ? " [صورة] " : " [Image] ").trim()}
                   </p>
                 )}
 

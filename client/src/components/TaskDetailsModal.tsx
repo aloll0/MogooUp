@@ -15,6 +15,8 @@ import {
   Check,
   Loader2,
   Shield,
+  ExternalLink,
+  Wand2,
 } from "lucide-react";
 import { useToastStore } from "../stores/useToastStore";
 import { useConfirmStore } from "../stores/useConfirmStore";
@@ -40,6 +42,8 @@ export const TaskDetailsModal: React.FC<TaskDetailsModalProps> = ({
   const { user } = useAuth();
   const queryClient = useQueryClient();
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const descImageInputRef = useRef<HTMLInputElement>(null);
+  const descTextareaRef = useRef<HTMLTextAreaElement>(null);
 
   // Editable task state
   const [title, setTitle] = useState(task.title);
@@ -490,6 +494,190 @@ export const TaskDetailsModal: React.FC<TaskDetailsModalProps> = ({
     setIsEditingDesc(false);
   };
 
+  const insertImageIntoDescription = (file: File) => {
+    if (!file.type.startsWith("image/")) return;
+    const reader = new FileReader();
+    reader.onload = () => {
+      const base64Data = reader.result as string;
+      const imgMarkdown = `\n![${file.name || "image"}](${base64Data})\n`;
+      const textarea = descTextareaRef.current;
+      if (textarea) {
+        const start = textarea.selectionStart ?? (description?.length || 0);
+        const end = textarea.selectionEnd ?? (description?.length || 0);
+        const current = description || "";
+        const updated = current.slice(0, start) + imgMarkdown + current.slice(end);
+        setDescription(updated);
+      } else {
+        setDescription((prev) => `${prev || ""}${imgMarkdown}`);
+      }
+    };
+    reader.readAsDataURL(file);
+  };
+
+  const handleDescImageSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = e.target.files;
+    if (!files || files.length === 0) return;
+    Array.from(files).forEach((f) => insertImageIntoDescription(f));
+    e.target.value = "";
+  };
+
+  const handleDescPaste = (e: React.ClipboardEvent<HTMLTextAreaElement>) => {
+    const items = e.clipboardData?.items;
+    if (!items) return;
+    for (let i = 0; i < items.length; i++) {
+      if (items[i].type.startsWith("image/")) {
+        const file = items[i].getAsFile();
+        if (file) {
+          e.preventDefault();
+          insertImageIntoDescription(file);
+        }
+      }
+    }
+  };
+
+  const handleSmartSplitDescription = (saveImmediately = false) => {
+    const current = description || "";
+    if (!current.trim()) return;
+    // Automatically break merged numbered items (e.g. "1- ", "2 - ") and standalone URLs onto separate lines
+    const formatted = current
+      .replace(/([^\n])\s+(?=\d{1,2}\s*[-–—.]\s+)/g, "$1\n\n")
+      .replace(/(https?:\/\/[^\s)]+)\s+(?!\n)/g, "$1\n")
+      .replace(/([^\n])\s+(https?:\/\/[^\s)]+)/g, "$1\n$2")
+      .replace(/\n{3,}/g, "\n\n")
+      .trim();
+    setDescription(formatted);
+    if (saveImmediately && formatted !== current) {
+      updateTaskMutation.mutate({ description: formatted });
+    }
+  };
+
+  const renderLineWithLinks = (line: string, lineKey: string | number) => {
+    const urlRegex = /(https?:\/\/[^\s<>"']+)/g;
+    const parts = line.split(urlRegex);
+    return parts.map((part, idx) => {
+      if (/^https?:\/\//.test(part)) {
+        const cleanUrl = part.replace(/[.,;!?)]+$/, "");
+        const trailing = part.slice(cleanUrl.length);
+        return (
+          <React.Fragment key={`${lineKey}-url-${idx}`}>
+            <a
+              href={cleanUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              onClick={(e) => e.stopPropagation()}
+              dir="ltr"
+              className="inline-flex items-center gap-1 text-purple-600 dark:text-purple-400 hover:text-purple-700 dark:hover:text-purple-300 underline underline-offset-2 font-medium break-all bg-purple-500/10 hover:bg-purple-500/20 px-1.5 py-0.5 rounded-md my-0.5 transition-colors"
+            >
+              <ExternalLink className="h-3 w-3 shrink-0" />
+              <span>{cleanUrl}</span>
+            </a>
+            {trailing}
+          </React.Fragment>
+        );
+      }
+      return <React.Fragment key={`${lineKey}-txt-${idx}`}>{part}</React.Fragment>;
+    });
+  };
+
+  const renderFormattedDescription = (rawText?: string) => {
+    if (!rawText || !rawText.trim()) {
+      return <span className="text-zinc-400 dark:text-zinc-500 italic">{t('taskModal.noDescription')}</span>;
+    }
+
+    // Auto-normalize run-on numbered points & adjacent URLs so even existing unformatted tasks display cleanly
+    const normalized = rawText
+      .replace(/([^\n])\s+(?=\d{1,2}\s*[-–—]\s+)/g, "$1\n")
+      .replace(/(https?:\/\/[^\s)]+)\s+(?=\d{1,2}\s*[-–—])/g, "$1\n");
+
+    const imgRegex = /!\[([^\]]*)\]\((data:image\/[^)]+|https?:\/\/[^)]+)\)/g;
+    const blocks: Array<{ type: "text"; value: string } | { type: "image"; alt: string; url: string; rawMatch: string }> = [];
+    let lastIndex = 0;
+    let match: RegExpExecArray | null;
+
+    while ((match = imgRegex.exec(normalized)) !== null) {
+      if (match.index > lastIndex) {
+        blocks.push({ type: "text", value: normalized.slice(lastIndex, match.index) });
+      }
+      blocks.push({ type: "image", alt: match[1] || "image", url: match[2], rawMatch: match[0] });
+      lastIndex = match.index + match[0].length;
+    }
+    if (lastIndex < normalized.length) {
+      blocks.push({ type: "text", value: normalized.slice(lastIndex) });
+    }
+
+    const handleRemoveInlineImage = (rawMatch: string) => {
+      const updated = (description || "").replace(rawMatch, "").replace(/\n{3,}/g, "\n\n").trim();
+      setDescription(updated);
+      updateTaskMutation.mutate({ description: updated });
+    };
+
+    return (
+      <div className="space-y-2.5 text-sm text-zinc-700 dark:text-zinc-200 leading-relaxed break-words">
+        {blocks.map((block, bIdx) => {
+          if (block.type === "image") {
+            return (
+              <div
+                key={`img-${bIdx}`}
+                className="relative group my-2 inline-block max-w-full rounded-xl overflow-hidden border border-zinc-200 dark:border-zinc-800 bg-black/20"
+              >
+                <img
+                  src={block.url}
+                  alt={block.alt}
+                  onClick={() => setPreviewImageUrl(block.url)}
+                  className="max-h-72 w-auto object-contain cursor-zoom-in rounded-xl"
+                />
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    handleRemoveInlineImage(block.rawMatch);
+                  }}
+                  title={isAr ? "حذف الصورة" : "Remove image"}
+                  className="absolute top-2 end-2 p-1.5 bg-red-600/90 hover:bg-red-700 text-white rounded-lg opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer shadow-md"
+                >
+                  <Trash2 className="h-3.5 w-3.5" />
+                </button>
+              </div>
+            );
+          }
+
+          const lines = block.value.split("\n");
+          return (
+            <div key={`txt-${bIdx}`} className="space-y-2">
+              {lines.map((line, lIdx) => {
+                const trimmed = line.trim();
+                if (!trimmed) {
+                  return <div key={`empty-${lIdx}`} className="h-1.5" />;
+                }
+                const numberedMatch = trimmed.match(/^(\d{1,2})\s*[-–—.]\s*(.+)$/);
+                if (numberedMatch) {
+                  return (
+                    <div
+                      key={`item-${lIdx}`}
+                      className="flex items-start gap-2.5 p-2.5 rounded-xl bg-white/70 dark:bg-zinc-900/60 border border-zinc-200/70 dark:border-zinc-800/80 shadow-2xs"
+                    >
+                      <span className="shrink-0 h-6 min-w-6 px-1.5 rounded-lg bg-purple-600/15 text-purple-600 dark:text-purple-400 font-bold text-xs flex items-center justify-center mt-0.5">
+                        {numberedMatch[1]}
+                      </span>
+                      <div className="flex-1 min-w-0 whitespace-pre-wrap leading-relaxed">
+                        {renderLineWithLinks(numberedMatch[2], `${bIdx}-${lIdx}`)}
+                      </div>
+                    </div>
+                  );
+                }
+                return (
+                  <p key={`p-${lIdx}`} className="whitespace-pre-wrap leading-relaxed">
+                    {renderLineWithLinks(line, `${bIdx}-${lIdx}`)}
+                  </p>
+                );
+              })}
+            </div>
+          );
+        })}
+      </div>
+    );
+  };
+
   const handlePriorityChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
     const val = e.target.value as any;
     setPriority(val);
@@ -930,45 +1118,112 @@ export const TaskDetailsModal: React.FC<TaskDetailsModalProps> = ({
 
             {/* Task Description */}
             <div className="space-y-2">
-              <div className="flex justify-between items-center">
+              <div className="flex justify-between items-center gap-2 flex-wrap">
                 <label className="text-xs font-bold uppercase text-zinc-400 dark:text-zinc-500">{t('taskModal.descriptionLabel')}</label>
-                {!isEditingDesc && (
+                <div className="flex items-center gap-3">
+                  {description && description.trim().length > 0 && (
+                    <button
+                      type="button"
+                      onClick={() => handleSmartSplitDescription(!isEditingDesc)}
+                      className="text-xs text-amber-600 dark:text-amber-400 flex items-center gap-1 hover:underline cursor-pointer font-semibold"
+                      title={isAr ? "تقسيم وتنسيق النقاط والروابط تلقائياً" : "Auto-split numbered points and links"}
+                    >
+                      <Wand2 className="h-3.5 w-3.5" />
+                      <span>{isAr ? "تنسيق وتقسيم النص" : "Auto-Format"}</span>
+                    </button>
+                  )}
                   <button
-                    onClick={() => setIsEditingDesc(true)}
-                    className="text-xs text-purple-650 dark:text-purple-400 flex items-center gap-1 hover:underline cursor-pointer"
+                    type="button"
+                    onClick={() => {
+                      if (!isEditingDesc) setIsEditingDesc(true);
+                      setTimeout(() => descImageInputRef.current?.click(), 50);
+                    }}
+                    className="text-xs text-emerald-600 dark:text-emerald-400 flex items-center gap-1 hover:underline cursor-pointer font-semibold"
                   >
-                    <Edit3 className="h-3 w-3" />
-                    <span>{t('taskModal.edit')}</span>
+                    <ImageIcon className="h-3.5 w-3.5" />
+                    <span>{isAr ? "إدراج صورة بالوصف" : "Insert Image"}</span>
                   </button>
-                )}
+                  <input
+                    type="file"
+                    ref={descImageInputRef}
+                    accept="image/*"
+                    multiple
+                    onChange={handleDescImageSelect}
+                    className="hidden"
+                  />
+                  {!isEditingDesc && (
+                    <button
+                      type="button"
+                      onClick={() => setIsEditingDesc(true)}
+                      className="text-xs text-purple-650 dark:text-purple-400 flex items-center gap-1 hover:underline cursor-pointer font-semibold"
+                    >
+                      <Edit3 className="h-3 w-3" />
+                      <span>{t('taskModal.edit')}</span>
+                    </button>
+                  )}
+                </div>
               </div>
 
               {isEditingDesc ? (
-                <div className="space-y-2">
+                <div className="space-y-2.5">
                   <textarea
+                    ref={descTextareaRef}
                     value={description}
                     onChange={(e) => setDescription(e.target.value)}
-                    className="w-full rounded-xl border border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-black/30 py-2.5 px-3 text-sm focus:ring-2 focus:ring-purple-500/50 h-32"
+                    onPaste={handleDescPaste}
+                    placeholder={isAr ? "اكتب الوصف هنا... يمكنك لصق الصور مباشرة (Ctrl+V) أو الضغط على إدراج صورة بالوصف" : "Write description... You can paste images directly (Ctrl+V) or click Insert Image"}
+                    className="w-full rounded-xl border border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-black/30 py-2.5 px-3 text-sm focus:ring-2 focus:ring-purple-500/50 min-h-44 leading-relaxed resize-y"
                   />
-                  <div className="flex justify-end gap-2">
-                    <button
-                      onClick={() => setIsEditingDesc(false)}
-                      className="px-4 py-1.5 rounded-lg border text-xs font-semibold cursor-pointer"
-                    >
-                      {t('taskModal.cancel')}
-                    </button>
-                    <button
-                      onClick={handleSaveDescription}
-                      className="px-4 py-1.5 rounded-lg bg-purple-600 text-white text-xs font-semibold hover:bg-purple-700 cursor-pointer"
-                    >
-                      {t('taskModal.saveDescription')}
-                    </button>
+                  {/* Live preview of embedded images while editing */}
+                  {(() => {
+                    const imgMatches = Array.from((description || "").matchAll(/!\[([^\]]*)\]\((data:image\/[^)]+|https?:\/\/[^)]+)\)/g));
+                    if (imgMatches.length === 0) return null;
+                    return (
+                      <div className="flex flex-wrap gap-2 p-2 rounded-xl bg-zinc-100/70 dark:bg-zinc-900/50 border border-zinc-200 dark:border-zinc-800">
+                        {imgMatches.map((m, idx) => (
+                          <div key={idx} className="relative group h-16 w-20 rounded-lg overflow-hidden border border-zinc-300 dark:border-zinc-700">
+                            <img src={m[2]} alt={m[1] || "img"} className="h-full w-full object-cover" />
+                            <button
+                              type="button"
+                              onClick={() => setDescription((prev) => (prev || "").replace(m[0], "").trim())}
+                              className="absolute top-1 end-1 p-0.5 bg-red-600 text-white rounded opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer"
+                            >
+                              <X className="h-3 w-3" />
+                            </button>
+                          </div>
+                        ))}
+                      </div>
+                    );
+                  })()}
+                  <div className="flex justify-between items-center gap-2">
+                    <span className="text-[11px] text-zinc-400">
+                      {isAr ? "نصيحة: يمكنك لصق أي صورة مباشرة داخل الوصف باستخدام Ctrl+V" : "Tip: Paste images directly with Ctrl+V"}
+                    </span>
+                    <div className="flex gap-2">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setDescription(task.description);
+                          setIsEditingDesc(false);
+                        }}
+                        className="px-4 py-1.5 rounded-lg border text-xs font-semibold cursor-pointer"
+                      >
+                        {t('taskModal.cancel')}
+                      </button>
+                      <button
+                        type="button"
+                        onClick={handleSaveDescription}
+                        className="px-4 py-1.5 rounded-lg bg-purple-600 text-white text-xs font-semibold hover:bg-purple-700 cursor-pointer"
+                      >
+                        {t('taskModal.saveDescription')}
+                      </button>
+                    </div>
                   </div>
                 </div>
               ) : (
-                <p className="text-sm text-zinc-650 dark:text-zinc-355 leading-relaxed bg-zinc-50/50 dark:bg-zinc-800/20 p-3.5 rounded-xl border border-zinc-150 dark:border-zinc-800/40">
-                  {description || t('taskModal.noDescription')}
-                </p>
+                <div className="bg-zinc-50/50 dark:bg-zinc-800/20 p-3.5 rounded-xl border border-zinc-150 dark:border-zinc-800/40 max-h-[420px] overflow-y-auto">
+                  {renderFormattedDescription(description)}
+                </div>
               )}
             </div>
 
@@ -1546,7 +1801,7 @@ export const TaskDetailsModal: React.FC<TaskDetailsModalProps> = ({
                               {new Date(item.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                             </span>
                           </div>
-                          <p className="text-xs text-zinc-650 dark:text-zinc-300 leading-relaxed break-words whitespace-pre-wrap">{item.content}</p>
+                          <p className="text-xs text-zinc-650 dark:text-zinc-300 leading-relaxed break-words whitespace-pre-wrap">{renderLineWithLinks(item.content || "", `comment-${item._id}`)}</p>
                         </div>
                       </div>
                     );
